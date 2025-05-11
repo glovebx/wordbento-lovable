@@ -4,9 +4,8 @@ import Header from '@/components/Header';
 import WordGrid from '@/components/WordGrid';
 
 import AnalysisForm from '@/components/AnalysisForm';
-import AnalysisProcessing from '@/components/AnalysisProcessing'; // Import the new AnalysisProcessing component
 import { useAnalysisTask } from '@/hooks/use-analysis-task'; // Import the new analysis task hook
-import { AnalysisData, AnalysisResult } from '@/types/analysisTypes'; // Import types
+import { AnalysisResult } from '@/types/analysisTypes'; // Import types
 
 import LoadingFallback from '@/components/LoadingFallback';
 import { useToast } from '@/components/ui/use-toast';

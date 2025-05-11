@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  BookOpen,
   FileText, 
   Atom, 
   Layers, 
@@ -9,7 +8,6 @@ import {
   ArrowUpDown, 
   Lightbulb, 
   Newspaper,
-  ZoomIn
 } from 'lucide-react';
 
 import GridCard from './GridCard';
@@ -54,7 +52,6 @@ const WordGrid: React.FC<WordGridProps> = ({
   // const imageUrl = `/placeholder.svg`;
   const [imageUrl, setImageUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [imageDialogOpen, setImageDialogOpen] = useState(false);
   
   // Simulate image loading after the component renders
   useEffect(() => {

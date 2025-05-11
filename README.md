@@ -1,6 +1,13 @@
-# WordBento - Cloudflare D1 KV R2 Full Stack Application
+<p align="center">
+  <a href="https://github.com/glovebx/wordbento-lovable">
+    <img loading="lazy" alt="Docling" src="./assets/home.png"/>
+  </a>
+</p>
 
-This is a monorepo for a starter project utilizing Cloudflare D1 as a database with a robust authentication system. The project is split into a **server** (Cloudflare Workers) and a **client** (React with Vite). It provides a complete setup for managing users, tokens, and a database with Drizzle ORM.
+# WordBento - Cloudflare D1 KV R2 Full Stack Application for Learning English
+
+这是一个Bento Grid形式学习英文单词的React App。  
+The project is split into a **server** (Cloudflare Workers) and a **client** (React with Vite). It provides a complete setup for managing users, tokens, and a database with Drizzle ORM.
 
 ---
 
