@@ -1,0 +1,43 @@
+{
+  "name": "server",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"WRANGLER,DRIZZLE-KIT\" -c \"blue,green\" \"wrangler dev --env development --log-level debug > wrangler_debug.log 2>&1\" \"drizzle-kit studio\"",
+    "start": "wrangler deploy --env production",
+    "build": "esbuild src/index.js --bundle --outfile=dist/index.js --platform=node --format=esm",
+    "serve": "node server.js",
+    "generate:migration": "drizzle-kit generate --schema src/db/schema.ts --dialect sqlite",
+    "push:migration": "drizzle-kit push --db ./drizzle/sqlite.db"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.5",
+    "@tsndr/cloudflare-worker-jwt": "^3.1.4",
+    "cookie": "^1.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "djwt": "^2.0.0",
+    "dotenv": "^16.5.0",
+    "hono": "^4.7.9",
+    "jsonrepair": "^3.12.0",
+    "mariadb": "^3.4.2",
+    "nanoid": "^5.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "concurrently": "^9.1.2",
+    "drizzle-kit": "^0.31.1",
+    "drizzle-orm": "^0.43.1",
+    "esbuild": "^0.25.4",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.14.4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  }
+}
