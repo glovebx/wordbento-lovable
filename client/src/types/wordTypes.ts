@@ -35,10 +35,12 @@ export interface WordContentMap {
     // (TEXT without NOT NULL), although DEFAULT CURRENT_TIMESTAMP makes them effectively non-null on insert.
     // API might return them as strings or null. Using string | null for safety.
     created_at: string | null;
-    updated_at: string | null;
+    // updated_at: string | null;
   
     // Aggregated content from 'word_content' table
     content: WordContentMap;
+
+    imageUrls: string[];
   }
   
   // 可以选择导出 WordContentMap 类型如果需要在其他地方直接引用它

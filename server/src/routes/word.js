@@ -69,7 +69,26 @@ const word = new Hono();
 //       return null; // Does not look like valid JSON structure
 //   }
 // };
-const cleanAiJsonResponse = (rawResponse) => {
+
+/**
+ * Helper function to check if a string looks like a JSON object or array.
+ * It performs a basic check by verifying if the string starts and ends with
+ * curly braces {} or square brackets [].
+ *
+ * @param {string} str The string to check.
+ * @returns {boolean} True if the string looks like JSON, false otherwise.
+ */
+export const isLikelyJsonString = (str) => {
+  if (typeof str !== 'string' || str.length === 0) {
+      return false;
+  }
+  const trimmedStr = str.trim();
+  return (trimmedStr.startsWith('{') && trimmedStr.endsWith('}')) ||
+         (trimmedStr.startsWith('[') && trimmedStr.endsWith(']'));
+};
+
+
+export const cleanAiJsonResponse = (rawResponse) => {
   if (!rawResponse || typeof rawResponse !== 'string') {
     return null;
   }
@@ -92,7 +111,7 @@ const cleanAiJsonResponse = (rawResponse) => {
 
     // Optional: Perform a basic check if the extracted content looks like JSON
     // (Starts with { or [ and ends with } or ])
-    if ((extractedContent.startsWith('{') && extractedContent.endsWith('}')) || (extractedContent.startsWith('[') && extractedContent.endsWith(']'))) {
+    if (isLikelyJsonString(extractedContent)) {
         return extractedContent;
     } else {
         console.warn("Extracted content does not look like JSON structure:", extractedContent);
@@ -171,8 +190,12 @@ const mapGeminiToDbContent = (word_id, geminiData) => {
 
 // Helper function to format database results into the desired frontend structure
 // Type annotations removed
-const formatDbResultToWordResponse = (word, contentRecords) => {
+const formatDbResultToWordResponse = (c, word, contentRecords, imageRecords) => {
     const content = {};
+    let imagesUrls = [];
+    if (imageRecords && imageRecords.length > 0) {
+      imagesUrls = imageRecords.map(img => `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
+    }
 
     contentRecords.forEach(record => {
         if (!content[record.content_type]) {
@@ -181,7 +204,7 @@ const formatDbResultToWordResponse = (word, contentRecords) => {
         // Parse JSON strings back to arrays for types like 'examples'
         try {
             // Check if content is a string before attempting JSON.parse
-            const parsedContent = (record.content_type === 'examples' || record.content_type === 'forms') && typeof record.content === 'string' ? JSON.parse(record.content) : record.content;
+            const parsedContent = (record.content_type === 'examples' || record.content_type === 'forms') && typeof record.content === 'string' && isLikelyJsonString(record.content) ? JSON.parse(record.content) : record.content;
              content[record.content_type][record.language_code] = parsedContent;
         } catch (e) {
              console.error(`Failed to parse JSON content for word ${word.id}, type ${record.content_type}, lang ${record.language_code}:`, e);
@@ -214,8 +237,9 @@ const formatDbResultToWordResponse = (word, contentRecords) => {
         phonetic: word.phonetic,
         meaning: word.meaning,
         created_at: word.created_at,
-        updated_at: word.updated_at,
+        // updated_at: word.updated_at,
         content: content,
+        imageUrls: imagesUrls
     };
 };
 
@@ -626,8 +650,12 @@ word.post('/search', async (c) => {
             .from(schema.word_content)
             .where(eq(schema.word_content.word_id, existingWord.id));
 
+        const imageRecords = await db.select()
+            .from(schema.images)
+            .where(eq(schema.images.word_id, existingWord.id));
+
         // Format the data for the frontend response
-        wordData = formatDbResultToWordResponse(existingWord, contentRecords);
+        wordData = formatDbResultToWordResponse(c, existingWord, contentRecords, imageRecords);
 
         // Return the found word data
         console.log("Returning existing word data.");
@@ -699,7 +727,7 @@ word.post('/search', async (c) => {
                 .from(schema.word_content)
                 .where(eq(schema.word_content.word_id, newWord.id));
 
-          wordData = formatDbResultToWordResponse(newWord, newlyInsertedContent);
+          wordData = formatDbResultToWordResponse(c, newWord, newlyInsertedContent);
 
           console.log(`Word "${wordToGenerate}" and content inserted successfully.`);
           // Return the newly created word data with 201 status
@@ -795,6 +823,17 @@ word.post('/imagize', async (c) => {
       if (result.length > 0) {
            existingWord = result[0];
            console.log(`Found exact match for "${searchSlug}" - ID: ${existingWord.id}`);
+
+           const images = await db.select()
+           .from(schema.images)
+           .where(eq(schema.images.word_id, existingWord.id));
+          //  .limit(1);
+          if (images && images.length > 0) {
+            const imageUrls = images.map(img => `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
+
+            return c.json({imageUrls: imageUrls}, 200);
+          }
+    
       } else {
         // If no exact match, try prefix match
         console.log(`No word found with prefix: "${searchSlug}"`);
@@ -882,7 +921,7 @@ word.post('/imagize', async (c) => {
 
         console.log(`Word "${wordToGenerate}" and image inserted successfully.`);
         // return c.json({'key': r2ObjectKey}, 200);
-        return c.json({imageUrls: [`http://localhost:8787/api/word/image/${r2ObjectKey}`]}, 200);
+        return c.json({imageUrls: [`${c.env.VITE_BASE_URL}/api/word/image/${r2ObjectKey}`]}, 200);
         // return c.json({inlines: [inlineData]}, 200);
 
     } catch (dbError) { // Removed type annotation

@@ -49,35 +49,6 @@ const WordGrid: React.FC<WordGridProps> = ({
   word, 
   onMasteredSuccess
  }) => {
-  // const imageUrl = `/placeholder.svg`;
-  const [imageUrl, setImageUrl] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // Simulate image loading after the component renders
-  useEffect(() => {
-    // Reset image state when word changes
-    setImageUrl('');
-    
-    // Simulate API request to get image for the word
-    const fetchImage = async () => {
-      setIsLoading(true);
-      try {
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // In a real implementation, you would fetch the actual image URL from your API
-        // For now, we'll use a placeholder image
-        setImageUrl('/placeholder.svg');
-      } catch (error) {
-        console.error('Error fetching image:', error);
-        setImageUrl('');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchImage();
-  }, [word]);
 
   // Safely access definition content
   const definitionContent = word.content.definition;
@@ -166,7 +137,7 @@ const WordGrid: React.FC<WordGridProps> = ({
       </div>      
 
         {/* Word Image - Centered in the page */}
-      <WordImageDisplay initialImageUrls={[]} wordText={word.word_text} />
+      <WordImageDisplay initialImageUrls={word.imageUrls} wordText={word.word_text} />
 
       <div className="bento-grid">
         {/* Definition Card */}

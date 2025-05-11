@@ -13,293 +13,98 @@ import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../db/schema'; // Keep schema import for drizzle initialization
 import { sql } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
 import { jsonrepair } from 'jsonrepair';
+import { isLikelyJsonString, cleanAiJsonResponse } from './word';
 
 const analyze = new Hono();
 
-const cleanAiJsonResponse = (rawResponse) => {
-  if (!rawResponse || typeof rawResponse !== 'string') {
-    return null;
-  }
-
-  // // Trim leading/trailing whitespace
-  // let cleaned = rawResponse.trim();
-
-  // // Check for and remove markdown code fences (```json or ``` followed by optional newline)
-  // // Use a regular expression to handle variations like ```json, ```json\n, ```, ```\n
-  // const jsonFenceStart = /^```json\s*\n?/;
-  // const fenceEnd = /^```\s*\n?$/;
-
-  // if (jsonFenceStart.test(cleaned)) {
-  //   // Remove the starting fence
-  //   cleaned = cleaned.replace(jsonFenceStart, '');
-
-  //   // Find the ending fence. Look for the last ``` line.
-  //   const lines = cleaned.split('\n');
-  //   let lastFenceIndex = -1;
-  //   for (let i = lines.length - 1; i >= 0; i--) {
-  //     if (fenceEnd.test(lines[i].trim())) {
-  //       lastFenceIndex = i;
-  //       break;
-  //     }
-  //   }
-
-  //   if (lastFenceIndex !== -1) {
-  //     // If an ending fence is found, join the lines before it
-  //     cleaned = lines.slice(0, lastFenceIndex).join('\n');
-  //   } else {
-  //       // If no ending fence found, maybe it's just the start fence and the rest is JSON
-  //       console.warn("JSON response started with ```json but no closing ``` found.");
-  //       // Keep the rest of the content, hoping it's valid JSON
-  //   }
-  // } else if (fenceEnd.test(cleaned)) {
-  //     // Handle case where it might just be a closing fence at the end without a start fence
-  //     cleaned = cleaned.replace(fenceEnd, '');
-  // }
-
-  // // Basic check: Does it look like JSON? (Starts with { or [ and ends with } or ])
-  // // This is a simple check, not a full JSON validation.
-  // const potentialJson = cleaned.trim();
-  // if ((potentialJson.startsWith('{') && potentialJson.endsWith('}')) || (potentialJson.startsWith('[') && potentialJson.endsWith(']'))) {
-  //     return potentialJson;
-  // } else {
-  //     console.error("Cleaned response does not look like JSON:", cleaned);
-  //     return null; // Does not look like valid JSON structure
-  // }
-
-  const trimmedResponse = rawResponse.trim();
-
-  // --- Modified Regex ---
-  // Regex to find content within the FIRST ```json ... ``` or ``` ... ``` fence.
-  // Uses a non-greedy match (.*?) and the 's' flag to match newlines.
-  // Removed the negative lookahead to match the first occurrence.
-  // Added \s* after (?:json\s*)? to match zero or more whitespace characters (including newline).
-  const codeBlockRegex = /```(?:json\s*)?\s*(.*?)```/s; // Match ```json or ```, zero or more whitespace, non-greedy content, ```
-
-  const match = trimmedResponse.match(codeBlockRegex);
-
-  if (match && match[1]) {
-    // match[1] contains the captured group, which is the content inside the fences
-    const extractedContent = match[1].trim();
-    console.log("Extracted content from code block:", extractedContent);
-
-    // Optional: Perform a basic check if the extracted content looks like JSON
-    // (Starts with { or [ and ends with } or ])
-    if ((extractedContent.startsWith('{') && extractedContent.endsWith('}')) || (extractedContent.startsWith('[') && extractedContent.endsWith(']'))) {
-        return extractedContent;
-    } else {
-        console.warn("Extracted content does not look like JSON structure:", extractedContent);
-        // Depending on strictness, you might return extractedContent anyway,
-        // or return null. Let's return null if it doesn't look like JSON structure.
-        return null;
-    }
-
-  } else {
-    console.warn("No suitable markdown code block found in the response.");
-    // If no code block is found, return null
-    return null;
-  }  
-};
-
-// Helper function to map Gemini AI response structure to database structure
-// Type annotations removed
-const mapGeminiToDbContent = (word_id, geminiData) => {
-    const dbContentRecords = [];
-    // Filter out keys that are not content types
-    const content_types = Object.keys(geminiData).filter(key => key !== 'phonetic' && key !== 'meaning');
-
-    console.log(geminiData);
-
-    for (const type of content_types) {
-      console.log(type);
-
-        const content = geminiData[type]; // Access content directly
-
-        console.log(content);
-
-        if (content) {
-            // Handle icon separately if needed, or include it in the content structure
-            // For now, we'll include icon in the content object returned to frontend,
-            // but the database schema doesn't store icons per content type.
-            // If you need to store icons per content type in DB, you'd need to modify schema.
-
-            // Filter out 'icon' when iterating languages
-            const languages = Object.keys(content).filter(lang => lang !== 'icon');
-            const icon = content['icon'];
-
-            for (const lang of languages) {
-                const value = content[lang];
-
-                if (value !== undefined && value !== null) { // Only insert if content exists for the language
-                     // Store arrays (like examples) as JSON strings in the database
-                    const contentToStore = Array.isArray(value) ? JSON.stringify(value) : String(value);
-
-                    dbContentRecords.push({
-                        word_id: word_id,
-                        content_type: type, // e.g., 'definition', 'examples'
-                        language_code: lang, // e.g., 'en', 'zh'
-                        content: contentToStore, // Store as string or JSON string
-                        icon: icon
-                    });
-
-                    // // Handle the 'meaning' field from Gemini AI response
-                    // // We'll map it to a specific content type, e.g., 'summary'
-                    // // Assuming meaning is a general summary, maybe link to definition/en
-                    //  if (geminiData.meaning && type === 'definition' && lang === 'en') {
-                    //      const summaryContent = Array.isArray(geminiData.meaning) ? JSON.stringify(geminiData.meaning) : String(geminiData.meaning);
-                    //       dbContentRecords.push({
-                    //         word_id: word_id,
-                    //         content_type: 'summary', // Map 'meaning' to 'summary' content type
-                    //         language_code: lang, // Or 'en' if meaning is always in English
-                    //         content: summaryContent,
-                    //         icon: icon
-                    //     });
-                    //  }
-                }
-            }
-        }
-    }
-     return dbContentRecords;
-};
-
-// Helper function to format database results into the desired frontend structure
-// Type annotations removed
-const formatDbResultToWordResponse = (word, contentRecords) => {
-    const content = {};
-
-    contentRecords.forEach(record => {
-        if (!content[record.content_type]) {
-            content[record.content_type] = {};
-        }
-        // Parse JSON strings back to arrays for types like 'examples'
-        try {
-            // Check if content is a string before attempting JSON.parse
-            const parsedContent = (record.content_type === 'examples' || record.content_type === 'forms') && typeof record.content === 'string' ? JSON.parse(record.content) : record.content;
-             content[record.content_type][record.language_code] = parsedContent;
-        } catch (e) {
-             console.error(`Failed to parse JSON content for word ${word.id}, type ${record.content_type}, lang ${record.language_code}:`, e);
-             content[record.content_type][record.language_code] = record.content; // Fallback to raw string
-        }
-    });
-
-    //  // Add icons from geminiData if the word was generated by AI.
-    //  // Icons are not stored in the DB with the current schema.
-    //  if (geminiData) {
-    //   // Iterate through content types in the geminiData
-    //   const geminiContentTypes = Object.keys(geminiData).filter(key => key !== 'phonetic' && key !== 'meaning');
-    //   geminiContentTypes.forEach(type => {
-    //       const geminiContent = geminiData[type];
-    //       // Check if the content type exists in the formatted content (from DB records)
-    //       // AND if the geminiData for this type includes an 'icon' property
-    //       if (content[type] && geminiContent && typeof geminiContent === 'object' && geminiContent.icon) {
-    //            // Add the icon to the formatted content object for this type
-    //            // Note: This adds the icon at the content type level, matching the AI JSON structure
-    //            content[type].icon = geminiContent.icon;
-    //       }
-    //   });
-    // }
-    // // If geminiData is null (meaning the word was fetched from the DB),
-    // // icons will not be added by this function with the current DB schema.
-
-    return {
-        id: word.id,
-        word_text: word.word_text,
-        phonetic: word.phonetic,
-        meaning: word.meaning,
-        created_at: word.created_at,
-        updated_at: word.updated_at,
-        content: content,
-    };
-};
-
-
-// Placeholder function to call Gemini AI API
-// Replace with your actual API call logic
-// Type annotations removed
-const extractWordsByGeminiAi = async (c, analysisData) => {
-    console.log(`Calling Gemini AI for source: ${analysisData.sourceType}`);
-    // This is a placeholder. You need to replace this with your actual API call.
-    // Example using fetch:
+// // Placeholder function to call Gemini AI API
+// // Replace with your actual API call logic
+// // Type annotations removed
+// const extractWordsByGeminiAi = async (c, analysisData) => {
+//     console.log(`Calling Gemini AI for source: ${analysisData.sourceType}`);
+//     // This is a placeholder. You need to replace this with your actual API call.
+//     // Example using fetch:
     
-    const GEMINI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
+//     const GEMINI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
 
-    try {
-      const prompt = analysisData.sourceType === 'article' ? `
-我给你一篇文章，请从中将${analysisData.examType}等级的单词筛选出来，请仅以json格式的数组返回，不要包含任何其他文本或解释。
-文章如下：${analysisData.content}
-                ` : `我给你一个url，请访问阅读其中的正文，从中将${analysisData.examType}等级的单词筛选出来，请仅以json格式的数组返回，不要包含任何其他文本或解释。。
-URL如下：${analysisData.content}`;
+//     try {
+//       const prompt = analysisData.sourceType === 'article' ? `
+// 我给你一篇文章，请从中将${analysisData.examType}等级的单词筛选出来，请仅以json格式的数组返回，不要包含任何其他文本或解释。
+// 文章如下：${analysisData.content}
+//                 ` : `我给你一个url，请访问阅读其中的正文，从中将${analysisData.examType}等级的单词筛选出来，请仅以json格式的数组返回，不要包含任何其他文本或解释。。
+// URL如下：${analysisData.content}`;
 
-        const jsonData = {
-          contents:[
-            {
-              parts:[
-                {
-                  text: prompt
-                }
-              ]
-            }
-          ]};
+//         const jsonData = {
+//           contents:[
+//             {
+//               parts:[
+//                 {
+//                   text: prompt
+//                 }
+//               ]
+//             }
+//           ]};
 
-        const response = await fetch(GEMINI_API_ENDPOINT, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                // 'Authorization': `Bearer ${GEMINI_API_KEY}`
-            },
-            body: JSON.stringify(jsonData),
-        });
+//         const response = await fetch(GEMINI_API_ENDPOINT, {
+//             method: 'POST',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//                 // 'Authorization': `Bearer ${GEMINI_API_KEY}`
+//             },
+//             body: JSON.stringify(jsonData),
+//         });
 
-        if (!response.ok) {
-            console.error(`Gemini AI API call failed: ${response.status} ${response.statusText}`);
-            return null;
-        }
+//         if (!response.ok) {
+//             console.error(`Gemini AI API call failed: ${response.status} ${response.statusText}`);
+//             return null;
+//         }
 
-        const data = await response.json(); // No type assertion needed in JS
-        // console.log(data);
+//         const data = await response.json(); // No type assertion needed in JS
+//         // console.log(data);
 
-        // ['candidates'][0]['content']['parts']]
-        console.log(data.candidates[0].content);
+//         // ['candidates'][0]['content']['parts']]
+//         console.log(data.candidates[0].content);
 
-        const result = data.candidates[0].content.parts[0];
+//         const result = data.candidates[0].content.parts[0];
         
-        console.log(result);
+//         console.log(result);
 
-        const jsonStr = cleanAiJsonResponse(result.text)
+//         const jsonStr = cleanAiJsonResponse(result.text)
 
-        const repairedStr = jsonrepair(jsonStr)
-        console.log(repairedStr);
+//         const repairedStr = jsonrepair(jsonStr)
+//         console.log(repairedStr);
 
-        const jsonWord = JSON.parse(repairedStr);
+//         const jsonWord = JSON.parse(repairedStr);
 
-        // Validate the structure of the received data if necessary
-        return jsonWord;
+//         // Validate the structure of the received data if necessary
+//         return jsonWord;
 
-    } catch (error) {
-        console.error('Network error calling Gemini AI API:', error);
-        return null;
-    }
+//     } catch (error) {
+//         console.error('Network error calling Gemini AI API:', error);
+//         return null;
+//     }
     
-    // // --- Mock AI Response for Testing ---
-    // // Remove this mock data in your actual implementation
-    //  console.warn("Using MOCK Gemini AI response!");
-    //  const mockResponse = { // Removed type annotation
-    //      [word.toLowerCase()]: { // Ensure the key matches the requested word slug
-    //          phonetic: "/mɒk/",
-    //          meaning: "模拟数据",
-    //          definition: { icon: "BookOpen", en: "This is a mock definition.", zh: "这是一个模拟定义。" },
-    //          examples: { icon: "FileText", en: ["Mock example 1.", "Mock example 2."], zh: ["模拟例句 1。", "模拟例句 2。"] },
-    //          etymology: { icon: "Atom", en: "Mock etymology.", zh: "模拟词源。" },
-    //          affixes: { icon: "Layers", en: "Mock affixes.", zh: "模拟词缀。" },
-    //          history: { icon: "History", en: "Mock history.", zh: "模拟历史。" },
-    //          forms: { icon: "ArrowUpDown", en: ["Mock form 1", "Mock form 2"], zh: ["模拟形式 1", "模拟形式 2"] },
-    //          memory_aid: { icon: "Lightbulb", en: "Mock memory aid.", zh: "模拟记忆辅助。" },
-    //          trending_story: { icon: "Newspaper", en: "Mock trending story.", zh: "模拟热门故事。" },
-    //          // Add other content types as needed
-    //      }
-    //  };
-    //  return Promise.resolve(mockResponse);
-    // // --- End Mock AI Response ---
-};
+//     // // --- Mock AI Response for Testing ---
+//     // // Remove this mock data in your actual implementation
+//     //  console.warn("Using MOCK Gemini AI response!");
+//     //  const mockResponse = { // Removed type annotation
+//     //      [word.toLowerCase()]: { // Ensure the key matches the requested word slug
+//     //          phonetic: "/mɒk/",
+//     //          meaning: "模拟数据",
+//     //          definition: { icon: "BookOpen", en: "This is a mock definition.", zh: "这是一个模拟定义。" },
+//     //          examples: { icon: "FileText", en: ["Mock example 1.", "Mock example 2."], zh: ["模拟例句 1。", "模拟例句 2。"] },
+//     //          etymology: { icon: "Atom", en: "Mock etymology.", zh: "模拟词源。" },
+//     //          affixes: { icon: "Layers", en: "Mock affixes.", zh: "模拟词缀。" },
+//     //          history: { icon: "History", en: "Mock history.", zh: "模拟历史。" },
+//     //          forms: { icon: "ArrowUpDown", en: ["Mock form 1", "Mock form 2"], zh: ["模拟形式 1", "模拟形式 2"] },
+//     //          memory_aid: { icon: "Lightbulb", en: "Mock memory aid.", zh: "模拟记忆辅助。" },
+//     //          trending_story: { icon: "Newspaper", en: "Mock trending story.", zh: "模拟热门故事。" },
+//     //          // Add other content types as needed
+//     //      }
+//     //  };
+//     //  return Promise.resolve(mockResponse);
+//     // // --- End Mock AI Response ---
+// };
 
 const extractWordsByAi = async (c, analysisData) => {
   console.log(`Calling Gemini AI for source: ${analysisData.sourceType}`);
@@ -378,27 +183,6 @@ URL如下：${analysisData.content}`;
       console.error('Network error calling Gemini AI API:', error);
       return null;
   }
-  
-  // // --- Mock AI Response for Testing ---
-  // // Remove this mock data in your actual implementation
-  //  console.warn("Using MOCK Gemini AI response!");
-  //  const mockResponse = { // Removed type annotation
-  //      [word.toLowerCase()]: { // Ensure the key matches the requested word slug
-  //          phonetic: "/mɒk/",
-  //          meaning: "模拟数据",
-  //          definition: { icon: "BookOpen", en: "This is a mock definition.", zh: "这是一个模拟定义。" },
-  //          examples: { icon: "FileText", en: ["Mock example 1.", "Mock example 2."], zh: ["模拟例句 1。", "模拟例句 2。"] },
-  //          etymology: { icon: "Atom", en: "Mock etymology.", zh: "模拟词源。" },
-  //          affixes: { icon: "Layers", en: "Mock affixes.", zh: "模拟词缀。" },
-  //          history: { icon: "History", en: "Mock history.", zh: "模拟历史。" },
-  //          forms: { icon: "ArrowUpDown", en: ["Mock form 1", "Mock form 2"], zh: ["模拟形式 1", "模拟形式 2"] },
-  //          memory_aid: { icon: "Lightbulb", en: "Mock memory aid.", zh: "模拟记忆辅助。" },
-  //          trending_story: { icon: "Newspaper", en: "Mock trending story.", zh: "模拟热门故事。" },
-  //          // Add other content types as needed
-  //      }
-  //  };
-  //  return Promise.resolve(mockResponse);
-  // // --- End Mock AI Response ---
 };
 
 
@@ -672,56 +456,6 @@ const simulateAnalysisTask = async (c, taskId, db, analysisData) => {
       .where(eq(schema.resources.uuid, taskId));
 
   return candidates;
-  // // Simulate processing steps and update status in DB
-  // // Step 1: Simulate initial processing
-  // await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate work
-  // await db.update(schema.resources)
-  //     .set({ status: 'processing', updated_at: sql`CURRENT_TIMESTAMP` })
-  //     .where(eq(schema.resources.uuid, taskId));
-  // console.log(`[SIMULATION] Task ID ${taskId}: Status updated to 'processing'`);
-
-  // // Simulate more processing with progress updates (optional)
-  // await new Promise(resolve => setTimeout(resolve, 2000));
-  // // If you add progress/message fields to schema.analysisTasks, update them here
-  // // await db.update(schema.analysisTasks).set({ progress: 50, updatedAt: sql`CURRENT_TIMESTAMP` }).where(eq(schema.analysisTasks.id, taskId));
-  // console.log(`[SIMULATION] Task ID ${taskId}: Simulating 50% progress`);
-
-
-  // // Simulate task completion or failure
-  // const simulateSuccess = Math.random() > 0.2; // 80% chance of success
-
-  // if (simulateSuccess) {
-  //     // Simulate successful completion
-  //     await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate final work
-  //     const simulatedResult = {
-  //         // TODO: Replace with realistic simulated analysis results based on analysisData
-  //         wordList: ['simulated', 'analysis', 'result'],
-  //         difficultyScore: Math.floor(Math.random() * 100),
-  //         summary: `Simulated analysis completed for ${analysisData.sourceType} content.`,
-  //         originalInput: analysisData.content.substring(0, 50) + '...', // Include part of input
-  //     };
-  //     await db.update(schema.resources)
-  //         .set({
-  //             status: 'completed',
-  //             result: JSON.stringify(simulatedResult), // Store result as JSON string
-  //             updated_at: sql`CURRENT_TIMESTAMP`
-  //         })
-  //         .where(eq(schema.resources.uuid, taskId));
-  //     console.log(`[SIMULATION] Task ID ${taskId}: Status updated to 'completed'. Result saved.`);
-
-  // } else {
-  //     // Simulate failure
-  //     await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate failure delay
-  //     const simulatedError = 'Simulated analysis failure.'; // Example error message
-  //      await db.update(schema.resources)
-  //         .set({
-  //             status: 'failed',
-  //             error: simulatedError,
-  //             updated_at: sql`CURRENT_TIMESTAMP`
-  //         })
-  //         .where(eq(schema.resources.uuid, taskId));
-  //     console.error(`[SIMULATION] Task ID ${taskId}: Status updated to 'failed'. Error: ${simulatedError}`);
-  // }
 };
 
 export default analyze;
