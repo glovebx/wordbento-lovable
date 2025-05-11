@@ -78,8 +78,8 @@ In `wrangler.toml`, update the following variables:
 account_id = "YOUR-ACCOUNT-ID"
 
 [[d1_databases]]
-binding = "AUTH_DB"
-database_name = "d1-auth"
+binding = "DB"
+database_name = "wordbento"
 database_id = "YOUR-DATABASE-ID"
 migrations_dir = "drizzle/migrations"
 
@@ -88,7 +88,7 @@ binding = "SESSION_KV"
 id = "YOUR-KV-ID"
 preview_id = "YOUR-KV-ID"
 
-[[env.development.r2_buckets]]
+[[r2_buckets]]
 binding = "WORDBENTO_R2"
 bucket_name = "YOUR-R2-BUCKET-NAME"
 
@@ -137,13 +137,13 @@ The server is built with Cloudflare Workers and uses the following stack:
 Run the following to create a local database and apply schema:
 
 ```bash
-npx wrangler d1 execute d1-auth --file=schema.sql
+npx wrangler d1 execute wordbento --env development --file=schema.sql
 ```
 
 To create the database schema in the remote D1 environment, run:
 
 ```bash
-npx wrangler d1 execute d1-auth --file=schema.sql --remote
+npx wrangler d1 execute wordbento --env production --file=schema.sql --remote
 ```
 
 ---
