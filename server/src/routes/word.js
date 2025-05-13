@@ -100,7 +100,7 @@ const mapGeminiToDbContent = (word_id, geminiData) => {
 
             // Filter out 'icon' when iterating languages
             const languages = Object.keys(content).filter(lang => lang !== 'icon');
-            const icon = content['icon'];
+            const icon = content['icon'] || '';
 
             for (const lang of languages) {
                 const value = content[lang];
@@ -370,7 +370,7 @@ const generateBentoByGeminiAi = async (c, word) => {
 
         const jsonWord = JSON.parse(repairedStr);
 
-        console.log(`jsonWord: ${ jsonWord }`);
+        // console.log(`jsonWord: ${ jsonWord }`);
 
         // Validate the structure of the received data if necessary
         return jsonWord;
@@ -862,6 +862,7 @@ word.post('/search', async (c) => {
       const geminiData = aiResponse[wordToGenerate];
       console.log("AI data received, inserting into DB.");
 
+      let newWord;
       // Start a database transaction for inserting into multiple tables
       try {
             // Insert into words table
@@ -882,7 +883,7 @@ word.post('/search', async (c) => {
             if (!insertedWordResult) {
                   throw new Error("Failed to insert word into words table or get inserted row.");
             }
-            const newWord = insertedWordResult; // Use the result
+            newWord = insertedWordResult; // Use the result
 
             // Map AI content to word_content records
             const contentRecordsToInsert = mapGeminiToDbContent(newWord.id, geminiData);
@@ -907,9 +908,17 @@ word.post('/search', async (c) => {
           return c.json(wordData, 201);
 
       } catch (dbError) { // Removed type annotation
+        // 基础信息成功，明细部分失败的时候，需要把残余信息删除
+        if (newWord) {
+          try {
+            await db.delete(schema.words).where(eq(schema.words.id, newWord.id));
+          } catch (dbError2) {
+            console.error(`Database transaction failed for delete word head "${wordToGenerate}":`, dbError2);
+          }
+        }
           console.error(`Database transaction failed for word "${wordToGenerate}":`, dbError);
           // Rollback is automatic on error with db.transaction
-          return c.json({ message: `Failed to save generated data for "${wordToGenerate}".` }, 500);
+          return c.json({ message: `Failed to save generated data for "${wordToGenerate}".` }, 200);
       }
     }
 });

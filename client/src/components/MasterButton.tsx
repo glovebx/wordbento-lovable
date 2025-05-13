@@ -29,7 +29,7 @@ const MasterButton: React.FC<MasterButtonProps> = ({ wordId, onMasteredSuccess, 
     const [isMastering, setIsMastering] = useState(false);
 
     // Handler for the initial button click - shows the dialog
-    const handleMarkAsMasteredClick = () => {
+    const handleMarkAsMasteredClick = () => {      
        if (!wordId) {
         console.error("Cannot mark word as mastered: wordId is missing.");
         toast({

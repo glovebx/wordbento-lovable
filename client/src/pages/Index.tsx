@@ -364,6 +364,33 @@ const handlePrevious = useCallback(async () => {
             htmlEl.style.display = 'none'; // Hide the element
         });
 
+        // --- New: Handle Image Sizing for Export ---
+        // Find the image element(s) to adjust sizing for export
+        const imageElements = element.querySelectorAll('.export-image') as NodeListOf<HTMLImageElement>;
+        const originalImageStyles: {
+            className: string;
+            inlineStyle: string; // Store original inline style attribute value
+        }[] = [];
+
+        imageElements.forEach(imageElement => {
+             // Store original className and inline style attribute value
+             originalImageStyles.push({
+                 className: imageElement.className,
+                 inlineStyle: imageElement.style.cssText, // Get the full inline style string
+             });
+
+             // Temporarily remove existing classes and apply simple inline styles
+             imageElement.className = ''; // Remove all classes
+             // Apply simple styles to help html2canvas render correctly
+             // Using position: static and removing transforms/margins to counteract carousel positioning
+            //  imageElement.style.cssText = 'display: block; position: static; left: 0; top: 0; transform: none; margin: 0; width: auto; height: auto; max-width: 100%; max-height: none;'; // <-- Modified styles
+            //  imageElement.style.cssText = 'display: block; position: static; left: auto; top: auto; transform: none; margin-left: auto; margin-right: auto; width: auto; height: auto; max-width: 100%; max-height: none;';             
+            imageElement.style.cssText = 'display: block !important; position: static !important; left: auto !important; top: auto !important; transform: none !important; margin: 0 auto !important; width: auto !important; height: auto !important; max-width: 100% !important; max-height: none !important;';
+
+             console.log(`Applied temporary styles to image for export.`);
+        });
+        // --- End New: Handle Image Sizing and Positioning for Export ---
+
         try {
             // Use html2canvas to render the element to a canvas
             const canvas = await html2canvas(element, {
@@ -392,7 +419,7 @@ const handlePrevious = useCallback(async () => {
              toast({
                 title: "导出成功",
                 description: `已将内容导出为图片 "${filename}"。`,
-                variant: "success",
+                variant: "default",
              });
 
         } catch (error) {
@@ -410,6 +437,17 @@ const handlePrevious = useCallback(async () => {
             });
              console.log("Restored display styles after export.");
             // --- End Restore ---
+
+            // --- Restore original image styles ---
+            imageElements.forEach((imageElement, index) => {
+                 const originalStyle = originalImageStyles[index];
+                 // Restore original className
+                 imageElement.className = originalStyle.className;
+                 // Restore original inline style attribute value
+                 imageElement.style.cssText = originalStyle.inlineStyle;
+            });
+            console.log("Restored original image styles.");
+            // --- End Restore original image styles ---
         }
     }, [bentoGridRef, wordData, toast]); // Dependencies: bentoGridRef, wordData (for filename), toast
     // --- End: Handle Export Image ---

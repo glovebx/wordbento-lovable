@@ -167,11 +167,11 @@ const handleNextImage = useCallback(() => {
             <CarouselContent>
               {imageUrls.map((url, index) => (
                 // Each image is a CarouselItem
-                <CarouselItem key={index}> {/* Use index as key if URLs are not guaranteed unique/stable */}
+                <CarouselItem key={index} className="export-carousel-item"> {/* Use index as key if URLs are not guaranteed unique/stable */}
                   {/* Wrap the image in a clickable container */}
                   <div
                     onClick={() => handleImageClick(index)} // Pass the clicked image URL to the handler
-                    className="cursor-pointer rounded-md overflow-hidden transition-opacity hover:opacity-80" // Add hover effect
+                    className="cursor-pointer rounded-md overflow-hidden transition-opacity hover:opacity-80 export-image" // Add hover effect
                   >
                     {/* Use AspectRatio for consistent size within the carousel item */}
                     <AspectRatio ratio={16/9} className="bg-muted">
@@ -249,7 +249,7 @@ const handleNextImage = useCallback(() => {
       <AuthModal 
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        onSuccess={() => handleGenerateButtonClick()}
+        onSuccess={() => {}}
       />      
     </>
   );

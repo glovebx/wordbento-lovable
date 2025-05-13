@@ -19,6 +19,7 @@ import { WordDataType } from '@/types/wordTypes';
 import MasterButton from './MasterButton'; // Adjust the import path
 import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from '@/lib/utils';
 
 interface WordGridProps {
@@ -58,6 +59,7 @@ const WordGrid: React.FC<WordGridProps> = ({
   bentoGridRef
  }) => {
 
+  const { isAuthenticated } = useAuth();  
   const isMobile = useIsMobile();
   // Safely access definition content
   const definitionContent = word.content.definition;
@@ -102,11 +104,13 @@ const WordGrid: React.FC<WordGridProps> = ({
                       <AnimatedWord word={word.word_text} />
                     </h1>
                     <PronunciationButton word={word.word_text} className="mt-1 export-hide" />
-                    <MasterButton
-                      wordId={word.id}
-                      onMasteredSuccess={onMasteredSuccess}
-                      className="mt-1 export-hide" // Example: Pass a class name to style the button
-                    />
+                    {isAuthenticated && (
+                      <MasterButton
+                        wordId={word.id}
+                        onMasteredSuccess={onMasteredSuccess}
+                        className="mt-1 export-hide" // Example: Pass a class name to style the button
+                      />
+                    )}
                   </div>
                   <p className="text-xl text-gray-600">
                     {word.phonetic} · {word.meaning}
@@ -131,11 +135,13 @@ const WordGrid: React.FC<WordGridProps> = ({
                       <AnimatedWord word={word.word_text} />
                     </h1>
                     <PronunciationButton word={word.word_text} className="mt-1 export-hide" />
-                    <MasterButton
-                      wordId={word.id}
-                      onMasteredSuccess={onMasteredSuccess}
-                      className="mt-1 export-hide" // Example: Pass a class name to style the button
-                    />
+                    {isAuthenticated && (
+                      <MasterButton
+                        wordId={word.id}
+                        onMasteredSuccess={onMasteredSuccess}
+                        className="mt-1 export-hide" // Example: Pass a class name to style the button
+                      />
+                    )}
                   </div>
                   <p className="text-xl text-gray-600">
                     {word.phonetic} · {word.meaning}
