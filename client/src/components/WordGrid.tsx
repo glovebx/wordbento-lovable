@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { RefObject } from 'react';
 import { 
   FileText, 
   Atom, 
@@ -26,6 +26,8 @@ interface WordGridProps {
   onMasteredSuccess: () => void;
   onPrevious: () => void;
   onNext: () => void;  
+  // New prop: Ref object passed from parent to attach to the bento grid element
+  bentoGridRef: RefObject<HTMLDivElement | null>; // <-- Add ref prop  
 }
 
 // Creates an animated word where each letter animates in sequence
@@ -52,7 +54,8 @@ const WordGrid: React.FC<WordGridProps> = ({
   word, 
   onMasteredSuccess,
   onPrevious,
-  onNext
+  onNext,
+  bentoGridRef
  }) => {
 
   const isMobile = useIsMobile();
@@ -60,7 +63,7 @@ const WordGrid: React.FC<WordGridProps> = ({
   const definitionContent = word.content.definition;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8" ref={bentoGridRef}>
       <div className="mb-10 text-center relative">  
 {/* Navigation buttons */}
         <div className="flex flex-col items-center">
@@ -76,7 +79,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                     variant="outline"
                     size="icon"
                     onClick={onPrevious}
-                    className="hover:bg-muted"
+                    className="hover:bg-muted export-hide"
                     title="上一个单词"
                   >
                     <ArrowLeft className="h-6 w-6" />
@@ -86,7 +89,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                     variant="outline"
                     size="icon"
                     onClick={onNext}
-                    className="hover:bg-muted"
+                    className="hover:bg-muted export-hide"
                     title="下一个单词"
                   >
                     <ArrowRight className="h-6 w-6" />
@@ -98,11 +101,11 @@ const WordGrid: React.FC<WordGridProps> = ({
                     <h1 className="text-5xl font-bold tracking-tight">
                       <AnimatedWord word={word.word_text} />
                     </h1>
-                    <PronunciationButton word={word.word_text} className="mt-1" />
+                    <PronunciationButton word={word.word_text} className="mt-1 export-hide" />
                     <MasterButton
                       wordId={word.id}
                       onMasteredSuccess={onMasteredSuccess}
-                      className="mt-1" // Example: Pass a class name to style the button
+                      className="mt-1 export-hide" // Example: Pass a class name to style the button
                     />
                   </div>
                   <p className="text-xl text-gray-600">
@@ -116,7 +119,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                   variant="outline"
                   size="icon"
                   onClick={onPrevious}
-                  className="hover:bg-muted"
+                  className="hover:bg-muted export-hide"
                   title="上一个单词"
                 >
                   <ArrowLeft className="h-6 w-6" />
@@ -127,11 +130,11 @@ const WordGrid: React.FC<WordGridProps> = ({
                     <h1 className="text-5xl font-bold tracking-tight">
                       <AnimatedWord word={word.word_text} />
                     </h1>
-                    <PronunciationButton word={word.word_text} className="mt-1" />
+                    <PronunciationButton word={word.word_text} className="mt-1 export-hide" />
                     <MasterButton
                       wordId={word.id}
                       onMasteredSuccess={onMasteredSuccess}
-                      className="mt-1" // Example: Pass a class name to style the button
+                      className="mt-1 export-hide" // Example: Pass a class name to style the button
                     />
                   </div>
                   <p className="text-xl text-gray-600">
@@ -143,7 +146,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                   variant="outline"
                   size="icon"
                   onClick={onNext}
-                  className="hover:bg-muted"
+                  className="hover:bg-muted export-hide"
                   title="下一个单词"
                 >
                   <ArrowRight className="h-6 w-6" />

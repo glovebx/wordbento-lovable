@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import WordGrid from '@/components/WordGrid';
@@ -12,6 +12,11 @@ import { useToast } from '@/components/ui/use-toast';
 // import { Button } from '@/components/ui/button'; // Import Button for word tags
 import { NavigationMode, useWordCache } from '@/hooks/use-word-cache';
 import { WordDataType } from '@/types/wordTypes';
+import { Button } from '@/components/ui/button'; // Import Button component
+import { Download } from 'lucide-react'; // Import Download icon
+
+// Import html2canvas library
+import html2canvas from 'html2canvas';
 
 const Index = () => {
   const [currentWord, setCurrentWord] = useState('');
@@ -49,6 +54,9 @@ const Index = () => {
         // setAnalysisResult(null);
     }
 }, [taskStatus, hookTaskResult]); // Dependencies: taskStatus, hookTaskResult
+
+  // Create a ref to hold the DOM element of the bento grid within WordGrid
+  const bentoGridRef = useRef<HTMLDivElement>(null);
 
   // 调用自定义 Hook 获取缓存相关的状态和函数
   const { wordCache, fetchAndCacheWord, addToCache } = useWordCache();
@@ -329,6 +337,83 @@ const handlePrevious = useCallback(async () => {
     console.log("Analysis result cleared.");
   }, []); // No dependencies needed as it just sets state to null
 
+   // --- New: Handle Export Image ---
+    const handleExportImage = useCallback(async () => {
+        // Check if the bento grid element is available via the ref
+        const element = bentoGridRef.current;
+        if (!element) {
+            console.error("Bento grid element not found for capture.");
+             toast({
+                title: "导出失败",
+                description: "无法找到要导出的内容。",
+                variant: "destructive",
+             });
+            return;
+        }
+
+        console.log("Attempting to capture bento grid element:", element);
+
+        // Find the elements to hide during export
+        const elementsToHide = element.querySelectorAll('.export-hide');
+        const originalDisplays: string[] = []; // Store original display styles
+
+        // Temporarily hide the elements
+        elementsToHide.forEach((el: Element) => {
+            const htmlEl = el as HTMLElement; // Cast to HTMLElement to access style
+            originalDisplays.push(htmlEl.style.display); // Store original style
+            htmlEl.style.display = 'none'; // Hide the element
+        });
+
+        try {
+            // Use html2canvas to render the element to a canvas
+            const canvas = await html2canvas(element, {
+                // Optional configurations for html2canvas
+                // scale: 2, // Increase scale for higher resolution
+                logging: true, // Enable logging for debugging
+                useCORS: true, // Set to true if images are from different origins
+            });
+
+            // Convert the canvas to a data URL (PNG format by default)
+            const imageDataUrl = canvas.toDataURL('image/png');
+
+            // Create a temporary link element to trigger the download
+            const link = document.createElement('a');
+            link.href = imageDataUrl;
+            // Set the download filename (e.g., word-bento-hurl.png)
+            const filename = `word-bento-${wordData?.word_text || 'export'}.png`;
+            link.download = filename;
+
+            // Append the link to the body, click it, and then remove it
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            console.log(`Successfully exported image as ${filename}`);
+             toast({
+                title: "导出成功",
+                description: `已将内容导出为图片 "${filename}"。`,
+                variant: "success",
+             });
+
+        } catch (error) {
+            console.error("Error capturing or exporting image:", error);
+             toast({
+                title: "导出失败",
+                description: `导出图片时发生错误: ${error.message}`,
+                variant: "destructive",
+             });
+        } finally {
+            // --- Restore original display styles ---
+            elementsToHide.forEach((el: Element, index: number) => {
+                const htmlEl = el as HTMLElement;
+                htmlEl.style.display = originalDisplays[index]; // Restore original style
+            });
+             console.log("Restored display styles after export.");
+            // --- End Restore ---
+        }
+    }, [bentoGridRef, wordData, toast]); // Dependencies: bentoGridRef, wordData (for filename), toast
+    // --- End: Handle Export Image ---
+
     // 根据加载状态、错误状态和数据状态渲染不同的内容
     const renderContent = () => {
       if (isWordLoading && !wordData) {
@@ -384,7 +469,24 @@ const handlePrevious = useCallback(async () => {
               onWordSearch={handleSearch}
               currentWord={currentWord}/>
 
-              <WordGrid word={wordData} onMasteredSuccess={ handleNext } onPrevious={handlePrevious} onNext={handleNext} />
+              <WordGrid word={wordData} onMasteredSuccess={ handleNext } 
+              onPrevious={handlePrevious} 
+              onNext={handleNext} 
+              bentoGridRef={bentoGridRef} // <-- Pass the ref here
+              />
+
+                    {/* Export Image Button - placed above the WordGrid */}
+                    <div className="container mx-auto px-4 py-4 text-right">
+                        <Button
+                            onClick={handleExportImage}
+                            variant="outline"
+                            size="sm"
+                            disabled={isWordLoading || isAnalysisLoading} // Disable while loading
+                        >
+                            <Download className="mr-2 h-4 w-4" />
+                            导出学习卡片
+                        </Button>
+                    </div>              
            </main>
       );
   };
