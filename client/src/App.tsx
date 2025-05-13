@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import UserProfile from "./pages/UserProfile";
 import Footer from "./components/Footer";
+import AppInitializer from "./AppInitializer";
 
 const queryClient = new QueryClient();
 
@@ -17,6 +18,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AppInitializer/>
+        
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/profile" element={<UserProfile />} />

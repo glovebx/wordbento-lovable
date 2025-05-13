@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS words (
     phonetic TEXT,                   -- 音标，可能为 null
     meaning TEXT,
     
-    -- 新增字段：表示单词是否已被用户记牢 (0=未记牢, 1=已记牢)
-    is_mastered INTEGER NOT NULL DEFAULT 0,
+    -- -- 新增字段：表示单词是否已被用户记牢 (0=未记牢, 1=已记牢)
+    -- is_mastered INTEGER NOT NULL DEFAULT 0,
 
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -63,8 +63,35 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE,
 
     -- 添加一个唯一约束，确保同一个用户不会重复收藏同一个单词
-    UNIQUE (user_id, word_id)    
+    UNIQUE (user_id, word_id)
 );
+
+
+-- archives 表：存储已掌握的单词的基本信息
+CREATE TABLE IF NOT EXISTS archives (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,       -- 外键，关联到 users 表的 id
+    word_id INTEGER NOT NULL,       -- 外键，关联到 words 表的 id
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE,
+
+    UNIQUE (user_id, word_id)
+);
+
+-- -- history 表：存储已查看的单词的基本信息，会不断新增
+-- CREATE TABLE IF NOT EXISTS history (
+--     id INTEGER PRIMARY KEY AUTOINCREMENT,
+--     user_id INTEGER NOT NULL,       -- 外键，关联到 users 表的 id
+--     word_id INTEGER NOT NULL,       -- 外键，关联到 words 表的 id
+--     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+--     -- updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+--     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+--     FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE,
+-- );
 
 -- images 表：存储单词关联的图片
 CREATE TABLE IF NOT EXISTS images (

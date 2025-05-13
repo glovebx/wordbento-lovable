@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   FileText, 
   Atom, 
@@ -8,21 +8,24 @@ import {
   ArrowUpDown, 
   Lightbulb, 
   Newspaper,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 
 import GridCard from './GridCard';
 import WordImageDisplay from './WordImageDisplay';
 import PronunciationButton from './PronunciationButton';
 import { WordDataType } from '@/types/wordTypes';
-// import { useToast } from '@/components/ui/use-toast'; // Assuming you use shadcn/ui toast
-// import { axiosPrivate } from "@/lib/axios"; // Import your axiosPrivate instance
-// Import the new MasterButton component
 import MasterButton from './MasterButton'; // Adjust the import path
-// import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils';
 
 interface WordGridProps {
   word: WordDataType;
   onMasteredSuccess: () => void;
+  onPrevious: () => void;
+  onNext: () => void;  
 }
 
 // Creates an animated word where each letter animates in sequence
@@ -47,29 +50,145 @@ const AnimatedWord: React.FC<{ word: string }> = ({ word }) => {
 
 const WordGrid: React.FC<WordGridProps> = ({ 
   word, 
-  onMasteredSuccess
+  onMasteredSuccess,
+  onPrevious,
+  onNext
  }) => {
 
+  const isMobile = useIsMobile();
   // Safely access definition content
   const definitionContent = word.content.definition;
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-10 text-center">
-        <div className="flex items-center justify-center gap-2 mb-1">
-          <h1 className="text-5xl font-bold tracking-tight">
-            <AnimatedWord word={word.word_text} />
-          </h1>
-          <PronunciationButton word={word.word_text} className="mt-1" />
-          <MasterButton
-            wordId={word.id}
-            onMasteredSuccess={onMasteredSuccess}
-            className="mt-1" // Example: Pass a class name to style the button
-          />
+      <div className="mb-10 text-center relative">  
+{/* Navigation buttons */}
+        <div className="flex flex-col items-center">
+          <div className={cn(
+            "flex items-center justify-center gap-4 mb-6",
+            isMobile ? "flex-col" : "gap-8"
+          )}>
+            {/* For mobile, move buttons above/below the word */}
+            {isMobile ? (
+              <>
+                <div className="flex justify-center gap-8 w-full mb-2">
+                  <Button 
+                    variant="outline"
+                    size="icon"
+                    onClick={onPrevious}
+                    className="hover:bg-muted"
+                    title="上一个单词"
+                  >
+                    <ArrowLeft className="h-6 w-6" />
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    size="icon"
+                    onClick={onNext}
+                    className="hover:bg-muted"
+                    title="下一个单词"
+                  >
+                    <ArrowRight className="h-6 w-6" />
+                  </Button>
+                </div>
+                
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <h1 className="text-5xl font-bold tracking-tight">
+                      <AnimatedWord word={word.word_text} />
+                    </h1>
+                    <PronunciationButton word={word.word_text} className="mt-1" />
+                    <MasterButton
+                      wordId={word.id}
+                      onMasteredSuccess={onMasteredSuccess}
+                      className="mt-1" // Example: Pass a class name to style the button
+                    />
+                  </div>
+                  <p className="text-xl text-gray-600">
+                    {word.phonetic} · {word.meaning}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Button 
+                  variant="outline"
+                  size="icon"
+                  onClick={onPrevious}
+                  className="hover:bg-muted"
+                  title="上一个单词"
+                >
+                  <ArrowLeft className="h-6 w-6" />
+                </Button>
+
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <h1 className="text-5xl font-bold tracking-tight">
+                      <AnimatedWord word={word.word_text} />
+                    </h1>
+                    <PronunciationButton word={word.word_text} className="mt-1" />
+                    <MasterButton
+                      wordId={word.id}
+                      onMasteredSuccess={onMasteredSuccess}
+                      className="mt-1" // Example: Pass a class name to style the button
+                    />
+                  </div>
+                  <p className="text-xl text-gray-600">
+                    {word.phonetic} · {word.meaning}
+                  </p>
+                </div>
+
+                <Button 
+                  variant="outline"
+                  size="icon"
+                  onClick={onNext}
+                  className="hover:bg-muted"
+                  title="下一个单词"
+                >
+                  <ArrowRight className="h-6 w-6" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
-        <p className="text-xl text-gray-600">
-          {word.phonetic} · {word.meaning}
-        </p>
+{/* 
+        <div className="flex justify-center items-center gap-8 mb-6">
+          <Button 
+            variant="outline"
+            size="icon"
+            onClick={onPrevious}
+            className="hover:bg-muted"
+            title="上一个单词"
+          >
+            <ArrowLeft className="h-6 w-6" />
+          </Button>      
+        <div className="flex flex-col items-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <h1 className="text-5xl font-bold tracking-tight">
+              <AnimatedWord word={word.word_text} />
+            </h1>
+            <PronunciationButton word={word.word_text} className="mt-1" />
+            <MasterButton
+              wordId={word.id}
+              onMasteredSuccess={onMasteredSuccess}
+              className="mt-1" // Example: Pass a class name to style the button
+            />
+          </div>
+          <p className="text-xl text-gray-600">
+            {word.phonetic} · {word.meaning}
+          </p>
+        </div>
+          <Button 
+            variant="outline"
+            size="icon"
+            onClick={onNext}
+            className="hover:bg-muted"
+            title="下一个单词"
+          >
+            <ArrowRight className="h-6 w-6" />
+          </Button>
+        </div> */}
 
         <div className="text-left max-w-2xl mx-auto px-4"> {/* Container for definition text */}
                 {/* Optional: Include the icon next to the definition title/text */}

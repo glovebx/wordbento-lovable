@@ -7,7 +7,7 @@ import { Hono } from 'hono';
 // Assuming your Drizzle client is configured elsewhere with the schema.
 // For D1 with Drizzle, you typically initialize it like drizzle(env.DB, { schema });
 // We'll keep the drizzle import and schema reference in the initialization.
-import { eq } from 'drizzle-orm';
+import { and, eq, gt, lt, isNull, asc, desc } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 // The schema object itself is usually defined in a separate file and imported for drizzle initialization
 import * as schema from '../db/schema'; // Keep schema import for drizzle initialization
@@ -18,57 +18,6 @@ import { jsonrepair } from 'jsonrepair';
 // Type definitions are removed in JavaScript
 
 const word = new Hono();
-
-// const cleanAiJsonResponse = (rawResponse) => {
-//   if (!rawResponse || typeof rawResponse !== 'string') {
-//     return null;
-//   }
-
-//   // Trim leading/trailing whitespace
-//   let cleaned = rawResponse.trim();
-
-//   // Check for and remove markdown code fences (```json or ``` followed by optional newline)
-//   // Use a regular expression to handle variations like ```json, ```json\n, ```, ```\n
-//   const jsonFenceStart = /^```json\s*\n?/;
-//   const fenceEnd = /^```\s*\n?$/;
-
-//   if (jsonFenceStart.test(cleaned)) {
-//     // Remove the starting fence
-//     cleaned = cleaned.replace(jsonFenceStart, '');
-
-//     // Find the ending fence. Look for the last ``` line.
-//     const lines = cleaned.split('\n');
-//     let lastFenceIndex = -1;
-//     for (let i = lines.length - 1; i >= 0; i--) {
-//       if (fenceEnd.test(lines[i].trim())) {
-//         lastFenceIndex = i;
-//         break;
-//       }
-//     }
-
-//     if (lastFenceIndex !== -1) {
-//       // If an ending fence is found, join the lines before it
-//       cleaned = lines.slice(0, lastFenceIndex).join('\n');
-//     } else {
-//         // If no ending fence found, maybe it's just the start fence and the rest is JSON
-//         console.warn("JSON response started with ```json but no closing ``` found.");
-//         // Keep the rest of the content, hoping it's valid JSON
-//     }
-//   } else if (fenceEnd.test(cleaned)) {
-//       // Handle case where it might just be a closing fence at the end without a start fence
-//       cleaned = cleaned.replace(fenceEnd, '');
-//   }
-
-//   // Basic check: Does it look like JSON? (Starts with { or [ and ends with } or ])
-//   // This is a simple check, not a full JSON validation.
-//   const potentialJson = cleaned.trim();
-//   if ((potentialJson.startsWith('{') && potentialJson.endsWith('}')) || (potentialJson.startsWith('[') && potentialJson.endsWith(']'))) {
-//       return potentialJson;
-//   } else {
-//       console.error("Cleaned response does not look like JSON:", cleaned);
-//       return null; // Does not look like valid JSON structure
-//   }
-// };
 
 /**
  * Helper function to check if a string looks like a JSON object or array.
@@ -194,7 +143,7 @@ const formatDbResultToWordResponse = (c, word, contentRecords, imageRecords) => 
     const content = {};
     let imagesUrls = [];
     if (imageRecords && imageRecords.length > 0) {
-      imagesUrls = imageRecords.map(img => `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
+      imagesUrls = imageRecords.map(img => img.image_key.startsWith('http') ? img.image_key : `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
     }
 
     contentRecords.forEach(record => {
@@ -411,14 +360,17 @@ const generateBentoByGeminiAi = async (c, word) => {
         // If all checks pass, access and log the message content
         const messageContent = data.choices[0].message.content;
         console.log("API call successful. Received message:");
-        console.log(messageContent);
+        console.log(`messageContent: ${ messageContent }`);
   
         const jsonStr = cleanAiJsonResponse(messageContent)
+        console.log(`jsonStr: ${ jsonStr }`);
 
         const repairedStr = jsonrepair(jsonStr)
-        console.log(repairedStr);
+        console.log(`repairedStr: ${ repairedStr }`);
 
         const jsonWord = JSON.parse(repairedStr);
+
+        console.log(`jsonWord: ${ jsonWord }`);
 
         // Validate the structure of the received data if necessary
         return jsonWord;
@@ -564,6 +516,137 @@ const generateImageByGeminiAi = async (c, word) => {
   
 };
 
+function extractHttpLinks(text) {
+  // Ensure the input is a string
+  if (typeof text !== 'string') {
+    console.error("Input must be a string.");
+    return [];
+  }
+
+  // Regex explanation:
+  // (https?:\/\/)  - Matches "http://" or "https://" (protocol part)
+  // (?:             - Start of a non-capturing group for the rest of the URL
+  //   [^\s"]+       - Matches one or more characters that are NOT whitespace or a double quote
+  // )+              - The non-capturing group must appear one or more times
+  // This regex is designed to capture the URL from the protocol up to the first whitespace or double quote.
+  // It's a common pattern for URLs, but might need refinement for extremely complex cases
+  // (e.g., URLs with spaces that are properly encoded, or URLs within other complex syntax).
+  // For the provided example (Markdown image URLs), this regex works because the URL is
+  // within parentheses and doesn't contain spaces.
+  const urlRegex = /(https?:\/\/[^\s"]+)/g;
+
+  const links = [];
+  let match;
+
+  // Use exec() in a loop to find all matches
+  while ((match = urlRegex.exec(text)) !== null) {
+    // match[0] is the full match (the entire URL string)
+    links.push(match[0]);
+  }
+
+  return links;
+}
+
+const generateImageByJiMengAi = async (c, word) => {
+  console.log(`Calling JiMeng AI for word: ${word}`);
+  // This is a placeholder. You need to replace this with your actual API call.
+  // Example using fetch:
+
+  const GEMINI_API_KEY = c.env.JIMENG_API_KEY;
+  const GEMINI_API_ENDPOINT = c.env.JIMENG_API_ENDPOINT;
+
+  try {
+    const prompt = `
+你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。
+              `;
+
+        const jsonData = {
+          model: '',
+          stream: false,
+          messages:[
+            {role: 'user', content: prompt}
+          ]
+        };
+
+        const response = await fetch(GEMINI_API_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GEMINI_API_KEY}`
+            },
+            body: JSON.stringify(jsonData),
+        });
+
+        if (!response.ok) {
+            console.error(`JiMeng AI API call failed: ${response.status} ${response.statusText}`);
+            return null;
+        }
+
+        // console.log(jsonData);
+
+        const data = await response.json(); // No type assertion needed in JS
+        // console.log(data);
+
+        // 2. Check if the 'choices' array exists and is not empty
+        if (!data.choices || data.choices.length === 0) {
+          console.error("API call failed: Response does not contain any choices.");
+          // Handle this case
+          // You might want to log the full response here to debug what was received
+          console.log("Full response:", data);
+          return null; // Or throw an error
+        }
+  
+        // 3. Check if the first choice contains a message
+        if (!data.choices[0].message) {
+            console.error("API call failed: The first choice does not contain a message.");
+             // Handle this case
+             console.log("Full response:", data);
+            return null; // Or throw an error
+        }
+
+        console.log("Full response:", data);        
+        // 4.
+        const contents = data.choices[0].message.content;
+        if (!contents || contents.length === 0) {
+          console.error("API call failed: Response does not contain any content.");
+          // Handle this case
+          // You might want to log the full response here to debug what was received
+          console.log("Full response:", data);
+          return null; // Or throw an error
+        }
+
+        console.log("Contents response:", contents);  
+
+        const imageUrls = extractHttpLinks(contents)      
+        
+        console.log("Contents imageUrls:", imageUrls);  
+
+        return imageUrls;
+
+  } catch (error) {
+      console.error('Network error calling JiMeng Image AI API:', error);
+      return null;
+  }
+  
+};
+
+// Define navigation modes using a plain object
+const NavigationMode = {
+  // Represents a search operation (typically initiated by user input).
+  // Corresponds to mode 0.
+  Search: 0,
+
+  // Represents navigating to the next word in a sequence.
+  // Corresponds to mode 1.
+  Next: 1,
+
+  // Represents navigating to the previous word in a sequence.
+  // Corresponds to mode -1.
+  Previous: -1,
+
+  // Optional: An array of valid values for easy checking
+  ValidValues: [0, 1, -1]
+};
 
 word.post('/search', async (c) => {
     // Ensure the request has a JSON body
@@ -573,7 +656,7 @@ word.post('/search', async (c) => {
 
     let slug; // Removed type annotation
     // 0 表示搜索、1表示下一个、-1表示上一个
-    let mode = 0;
+    let mode = NavigationMode.Search;
     try {
        const body = await c.req.json();
        slug = body.slug;
@@ -582,6 +665,14 @@ word.post('/search', async (c) => {
         console.error("Failed to parse request body:", e);
         return c.json({ message: 'Invalid JSON body' }, 400);
     }
+
+    // --- Check if mode is a valid NavigationMode value ---
+    // Check if the received mode is a number and is included in the valid modes
+    if (typeof mode !== 'number' || !NavigationMode.ValidValues.includes(mode)) {
+        console.warn(`Invalid navigation mode received: ${mode}`);
+        return c.json({ message: 'Invalid navigation mode provided.' }, 400);
+    }
+    // --- End mode validation ---    
 
     // Initialize Drizzle with schema
     // The schema object needs to be imported and passed here
@@ -592,8 +683,22 @@ word.post('/search', async (c) => {
     // 1. Conditional Database Query (Prefix Match or Random)
     let existingWord; // Removed type annotation
 
+    const user = c.get('user');
+    const userId = user ? user.id : null;
+
+    console.warn(`login user: ${ userId }`);
+
+    const wordsFields = {
+            id: schema.words.id,
+            word_text: schema.words.word_text,
+            phonetic: schema.words.phonetic,
+            meaning: schema.words.meaning,
+            created_at: schema.words.created_at,
+            updated_at: schema.words.updated_at,            
+          }  
+
     // Check if slug is provided and not empty
-    if (mode === 0 && slug && typeof slug === 'string' && slug.trim() !== '') {
+    if (slug && typeof slug === 'string' && slug.trim() !== '') {
         const searchSlug = slug.trim().toLowerCase(); // Use lowercase for search
         console.log(`Performing prefix match for slug: "${searchSlug}"`);
         const prefix = searchSlug + '%';
@@ -611,11 +716,30 @@ word.post('/search', async (c) => {
         } else {
             // If no exact match, try prefix match
              console.log(`No exact match for "${searchSlug}", trying prefix match.`);
-             const prefixResult = await db.select()
-                .from(schema.words)
-                // Use sql tag for LIKE with binding
-                .where(sql`${schema.words.word_text} LIKE ${prefix}`)
-                .limit(1); // Get the first prefix match
+             let prefixResult;
+             if (userId && mode !== NavigationMode.Search) {
+              prefixResult = await db.select(wordsFields)
+                  .from(schema.words)
+                  // Use sql tag for LIKE with binding
+                  // .where(sql`${schema.words.word_text} LIKE ${prefix}`)
+                  .leftJoin(schema.archives,
+                      and(
+                          eq(schema.words.id, schema.archives.word_id),
+                          eq(schema.archives.user_id, userId)
+                      )
+                  )
+                  .where(and(
+                    sql`${schema.words.word_text} LIKE ${prefix}`,
+                    isNull(schema.archives.word_id)
+                  )) // Filter out words with a matching archive entry
+                  .limit(1); // Get the first prefix match
+             } else {
+              prefixResult = await db.select()
+                  .from(schema.words)
+                  // Use sql tag for LIKE with binding
+                  .where(sql`${schema.words.word_text} LIKE ${prefix}`)
+                  .limit(1); // Get the first prefix match
+             }
 
              if (prefixResult.length > 0) {
                  existingWord = prefixResult[0];
@@ -628,12 +752,27 @@ word.post('/search', async (c) => {
     } else {
         // Slug is empty, randomly get one word
         console.log("Slug is empty, fetching a random word.");
-        const randomResult = await db.select()
+        let randomResult;
+        if (userId) {        
+          randomResult = await db.select(wordsFields)
+            .from(schema.words)
+            .leftJoin(schema.archives,
+                and(
+                    eq(schema.words.id, schema.archives.word_id),
+                    eq(schema.archives.user_id, userId)
+                )
+            )
+            .where(isNull(schema.archives.word_id)) // Filter out words with a matching archive entry             
+            // Use sql tag for RANDOM()
+            .orderBy(sql`RANDOM()`)
+            .limit(1);
+        } else {
+          randomResult = await db.select()
             .from(schema.words)
             // Use sql tag for RANDOM()
             .orderBy(sql`RANDOM()`)
             .limit(1);
-
+        }
         if (randomResult.length > 0) {
             existingWord = randomResult[0];
             console.log(`Fetched random word: ${existingWord.word_text} (ID: ${existingWord.id})`);
@@ -645,6 +784,41 @@ word.post('/search', async (c) => {
     // 2. Process Existing Word
     if (existingWord) {
         console.log(`Fetching content for existing word ID: ${existingWord.id}`);
+
+        if (mode !== NavigationMode.Search) {
+          let nextResult;
+          if (userId) {
+            nextResult = await db.select(wordsFields)
+            .from(schema.words)
+            // .where(mode === NavigationMode.Next ? gt(schema.words.id, existingWord.id) : lt(schema.words.id, existingWord.id))
+            .leftJoin(schema.archives,
+                and(
+                    eq(schema.words.id, schema.archives.word_id),
+                    eq(schema.archives.user_id, userId)
+                )
+            )
+            .where(and(
+              mode === NavigationMode.Next ? gt(schema.words.id, existingWord.id) : lt(schema.words.id, existingWord.id),
+              isNull(schema.archives.word_id)
+            )) // Filter out words with a matching archive entry
+            .orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id))            
+            .limit(1);
+          } else {
+            nextResult = await db.select()
+            .from(schema.words)
+            .where(mode === NavigationMode.Next ? gt(schema.words.id, existingWord.id) : lt(schema.words.id, existingWord.id))
+            .orderBy(mode === NavigationMode.Next ? sql`id ASC` : sql`id DESC`)
+            .limit(1);
+          }
+
+          if (nextResult.length > 0) {
+              existingWord = nextResult[0];
+              console.log(`Fetching content for next word ID1: ${existingWord.id}`);
+          } else {
+              console.log(`Fetching content for next word ID2: ${existingWord.id}`);
+          }
+        }
+
         // Fetch related content from word_content table
         const contentRecords = await db.select()
             .from(schema.word_content)
@@ -662,7 +836,7 @@ word.post('/search', async (c) => {
         return c.json(wordData, 200);
 
     } else {
-      if (mode !== 0) {
+      if (mode !== NavigationMode.Search) {
         console.log("No more word data.");
         return c.json({}, 200);
       }
@@ -698,7 +872,6 @@ word.post('/search', async (c) => {
                 word_text: wordToGenerate,
                 phonetic: geminiData.phonetic || null, // Use phonetic from AI, allow null
                 meaning: geminiData.meaning || null,
-                is_mastered: 0,
                 // createdAt and updatedAt will default
             })
             // Use .returning() in Drizzle for D1 to get the inserted row
@@ -856,6 +1029,33 @@ word.post('/imagize', async (c) => {
   // }
   const wordToGenerate = slug.trim().toLowerCase();
 
+  const imageUrls = await generateImageByJiMengAi(c, wordToGenerate);
+  // const imageUrls = ['https://p3-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/c0efd5fd4a414fbaab1232df5e876d6b~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=sGXKNhKHkj%2F2msIbhAQtcLlGNXk%3D&format=.jpeg', 
+  //   'https://p9-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3bc050392177442ebed27dc883891b7a~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=uipvjRhc40XXAMDhIBEeO%2BEuit4%3D&format=.jpeg', 
+  //   'https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/76b4331521494f5780d04c7682615124~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=Gnv%2Fp1XoAo5WqBYUWjIc%2BzoWHTQ%3D&format=.jpeg', 
+  //   'https://p9-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/4b7a4ad7e2cb4e11bc1ff38ab4d23da8~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=UJ8O08ado9UGzoi%2FLya%2FXR4CPRk%3D&format=.jpeg']
+
+  if (imageUrls && imageUrls.length > 0) {
+    for (const imageKey of imageUrls) {
+      const insertedImageResult = await db.insert(schema.images).values({
+        word_id: existingWord.id, // Associate with public user ID 0
+        image_key: imageKey,
+        })
+        // Use .returning() in Drizzle for D1 to get the inserted row
+        .returning()
+        .get(); // .get() for a single row
+
+      // Check if insertion was successful and returned a row
+      if (!insertedImageResult) {
+        throw new Error("Failed to insert image into table or get inserted row.");
+      }
+    }
+
+    console.log(`Word "${wordToGenerate}" and image inserted successfully.`);
+    // return c.json({'key': r2ObjectKey}, 200);
+    return c.json({imageUrls: imageUrls}, 200);    
+  }
+
   const inlineData = await generateImageByGeminiAi(c, wordToGenerate);
 
     if (!inlineData) {
@@ -985,7 +1185,12 @@ word.get('/image/:key', async (c) => {
 // --- Mark Word as Mastered Route (Existing) ---
 word.put('/master/:id', async (c) => {
   // ... (existing mark as mastered logic)
-   const idParam = c.req.param('id');
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  const idParam = c.req.param('id');
   const wordId = parseInt(idParam, 10);
 
   if (isNaN(wordId) || wordId <= 0) {
@@ -995,19 +1200,58 @@ word.put('/master/:id', async (c) => {
   const db = drizzle(c.env.DB, { schema });
 
   try {
-    const result = await db.update(schema.words)
-      .set({ is_mastered: 1, updated_at: sql`CURRENT_TIMESTAMP` })
-      .where(eq(schema.words.id, wordId))
-      .returning()
-      .get();
+    // let existingUser;
+    // const usersResult = await db.select()
+    //   .from(schema.users)
+    //   .where(eq(schema.users.uuid, user.uuid));
 
-    if (!result) {
+    // if (usersResult.length > 0) {
+    //   existingUser = usersResult[0];
+    // } else {
+    //   return c.json({ message: 'User not found.' }, 404);      
+    // }
+
+    let existingWord;
+    const wordsResult = await db.select()
+      .from(schema.words)
+      .where(eq(schema.words.id, wordId));
+
+    if (wordsResult.length > 0) {
+      existingWord = wordsResult[0];
+    } else {
+      return c.json({ message: 'Word not found.' }, 404);      
+    }
+
+    console.log(`Word ID ${wordId} exists111111.`);
+
+    const archivesResult = await db.select()
+      .from(schema.archives)
+      .where(and(eq(schema.archives.user_id, user.id), eq(schema.archives.word_id, wordId)));
+
+    if (archivesResult.length > 0) {
+      return c.json({ message: 'Word has been achived already.' }, 200);
+    }
+
+    console.log(`Word ID ${wordId} exists22222.`);
+
+    // TODO： user.id 不存在
+    const insertedResult = await db.insert(schema.archives).values({
+        user_id: user.id, // Associate with public user ID 0
+        word_id: wordId,
+        // createdAt and updatedAt will default
+    })
+    // Use .returning() in Drizzle for D1 to get the inserted row
+    .returning()
+    .get(); // .get() for a single row
+
+    // Check if insertion was successful and returned a row
+    if (!insertedResult) {
       console.warn(`Attempted to mark non-existent word ID ${wordId} as mastered.`);
       return c.json({ message: 'Word not found or already mastered.' }, 404);
     }
 
     console.log(`Word ID ${wordId} marked as mastered.`);
-    return c.json({ message: 'Word marked as mastered successfully.', word: result }, 200);
+    return c.json({ message: 'Word marked as mastered successfully.' }, 200);
 
   } catch (error) {
     console.error(`Error marking word ID ${wordId} as mastered:`, error);

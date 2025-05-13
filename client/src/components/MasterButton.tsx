@@ -49,7 +49,7 @@ const MasterButton: React.FC<MasterButtonProps> = ({ wordId, onMasteredSuccess, 
 
       try {
         // Send a PUT request to the backend API to mark the word as mastered
-        const response = await axiosPrivate.put(`/api/word/${wordId}/master`);
+        const response = await axiosPrivate.put(`/api/word/master/${wordId}`);
 
         if (response.status === 200) {
           console.log(`Word ID ${wordId} marked as mastered.`);

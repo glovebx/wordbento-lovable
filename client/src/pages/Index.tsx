@@ -10,13 +10,13 @@ import { AnalysisResult } from '@/types/analysisTypes'; // Import types
 import LoadingFallback from '@/components/LoadingFallback';
 import { useToast } from '@/components/ui/use-toast';
 // import { Button } from '@/components/ui/button'; // Import Button for word tags
-import { useWordCache } from '@/hooks/use-word-cache';
+import { NavigationMode, useWordCache } from '@/hooks/use-word-cache';
 import { WordDataType } from '@/types/wordTypes';
 
 const Index = () => {
   const [currentWord, setCurrentWord] = useState('');
   const [wordData, setWordData] = useState<WordDataType | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // 主加载状态
+  const [isWordLoading, setIsWordLoading] = useState(true); // 主加载状态
   const [error, setError] = useState<string | null>(null);
 
   const { toast } = useToast();
@@ -27,14 +27,14 @@ const Index = () => {
   // This hook handles submitting the task and receiving status updates via WebSocket
   const {
     startAnalysis, // Function to start the analysis task (submits HTTP POST and opens WS)
-    cancelAnalysis, // Function to cancel the analysis task (optional, sends HTTP DELETE)
+    // cancelAnalysis, // Function to cancel the analysis task (optional, sends HTTP DELETE)
     isLoading: isAnalysisLoading, // Overall loading state (submitting or polling)
     taskStatus,       // Current status of the analysis task ('idle', 'submitting', 'connecting', 'polling', 'completed', 'failed')
-    taskId,           // ID of the analysis task (null if not yet submitted or failed)
+    // taskId,           // ID of the analysis task (null if not yet submitted or failed)
     taskResult: hookTaskResult, // Final result from the hook when task is completed
-    error: analysisError, // Error from the hook if task failed
-    progress: analysisProgress, // Progress from the hook (if provided by backend via WS)
-    statusMessage: analysisStatusMessage, // Status message from the hook (if provided by backend via WS)
+    // error: analysisError, // Error from the hook if task failed
+    // progress: analysisProgress, // Progress from the hook (if provided by backend via WS)
+    // statusMessage: analysisStatusMessage, // Status message from the hook (if provided by backend via WS)
 } = useAnalysisTask();
 
   // Use a useEffect to update component's analysisResult state when hook's taskResult changes
@@ -56,7 +56,7 @@ const Index = () => {
   // 主要的 useEffect：负责获取当前单词数据
   useEffect(() => {
     const fetchCurrentWord = async (wordSlug: string) => {
-      setIsLoading(true); // 开始加载主单词，设置 loading 为 true
+      setIsWordLoading(true); // 开始加载主单词，设置 loading 为 true
       setError(null); // 清除之前的错误信息
       setWordData(null); // 清除之前的单词数据（可选，取决于你希望切换时是否保留旧数据直到新数据加载）
 
@@ -77,7 +77,7 @@ const Index = () => {
           });
            setWordData(null); // 确保数据为 null
       }
-      setIsLoading(false); // 无论成功或失败，主加载结束
+      setIsWordLoading(false); // 无论成功或失败，主加载结束
     };
 
     fetchCurrentWord(currentWord);
@@ -121,7 +121,7 @@ const Index = () => {
         setWordData(cachedData);
         setCurrentWord(slug); // 更新 currentWord 触发预加载新的前/后单词
         setError(null);
-        setIsLoading(false); // 从缓存加载，不是 loading 状态
+        setIsWordLoading(false); // 从缓存加载，不是 loading 状态
 
          // 将此单词在缓存顺序中移到末尾 (LRU)
          addToCache(slug, cachedData); // 使用 hook 返回的 addToCache
@@ -138,9 +138,9 @@ const Index = () => {
 
   // handleNext 函数修改：获取 slug 后先检查缓存
   const handleNext = useCallback(async () => {
-    if (isLoading) return; // 如果正在加载主单词，忽略点击
+    if (isWordLoading) return; // 如果正在加载主单词，忽略点击
 
-    setIsLoading(true); // 标记开始导航，设置 loading 为 true
+    setIsWordLoading(true); // 标记开始导航，设置 loading 为 true
 
     try {
         // // 1. 从 API 获取下一个单词的 slug
@@ -150,7 +150,7 @@ const Index = () => {
         //      try { const errorBody = await response.json(); if (errorBody.message) errorMessage = errorBody.message; } catch (e) {}
         //       toast({ title: "获取下一单词失败", description: errorMessage, variant: "destructive" });
         //       setError(errorMessage);
-        //       setIsLoading(false);
+        //       setIsWordLoading(false);
         //       return; // 提前返回
         // }
         // const data = await response.json();
@@ -158,43 +158,43 @@ const Index = () => {
 
         // if (nextWordSlug) {
             // 2. 使用 fetchAndCacheWord 来获取数据，它会自行检查缓存或从网络获取
-            const nextWordData = await fetchAndCacheWord(currentWord, 1); // 等待数据获取或从缓存返回
+            const nextWordData = await fetchAndCacheWord(currentWord, NavigationMode.Next); // 等待数据获取或从缓存返回
 
             if (nextWordData) {
                 // 数据已获取 (来自缓存或网络)
                 setWordData(nextWordData);
                 setCurrentWord(nextWordData.word_text); // 更新 currentWord 触发预加载
                 setError(null); // 清除错误
-                setIsLoading(false); // 加载完成
+                setIsWordLoading(false); // 加载完成
             } else {
                 // fetchAndCacheWord 返回 null 意味着获取数据失败 (虽然 slug 找到了)
                 // setError(`无法加载下一个单词 "${nextWordSlug}".`);
                 // toast({ title: "获取下一单词失败", description: `无法加载下一个单词 "${nextWordSlug}"`, variant: "destructive" });
                 setError('无法加载下一个单词');
                  toast({ title: "获取下一单词失败", description: '无法加载下一个单词', variant: "destructive" });
-                 setIsLoading(false);
+                 setIsWordLoading(false);
             }
 
         // } else {
         //     // 没有下一个单词了 (API 返回 nextWordSlug: null)
         //     toast({ title: "已经是最后一个单词了", variant: "default" });
-        //     setIsLoading(false); // 导航结束
+        //     setIsWordLoading(false); // 导航结束
         // }
     } catch (err) {
          // 处理网络错误获取下一个 slug
         console.error("Fetch next slug error:", err);
         toast({ title: "网络错误", description: "无法获取下一单词信息。", variant: "destructive" });
         setError("网络错误获取下一单词");
-        setIsLoading(false);
+        setIsWordLoading(false);
     }
-}, [currentWord, isLoading, toast, fetchAndCacheWord]); // 依赖 currentWord, isLoading, toast, fetchAndCacheWord
+}, [currentWord, isWordLoading, toast, fetchAndCacheWord]); // 依赖 currentWord, isLoading, toast, fetchAndCacheWord
 
 
 // handlePrevious 函数修改：获取 slug 后先检查缓存
 const handlePrevious = useCallback(async () => {
-     if (isLoading) return; // 如果正在加载主单词，忽略点击
+     if (isWordLoading) return; // 如果正在加载主单词，忽略点击
 
-     setIsLoading(true); // 标记开始导航，设置 loading 为 true
+     setIsWordLoading(true); // 标记开始导航，设置 loading 为 true
 
      try {
         //  // 1. 从 API 获取上一个单词的 slug
@@ -204,7 +204,7 @@ const handlePrevious = useCallback(async () => {
         //       try { const errorBody = await response.json(); if (errorBody.message) errorMessage = errorBody.message; } catch (e) {}
         //       toast({ title: "获取上一单词失败", description: errorMessage, variant: "destructive" });
         //       setError(errorMessage);
-        //       setIsLoading(false);
+        //       setIsWordLoading(false);
         //       return; // 提前返回
         //   }
         //   const data = await response.json();
@@ -212,33 +212,33 @@ const handlePrevious = useCallback(async () => {
 
         //    if (previousWordSlug) {
                // 2. 使用 fetchAndCacheWord 来获取数据，它会自行检查缓存或从网络获取
-               const previousWordData = await fetchAndCacheWord(currentWord, -1); // 等待数据获取或从缓存返回
+               const previousWordData = await fetchAndCacheWord(currentWord, NavigationMode.Previous); // 等待数据获取或从缓存返回
 
                if (previousWordData) {
                     // 数据已获取
                    setWordData(previousWordData);
                    setCurrentWord(previousWordData.word_text); // 更新 currentWord 触发预加载
                    setError(null);
-                   setIsLoading(false); // 加载完成
+                   setIsWordLoading(false); // 加载完成
                } else {
                     // fetchAndCacheWord 返回 null
                    setError('无法加载上一个单词');
                    toast({ title: "获取上一单词失败", description: '无法加载上一个单词', variant: "destructive" });
-                   setIsLoading(false);
+                   setIsWordLoading(false);
                }
           // } else {
           //      // 没有上一个单词了
           //     toast({ title: "已经是第一个单词了", variant: "default" });
-          //     setIsLoading(false); // 导航结束
+          //     setIsWordLoading(false); // 导航结束
           // }
       } catch (err) {
            // 处理网络错误获取上一个 slug
           console.error("Fetch previous slug error:", err);
           toast({ title: "网络错误", description: "无法获取上一单词信息。", variant: "destructive" });
           setError("网络错误获取上一单词");
-          setIsLoading(false);
+          setIsWordLoading(false);
       }
-  }, [currentWord, isLoading, toast, fetchAndCacheWord]); // 依赖 currentWord, isLoading, toast, fetchAndCacheWord
+  }, [currentWord, isWordLoading, toast, fetchAndCacheWord]); // 依赖 currentWord, isLoading, toast, fetchAndCacheWord
 
 
     // --- New useEffect for Paste Event ---
@@ -284,15 +284,54 @@ const handlePrevious = useCallback(async () => {
       };
   }, [handleSearch]); // Dependency: handleSearch function  
 
-    // Function to clear the analysis result state
-    const handleClearAnalysisResult = useCallback(() => {
-      setAnalysisResult(null);
-      console.log("Analysis result cleared.");
+  // --- New useEffect for Keyboard Navigation ---
+  useEffect(() => {
+      const handleKeyDown = (event: KeyboardEvent) => {
+          // Check if the user is currently typing in an input field
+          // Get the active element
+          const activeElement = document.activeElement;
+          // Check if the active element is an input or textarea
+          const isTyping = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+
+          // If the user is typing, do not trigger navigation
+          if (isTyping) {
+              return;
+          }
+
+          // Disable keyboard navigation if word data or analysis is loading
+          if (isWordLoading || isAnalysisLoading) {
+              return;
+          }
+
+          // Handle arrow key presses
+          if (event.key === 'ArrowLeft') {
+              event.preventDefault(); // Prevent default browser scroll behavior
+              handlePrevious(); // Call the previous word handler
+          } else if (event.key === 'ArrowRight') {
+              event.preventDefault(); // Prevent default browser scroll behavior
+              handleNext(); // Call the next word handler
+          }
+      };
+
+      // Add the event listener to the window
+      window.addEventListener('keydown', handleKeyDown);
+
+      // Clean up the event listener when the component unmounts
+      return () => {
+          window.removeEventListener('keydown', handleKeyDown);
+      };
+  }, [isWordLoading, isAnalysisLoading, handlePrevious, handleNext]); // Dependencies: loading states and navigation handlers
+  // --- End New useEffect for Keyboard Navigation ---
+  
+  // Function to clear the analysis result state
+  const handleClearAnalysisResult = useCallback(() => {
+    setAnalysisResult(null);
+    console.log("Analysis result cleared.");
   }, []); // No dependencies needed as it just sets state to null
 
     // 根据加载状态、错误状态和数据状态渲染不同的内容
     const renderContent = () => {
-      if (isLoading && !wordData) {
+      if (isWordLoading && !wordData) {
           // 初始加载 或 切换单词时正在加载且旧数据已清除
           return (
               // <div className="flex-1 flex items-center justify-center">
@@ -341,9 +380,11 @@ const handlePrevious = useCallback(async () => {
               isLoading={isAnalysisLoading} 
               analysisResult={analysisResult} 
               onWordClick={handleSearch} 
-              onClearAnalysisResult={handleClearAnalysisResult}/>
+              onClearAnalysisResult={handleClearAnalysisResult}
+              onWordSearch={handleSearch}
+              currentWord={currentWord}/>
 
-              <WordGrid word={wordData} onMasteredSuccess={ handleNext } />
+              <WordGrid word={wordData} onMasteredSuccess={ handleNext } onPrevious={handlePrevious} onNext={handleNext} />
            </main>
       );
   };
@@ -351,14 +392,7 @@ const handlePrevious = useCallback(async () => {
   return (
     <AuthProvider>
       <div className="min-h-screen flex flex-col">
-        <Header
-          onSearch={handleSearch}
-          onNext={handleNext}
-          onPrevious={handlePrevious}
-          currentWord={currentWord}
-          // 可以在 Header 中禁用前进/后退按钮，如果在加载主单词数据时
-          disableNav={isLoading} // 仍然使用 isLoading 来禁用导航，避免重复点击
-        />
+        <Header/>
         {renderContent()} {/* 调用渲染内容的函数 */}
       </div>
     </AuthProvider>

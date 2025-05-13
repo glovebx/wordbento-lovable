@@ -174,10 +174,10 @@ URL如下：${analysisData.content}`;
       const repairedStr = jsonrepair(jsonStr)
       console.log(repairedStr);
 
-      const jsonWord = JSON.parse(repairedStr);
+      const jsonWords = JSON.parse(repairedStr);
 
       // Validate the structure of the received data if necessary
-      return jsonWord;
+      return jsonWords;
 
   } catch (error) {
       console.error('Network error calling Gemini AI API:', error);
@@ -434,8 +434,12 @@ const simulateAnalysisTask = async (c, taskId, db, analysisData) => {
   //   console.log(`simulateAnalysisTask attempted for task ID: ${taskId}`);
   // }
 
-  const candidates = await extractWordsByAi(c, analysisData);
+  let candidates = await extractWordsByAi(c, analysisData);
   if (!candidates || candidates.length === 0) {
+    // 去重
+    const uniqueElements = new Set(candidates);
+    candidates = Array.from(uniqueElements);
+
     await db.update(schema.resources)
     .set({
         status: 'failed',

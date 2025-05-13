@@ -20,7 +20,7 @@ export const words = sqliteTable('words', {
   word_text: text('word_text').unique().notNull(),
   phonetic: text('phonetic'),
   meaning: text('meaning'),
-  is_mastered: integer('is_mastered').notNull(),
+  // is_mastered: integer('is_mastered').notNull(),
   created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 });
@@ -56,3 +56,13 @@ export const resources = sqliteTable('resources', {
   created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const archives = sqliteTable('archives', {
+  id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
+  user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  word_id: integer('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
+  created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+    unique('unq_user_word').on(table.user_id, table.word_id),
+]);

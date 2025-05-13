@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 // Import Dialog components using the structure you provided
 import {
@@ -28,7 +28,7 @@ import AuthModal from './AuthModal';
 import { useGenerateImages } from '@/hooks/use-generate-images'; // Adjust path as needed
 
 import { Button } from '@/components/ui/button'; // Import Button component
-import { Loader2 } from 'lucide-react'; // Import Loader icon
+import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'; // Import Loader icon
 
 interface WordImageDisplayProps {
   initialImageUrls: string[]; // Array of image URLs
@@ -42,7 +42,8 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   // State to control the visibility of the image dialog
   const [showImageDialog, setShowImageDialog] = useState(false);
   // State to store the URL of the image currently displayed in the dialog
-  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  // null when no image is selected or dialog is closed
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   // // State to track if image generation is in progress
   // const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   // State to manage the image URLs displayed in the carousel
@@ -60,10 +61,10 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   }, [initialImageUrls]); // Dependency: initialImageUrls prop
 
   // Handler to open the image dialog and set the selected image
-  const handleImageClick = (url: string) => {
-    setSelectedImageUrl(url); // Set the image URL to display in the dialog
+  const handleImageClick = useCallback((index: number) => {
+    setSelectedImageIndex(index); // Set the index of the image to display in the dialog
     setShowImageDialog(true); // Open the dialog
-  };
+  }, []); // No dependencies needed as it only sets state
 
   // // Handler to close the dialog (Dialog's onOpenChange handles clearing selectedImageUrl implicitly)
   // const handleDialogClose = () => {
@@ -90,10 +91,37 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
     }      
   };
 
+  // --- Handlers for Dialog Navigation ---
+  // Navigate to the previous image in the dialog
+  const handlePreviousImage = useCallback(() => {
+    // Ensure an image is selected and it's not the first image
+    if (selectedImageIndex !== null && selectedImageIndex > 0) {
+        setSelectedImageIndex(selectedImageIndex - 1);
+    }
+}, [selectedImageIndex]); // Dependency: selectedImageIndex
+
+// Navigate to the next image in the dialog
+const handleNextImage = useCallback(() => {
+    // Ensure an image is selected and it's not the last image
+    if (selectedImageIndex !== null && selectedImageIndex < imageUrls.length - 1) {
+        setSelectedImageIndex(selectedImageIndex + 1);
+    }
+}, [selectedImageIndex, imageUrls.length]); // Dependencies: selectedImageIndex, imageUrls.length
+
   // Determine if we should show the "Generate Images" button
   const showGenerateButton = (!imageUrls || imageUrls.length === 0) && !isGeneratingImages;
   // Determine if we should show the Carousel
   const showCarousel = imageUrls && imageUrls.length > 0;
+
+    // Get the URL for the currently selected image in the dialog
+  // Access imageUrls array using the selectedImageIndex
+  const currentDialogImageUrl = selectedImageIndex !== null ? imageUrls[selectedImageIndex] : null;
+
+  // Determine if dialog navigation buttons should be disabled
+  // Previous button is disabled if it's the first image or no image is selected
+  const isPreviousDisabled = selectedImageIndex === 0 || selectedImageIndex === null;
+  // Next button is disabled if it's the last image or no image is selected
+  const isNextDisabled = selectedImageIndex === imageUrls.length - 1 || selectedImageIndex === null;
 
   return (
     <>
@@ -142,7 +170,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
                 <CarouselItem key={index}> {/* Use index as key if URLs are not guaranteed unique/stable */}
                   {/* Wrap the image in a clickable container */}
                   <div
-                    onClick={() => handleImageClick(url)} // Pass the clicked image URL to the handler
+                    onClick={() => handleImageClick(index)} // Pass the clicked image URL to the handler
                     className="cursor-pointer rounded-md overflow-hidden transition-opacity hover:opacity-80" // Add hover effect
                   >
                     {/* Use AspectRatio for consistent size within the carousel item */}
@@ -169,15 +197,45 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       {/* Dialog is open if showImageDialog is true */}
       <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
         {/* Use DialogContent with appropriate styling for an image */}
-        <DialogContent className="sm:max-w-[800px] w-full h-auto p-0"> {/* Adjust max-width and remove padding */}
+        <DialogContent className="sm:max-w-[800px] w-full h-auto p-2"> {/* Adjust max-width and remove padding */}
           {/* Display the selected image inside the dialog */}
-          {selectedImageUrl && ( // Only render img if a URL is selected
+          {currentDialogImageUrl && ( // Only render img if a URL is selected
              <img
-               src={selectedImageUrl} // Use the selected image URL
-               alt={`Enlarged image for the word "${wordText}"`} // Alt text for enlarged image
+               src={currentDialogImageUrl} // Use the selected image URL
+               alt={`Enlarged image ${selectedImageIndex !== null ? selectedImageIndex + 1 : ''} for the word "${wordText}"`} // Alt text for enlarged image
                className="object-contain w-full h-full max-h-[80vh]" // Use object-contain and max-height to fit
              />
           )}
+
+           {/* --- Dialog Navigation Buttons --- */}
+           {/* Only show navigation buttons if there are images in the carousel */}
+           {showCarousel && (
+               <>
+                   {/* Previous Button */}
+                   <Button
+                       variant="ghost" // Use ghost variant for a less prominent button
+                       size="icon" // Use icon size for a small circular button
+                       className="absolute left-2 top-1/2 -translate-y-1/2 z-20 text-white hover:bg-black/50" // Position absolutely, style with white text and hover effect
+                       onClick={handlePreviousImage} // Call the previous image handler
+                       disabled={isPreviousDisabled} // Disable if it's the first image
+                       aria-label="Previous image" // Accessibility label
+                   >
+                       <ChevronLeft className="h-6 w-6" /> {/* Left arrow icon */}
+                   </Button>
+                   {/* Next Button */}
+                   <Button
+                       variant="ghost" // Use ghost variant
+                       size="icon" // Use icon size
+                       className="absolute right-2 top-1/2 -translate-y-1/2 z-20 text-white hover:bg-black/50" // Position absolutely, style
+                       onClick={handleNextImage} // Call the next image handler
+                       disabled={isNextDisabled} // Disable if it's the last image
+                       aria-label="Next image" // Accessibility label
+                   >
+                       <ChevronRight className="h-6 w-6" /> {/* Right arrow icon */}
+                   </Button>
+               </>
+           )}
+           {/* --- End Dialog Navigation Buttons --- */}          
           {/* DialogClose is typically included in DialogContent in shadcn/ui's implementation */}
           {/* If your DialogContent doesn't include it, you might need to add it explicitly */}
           {/* <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus-ring-ring focus-ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">

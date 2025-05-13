@@ -19,6 +19,29 @@ import { axiosPrivate } from "@/lib/axios";
 // 定义缓存的最大单词数量
 const MAX_CACHE_SIZE = 20;
 
+/**
+ * Defines the different modes for navigating between words.
+ */
+export enum NavigationMode {
+    /**
+     * Represents a search operation (typically initiated by user input).
+     * Corresponds to mode 0.
+     */
+    Search = 0,
+  
+    /**
+     * Represents navigating to the next word in a sequence.
+     * Corresponds to mode 1.
+     */
+    Next = 1,
+  
+    /**
+     * Represents navigating to the previous word in a sequence.
+     * Corresponds to mode -1.
+     */
+    Previous = -1,
+  }
+
 export const useWordCache = () => {
   // 使用 useRef 创建缓存 Map 和顺序数组
   // useRef 创建的值在组件的整个生命周期中是持久的，不会在重新渲染时丢失
@@ -55,11 +78,11 @@ export const useWordCache = () => {
 
   // Helper function to check cache or fetch data from API, then add to cache
   // 这个函数是核心，负责检查缓存，如果未命中则从 API 获取，成功后添加到缓存
-  const fetchAndCacheWord = useCallback(async (slug: string, mode = 0): Promise<WordDataType | null> => {
+  const fetchAndCacheWord = useCallback(async (slug: string, mode = NavigationMode.Search): Promise<WordDataType | null> => {
       const cache = wordCacheRef.current;
 
       // 1. 检查缓存
-      if (mode === 0 && slug.length > 0 && cache.has(slug)) {
+      if (mode === NavigationMode.Search && slug.length > 0 && cache.has(slug)) {
           // console.log(`Cache hit for ${slug}`); // Optional logging
           // 如果缓存命中，更新其在顺序数组中的位置到末尾 (LRU)
           const order = cacheOrderRef.current;
@@ -81,23 +104,13 @@ export const useWordCache = () => {
 
         if (response.data?.content) {
             const data = response.data as WordDataType
-            console.log('User authenticated:', response.data.word);
-            addToCache(slug, data); // 将获取到的数据添加到缓存
+            // console.log('User authenticated:', response.data.word);
+            addToCache(data.word_text, data); // 将获取到的数据添加到缓存
             return data; // 返回获取到的数据
         } else {
+            console.log('No user data found.');            
           return null;
-            console.log('No user data found.');
         }
-
-        //   if (!response.ok) {
-        //       // 失败时，只在控制台打印错误，不抛出异常或显示 toast，
-        //       // 因为这个函数主要用于预加载，不应打断主流程或显示用户级别的错误。
-        //       console.error(`Failed to fetch word "${slug}": ${response.status} ${response.statusText}`);
-        //       return null; // 获取失败返回 null
-        //   }
-        //   const data: WordDataType = await response.json();
-        //   addToCache(slug, data); // 将获取到的数据添加到缓存
-        //   return data; // 返回获取到的数据
       } catch (err) {
           // 网络错误
           console.error(`Network error fetching word "${slug}":`, err);
