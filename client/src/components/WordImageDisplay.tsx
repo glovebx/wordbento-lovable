@@ -33,11 +33,13 @@ import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'; // Import Loa
 interface WordImageDisplayProps {
   initialImageUrls: string[]; // Array of image URLs
   wordText: string; // The word text, used for alt text
+  isWordLoading: boolean;
 }
 
 const WordImageDisplay: React.FC<WordImageDisplayProps> = ({ 
   initialImageUrls, 
   wordText,
+  isWordLoading
 }) => {
   // State to control the visibility of the image dialog
   const [showImageDialog, setShowImageDialog] = useState(false);
@@ -129,7 +131,7 @@ const handleNextImage = useCallback(() => {
       {showGenerateButton && (
         // Display the "Generate Images" button when no images and not generating
         <div className="text-center my-8"> {/* Add some margin */}
-          <Button onClick={handleGenerateButtonClick} disabled={isGeneratingImages}>
+          <Button onClick={handleGenerateButtonClick} disabled={isGeneratingImages || isWordLoading}>
             {isGeneratingImages ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

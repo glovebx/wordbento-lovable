@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 
 interface WordGridProps {
   word: WordDataType;
+  isWordLoading: boolean,
   onMasteredSuccess: () => void;
   onPrevious: () => void;
   onNext: () => void;  
@@ -53,6 +54,7 @@ const AnimatedWord: React.FC<{ word: string }> = ({ word }) => {
 
 const WordGrid: React.FC<WordGridProps> = ({ 
   word, 
+  isWordLoading,
   onMasteredSuccess,
   onPrevious,
   onNext,
@@ -78,6 +80,7 @@ const WordGrid: React.FC<WordGridProps> = ({
               <>
                 <div className="flex justify-center gap-8 w-full mb-2">
                   <Button 
+                    disabled={isWordLoading}
                     variant="outline"
                     size="icon"
                     onClick={onPrevious}
@@ -88,6 +91,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                   </Button>
                   
                   <Button 
+                    disabled={isWordLoading}
                     variant="outline"
                     size="icon"
                     onClick={onNext}
@@ -120,6 +124,7 @@ const WordGrid: React.FC<WordGridProps> = ({
             ) : (
               <>
                 <Button 
+                  disabled={isWordLoading}
                   variant="outline"
                   size="icon"
                   onClick={onPrevious}
@@ -149,6 +154,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                 </div>
 
                 <Button 
+                  disabled={isWordLoading}
                   variant="outline"
                   size="icon"
                   onClick={onNext}
@@ -220,7 +226,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                     </p>
                 )}
                  {/* Handle array case for English definition if necessary (based on WordContentMap) */}
-                 {Array.isArray(definitionContent.en) && definitionContent.en.length > 0 && (
+                 {definitionContent.en && Array.isArray(definitionContent.en) && definitionContent.en.length > 0 && (
                      <div className="text-sm text-foreground mb-2">
                         {definitionContent.en.map((item, index) => (
                             <React.Fragment key={index}>
@@ -244,7 +250,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                     </p>
                 )}
                 {/* Handle array case for Chinese definition if necessary (based on WordContentMap) */}
-                 {Array.isArray(definitionContent.zh) && definitionContent.zh.length > 0 && (
+                 {definitionContent.zh && Array.isArray(definitionContent.zh) && definitionContent.zh.length > 0 && (
                      <div className="text-sm text-muted-foreground">
                         {definitionContent.zh.map((item, index) => (
                             <React.Fragment key={index}>
@@ -265,7 +271,7 @@ const WordGrid: React.FC<WordGridProps> = ({
       </div>      
 
         {/* Word Image - Centered in the page */}
-      <WordImageDisplay initialImageUrls={word.imageUrls} wordText={word.word_text} />
+      <WordImageDisplay initialImageUrls={word.imageUrls} wordText={word.word_text} isWordLoading={isWordLoading}/>
 
       <div className="bento-grid">
         {/* Definition Card */}
@@ -284,7 +290,7 @@ const WordGrid: React.FC<WordGridProps> = ({
         /> */}
 
         {/* Etymology Card */}
-        <GridCard
+        {(word.content.etymology && <GridCard
           id="etymology"
           title={{
             en: "Etymology",
@@ -296,10 +302,10 @@ const WordGrid: React.FC<WordGridProps> = ({
           }}
           icon={<Atom className="h-5 w-5 text-indigo-500" />}
           className="bg-bento-etymology"
-        />
+        />)}
 
         {/* Affixes Card */}
-        <GridCard
+        {(word.content.affixes && <GridCard
           id="affixes"
           title={{
             en: "Affixes Analysis",
@@ -311,10 +317,10 @@ const WordGrid: React.FC<WordGridProps> = ({
           }}
           icon={<Layers className="h-5 w-5 text-purple-500" />}
           className="bg-bento-affixes"
-        />
+        />)}
 
         {/* History Card */}
-        <GridCard
+        {(word.content.history && <GridCard
           id="history"
           title={{
             en: "Historical Background",
@@ -326,10 +332,10 @@ const WordGrid: React.FC<WordGridProps> = ({
           }}
           icon={<History className="h-5 w-5 text-orange-500" />}
           className="bg-bento-history"
-        />
+        />)}
 
         {/* Word Forms Card */}
-        <GridCard
+        {(word.content.forms && <GridCard
           id="forms"
           title={{
             en: "Word Forms",
@@ -341,10 +347,10 @@ const WordGrid: React.FC<WordGridProps> = ({
           }}
           icon={<ArrowUpDown className="h-5 w-5 text-green-500" />}
           className="bg-bento-forms"
-        />
+        />)}
 
         {/* Memory Aid Card */}
-        <GridCard
+        {(word.content.memory_aid && <GridCard
           id="memoryAid"
           title={{
             en: "Memory Aid",
@@ -356,7 +362,7 @@ const WordGrid: React.FC<WordGridProps> = ({
           }}
           icon={<Lightbulb className="h-5 w-5 text-pink-500" />}
           className="bg-bento-memory"
-        />
+        />)}
 
         {/* Examples Card */}
         <GridCard
@@ -398,7 +404,7 @@ const WordGrid: React.FC<WordGridProps> = ({
         />
 
         {/* Trending Story Card */}
-        <GridCard
+        {(word.content.trending_story && <GridCard
           id="trendingStory"
           title={{
             en: "Trending Story",
@@ -411,7 +417,7 @@ const WordGrid: React.FC<WordGridProps> = ({
           icon={<Newspaper className="h-5 w-5 text-yellow-600" />}
           className="bg-bento-story"
           size="lg"
-        />
+        />)}
       </div>
     </div>
   );

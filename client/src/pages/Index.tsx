@@ -66,7 +66,7 @@ const Index = () => {
     const fetchCurrentWord = async (wordSlug: string) => {
       setIsWordLoading(true); // 开始加载主单词，设置 loading 为 true
       setError(null); // 清除之前的错误信息
-      setWordData(null); // 清除之前的单词数据（可选，取决于你希望切换时是否保留旧数据直到新数据加载）
+    //   setWordData(null); // 清除之前的单词数据（可选，取决于你希望切换时是否保留旧数据直到新数据加载）
 
       // 使用 fetchAndCacheWord 函数来获取数据，它会先检查缓存
       const data = await fetchAndCacheWord(wordSlug); // 等待数据获取或从缓存返回
@@ -500,7 +500,8 @@ const handlePrevious = useCallback(async () => {
            <main className="flex-1">
               <AnalysisForm 
               onSubmitAnalysis={startAnalysis} 
-              isLoading={isAnalysisLoading} 
+              isWordLoading={isWordLoading}
+              isAnalysisLoading={isAnalysisLoading} 
               analysisResult={analysisResult} 
               onWordClick={handleSearch} 
               onClearAnalysisResult={handleClearAnalysisResult}
@@ -508,6 +509,7 @@ const handlePrevious = useCallback(async () => {
               currentWord={currentWord}/>
 
               <WordGrid word={wordData} onMasteredSuccess={ handleNext } 
+              isWordLoading={isWordLoading}
               onPrevious={handlePrevious} 
               onNext={handleNext} 
               bentoGridRef={bentoGridRef} // <-- Pass the ref here
@@ -524,7 +526,7 @@ const handlePrevious = useCallback(async () => {
                             <Download className="mr-2 h-4 w-4" />
                             导出学习卡片
                         </Button>
-                    </div>              
+                    </div>
            </main>
       );
   };

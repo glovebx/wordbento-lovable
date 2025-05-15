@@ -11,9 +11,9 @@
     "push:migration": "drizzle-kit push --db ./drizzle/sqlite.db"
   },
   "dependencies": {
-    "@libsql/client": "^0.15.4",
-    "@tsndr/cloudflare-worker-jwt": "^3.1.4",
-    "better-sqlite3": "11.8.1", 
+    "@libsql/client": "^0.15.6",
+    "@tsndr/cloudflare-worker-jwt": "^3.1.5",
+    "better-sqlite3": "11.10.0", 
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

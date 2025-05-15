@@ -10,7 +10,9 @@ import { zodResolver } from '@hookform/resolvers/zod'; // Import zodResolver
 import { z } from 'zod'; // Import zod for schema definition
 import { Loader2, XCircle, Search } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils'; // Import cn for conditional class names
 
+import LoadingFallback from '@/components/LoadingFallback';
 // Import the AnalysisData interface
 import { AnalysisData, AnalysisResult } from '@/types/analysisTypes';
 
@@ -34,8 +36,9 @@ const analysisFormSchema = z.object({
 interface AnalysisFormProps {
   // onAnalyze prop now takes the form data and returns void (async handled by hook)
   onSubmitAnalysis: (data: AnalysisData) => void;
+  isWordLoading: boolean;
   // Receive loading state from the parent/hook
-  isLoading: boolean;
+  isAnalysisLoading: boolean;
   // Receive the analysis result to display extracted words
   analysisResult: AnalysisResult | null;
   // Receive the handleSearch function to make words clickable
@@ -46,7 +49,15 @@ interface AnalysisFormProps {
   currentWord: string;  
 }
 
-const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmitAnalysis, isLoading, analysisResult, onWordClick, onClearAnalysisResult, onWordSearch, currentWord }) => {
+const AnalysisForm: React.FC<AnalysisFormProps> = ({ 
+  onSubmitAnalysis, 
+  isWordLoading, 
+  isAnalysisLoading, 
+  analysisResult, 
+  onWordClick, 
+  onClearAnalysisResult, 
+  onWordSearch, 
+  currentWord }) => {
   // sourceType state is still useful for conditionally rendering Input/Textarea
   const [sourceType, setSourceType] = useState<'url' | 'article'>('url');
   const [searchInput, setSearchInput] = useState('');
@@ -95,7 +106,16 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmitAnalysis, isLoading
           <TabsTrigger value="analyze">解析</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="search" className="mt-4">
+        <TabsContent value="search" className="mt-4 relative">
+          {/* Loading Overlay for AnalysisForm */}
+          {/* Show this overlay when EITHER Analysis Task is loading OR Word data is loading */}
+          {(isWordLoading || isAnalysisLoading) && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-md"> {/* Absolute positioning, covers parent */}
+                  {/* Use FourSquare or LoadingFallback based on preference for this size */}
+                  {/* <FourSquare color="#a855f74d" /> */}
+                  <LoadingFallback message={isWordLoading ? "正在加载单词..." : "分析处理中..."} /> {/* Pass dynamic message */}
+              </div>
+          )}          
           <form onSubmit={handleSearch} className="flex items-center gap-2 max-w-md mx-auto">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -110,7 +130,17 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmitAnalysis, isLoading
           </form>
         </TabsContent>
 
-        <TabsContent value="analyze" className="mt-4">
+        <TabsContent value="analyze" className="mt-4 relative">
+          {/* Loading Overlay for AnalysisForm */}
+          {/* Show this overlay when EITHER Analysis Task is loading OR Word data is loading */}
+          {(isAnalysisLoading || isWordLoading) && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-md"> {/* Absolute positioning, covers parent */}
+                  {/* Use FourSquare or LoadingFallback based on preference for this size */}
+                  {/* <FourSquare color="#a855f74d" /> */}
+                  <LoadingFallback message={isAnalysisLoading ? "分析处理中..." : "正在加载单词..."} /> {/* Pass dynamic message */}
+              </div>
+          )}
+
           <Form {...form}>
             {/* Use form.handleSubmit to wrap your onSubmit function */}
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-4xl mx-auto px-4 mb-8 mt-4">
@@ -127,7 +157,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmitAnalysis, isLoading
                                   onValueChange={handleSourceTypeChange} // Use custom handler
                                   defaultValue={field.value}
                                   className="flex space-x-6"
-                                  disabled={isLoading} // Disable while loading
+                                  disabled={isAnalysisLoading} // Disable while loading
                                 >                         
                                   <FormItem className="flex items-center space-x-2">
                                     <FormControl>
@@ -150,9 +180,9 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmitAnalysis, isLoading
                 />
 
                 {/* Submit Button - Moved here */}
-                {/* Use isLoading prop from parent to disable */}
-                <Button className="ml-auto" type="submit" disabled={isLoading}>
-                  {isLoading ? (
+                {/* Use isAnalysisLoading prop from parent to disable */}
+                <Button className="ml-auto" type="submit" disabled={isAnalysisLoading || isWordLoading}>
+                  {isAnalysisLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       处理中... {/* Button text indicating processing */}
@@ -171,7 +201,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmitAnalysis, isLoading
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        disabled={isLoading} // Disable while loading
+                        disabled={isAnalysisLoading} // Disable while loading
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -212,7 +242,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmitAnalysis, isLoading
                       <FormControl>
                         <Input
                           placeholder="请输入URL链接"
-                          disabled={isLoading} // Disable while loading
+                          disabled={isAnalysisLoading} // Disable while loading
                           {...field}
                         />
                       </FormControl>
@@ -221,7 +251,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmitAnalysis, isLoading
                         <Textarea
                           placeholder="请输入文章内容"
                           className="min-h-[150px]"
-                          disabled={isLoading} // Disable while loading
+                          disabled={isAnalysisLoading} // Disable while loading
                           {...field}
                         />
                       </FormControl>
@@ -257,7 +287,11 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmitAnalysis, isLoading
                                 variant="outline" // Use outline variant for a tag look
                                 size="sm" // Small size
                                 onClick={() => onWordClick(word)} // Call the onWordClick prop
-                                className="cursor-pointer" // Indicate it's clickable
+                                // className="cursor-pointer" // Indicate it's clickable
+                                className={cn(
+                                    "cursor-pointer",
+                                    word === currentWord ? "bg-blue-500 text-white hover:bg-blue-600" : "hover:bg-gray-100" // Apply specific styles for highlight
+                                )}                                
                             >
                                 {word}
                             </Button>
@@ -271,7 +305,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({ onSubmitAnalysis, isLoading
             )}      
           </Form>
         </TabsContent>
-      </Tabs>
+      </Tabs>   
     </div>  
   );
 };
