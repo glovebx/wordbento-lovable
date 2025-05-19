@@ -7,13 +7,14 @@ import { Hono } from 'hono';
 // Assuming your Drizzle client is configured elsewhere with the schema.
 // For D1 with Drizzle, you typically initialize it like drizzle(env.DB, { schema });
 // We'll keep the drizzle import and schema reference in the initialization.
-import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 // The schema object itself is usually defined in a separate file and imported for drizzle initialization
 import * as schema from '../db/schema'; // Keep schema import for drizzle initialization
-import { sql } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
+import { sql, eq, and } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
 import { jsonrepair } from 'jsonrepair';
-import { isLikelyJsonString, cleanAiJsonResponse } from './word';
+import { cleanAiJsonResponse } from './word';
+import { calculateMD5 } from '../utils/passwords';
+import DownSub from '../scraper/DownSub.js';
 
 const analyze = new Hono();
 
@@ -110,6 +111,13 @@ const extractWordsByAi = async (c, analysisData) => {
   console.log(`Calling Gemini AI for source: ${analysisData.sourceType}`);
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
+
+// // 部署前测试绑定是否存在
+// console.log('Browser binding:', typeof c.env.MYBROWSER);
+
+//   const scraper = new DownSub();
+//   const result = await scraper.scrapeCaptions(c, analysisData.content);
+//   console.log(result);
   
   const GEMINI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
   const GEMINI_API_KEY = c.env.GEMINI_API_KEY
@@ -167,12 +175,12 @@ URL如下：${analysisData.content}`;
       // If all checks pass, access and log the message content
       const messageContent = data.choices[0].message.content;
       console.log("API call successful. Received message:");
-      console.log(messageContent);
+      console.log(`messageContent: ${messageContent}`);
 
       const jsonStr = cleanAiJsonResponse(messageContent)
 
       const repairedStr = jsonrepair(jsonStr)
-      console.log(repairedStr);
+      console.log(`repairedStr: ${repairedStr}`);
 
       const jsonWords = JSON.parse(repairedStr);
 
@@ -218,14 +226,60 @@ analyze.post('/', async (c) => {
   // TODO: Get authenticated user ID (replace with actual auth logic)
   const userId = 0; // Placeholder for public user or replace with actual user ID
 
+  // 2. Clean the content by removing leading/trailing whitespace (including newlines)
+  const cleanedContent = analysisData.content.trim();
+
+  // Check if content is empty after cleaning
+  if (!cleanedContent) {
+      return c.json({ message: 'Content cannot be empty after cleaning.' }, 400);
+  }
+
+ // 2. Calculate MD5 hash of the content
+  let contentMD5;
+  try {
+      contentMD5 = calculateMD5(cleanedContent);
+      console.log(`Calculated MD5 for content: ${contentMD5}`);
+  } catch (md5Error) {
+      console.error("Failed to calculate MD5 hash:", md5Error);
+      return c.json({ message: 'Failed to process content hash.' }, 500);
+  }
+
+  // 3. Check if a record with the same exam_type and content_md5 already exists
+  try {
+      const existingResource = await db.select({
+          uuid: schema.resources.uuid // Select only the uuid
+      })
+      .from(schema.resources)
+      .where(
+          and(
+              eq(schema.resources.exam_type, analysisData.examType),
+              eq(schema.resources.content_md5, contentMD5) // Filter by the calculated MD5
+          )
+      )
+      .limit(1); // We only need to find one match
+
+      if (existingResource.length > 0) {
+          // Record exists, return its UUID
+          console.log(`Existing resource found with UUID: ${existingResource[0].uuid}`);
+          return c.json({ uuid: existingResource[0].uuid }, 200); // Return 200 OK for existing
+      }
+
+  } catch (checkError) {
+      console.error("Failed to check for existing resource in DB:", checkError);
+      // Continue to insert if checking fails, or return an error depending on desired behavior
+      // For now, let's return an error if the check itself failed
+      return c.json({ message: 'Failed to check for existing resource.' }, 500);
+  }
+
   // 2. Create a new task in the database
   const taskId = crypto.randomUUID(); // Generate a unique task ID
   try {
       await db.insert(schema.resources).values({
           user_id: userId,
           source_type: analysisData.sourceType,
-          content: analysisData.content,
+          content: cleanedContent,
           exam_type: analysisData.examType,
+          content_md5: contentMD5,
           status: 'pending', // Initial status
           uuid: taskId
           // result and error are null initially
@@ -242,7 +296,7 @@ analyze.post('/', async (c) => {
 
       // For this example, we'll simulate the task completion in a few seconds
       // In a real app, the background process would do this.
-      await simulateAnalysisTask(c, taskId, db, analysisData); // Call simulation function
+      await simulateAnalysisTask(c, taskId, db, { ...analysisData, content: cleanedContent }); // Call simulation function
 
       // 4. Return the task ID to the client
       return c.json({ uuid: taskId }, 201); // 201 Created

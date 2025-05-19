@@ -1,4 +1,15 @@
+// Import createHash for MD5 calculation (available in Cloudflare Workers)
+import { createHash } from 'crypto';
+
 const encoder = new TextEncoder();
+
+// Helper function to calculate MD5 hash
+export function calculateMD5(str) {
+  // Ensure the crypto module is available in your environment (e.g., Cloudflare Workers)
+  const hash = createHash('md5');
+  hash.update(str);
+  return hash.digest('hex');
+}
 
 /**
  * Generate random salt as Uint8Array

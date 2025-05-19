@@ -13,18 +13,21 @@
   "dependencies": {
     "@libsql/client": "^0.15.6",
     "@tsndr/cloudflare-worker-jwt": "^3.1.5",
-    "better-sqlite3": "11.10.0", 
+    "better-sqlite3": "11.10.0",
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "djwt": "^2.0.0",
     "dotenv": "^16.5.0",
-    "hono": "^4.7.9",
+    "hono": "^4.7.10",
     "jsonrepair": "^3.12.0",
+    "langs": "^2.0.0",
     "mariadb": "^3.4.2",
     "nanoid": "^5.1.5"
   },
   "devDependencies": {
+    "@cloudflare/puppeteer": "^1.0.2",
+    "@playwright/test": "^1.52.0",
     "@types/node": "^22.15.17",
     "concurrently": "^9.1.2",
     "drizzle-kit": "^0.31.1",
@@ -32,7 +35,7 @@
     "esbuild": "^0.25.4",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
-    "wrangler": "^4.14.4"
+    "wrangler": "^4.15.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

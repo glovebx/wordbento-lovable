@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS word_content (
     UNIQUE (word_id, content_type, language_code) -- 确保每个单词、每种内容类型、每种语言只有一条记录
 );
 
--- 为了方便查询，可以考虑添加索引 (保持不变)
-CREATE INDEX IF NOT EXISTS idx_word_content_word_lang_type ON word_content (word_id, language_code, content_type);
+-- -- 为了方便查询，可以考虑添加索引 (保持不变)
+-- CREATE INDEX IF NOT EXISTS idx_word_content_word_lang_type ON word_content (word_id, content_type, language_code);
 
 -- bookmarks 表：存储收藏的单词的基本信息 (保持不变)
 CREATE TABLE IF NOT EXISTS bookmarks (
@@ -107,8 +107,9 @@ CREATE TABLE IF NOT EXISTS resources (
     user_id INTEGER NOT NULL,
     source_type TEXT CHECK(source_type IN ('url', 'article', 'pdf', 'image')) NOT NULL,
     content TEXT NOT NULL,
-    -- exam_type TEXT CHECK(exam_type IN ('托福', 'GRE', 'TOEIC', 'SAT')) NOT NULL,
+    -- exam_type TEXT CHECK(exam_type IN ('TOEFL', 'GRE', 'TOEIC', 'SAT')) NOT NULL,
     exam_type TEXT NOT NULL,
+    content_md5 TEXT NOT NULL,
     status TEXT CHECK(status IN ('pending', 'processing', 'completed', 'failed')) NOT NULL DEFAULT 'pending',
     result TEXT, -- Stored as TEXT, you'll need to handle JSON parsing in your application
     error TEXT,
@@ -118,3 +119,6 @@ CREATE TABLE IF NOT EXISTS resources (
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- 为了方便查询，可以考虑添加索引 (保持不变)
+CREATE INDEX IF NOT EXISTS idx_resource_exam_type_content ON resources (exam_type, content_md5);

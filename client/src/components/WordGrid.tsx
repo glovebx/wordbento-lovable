@@ -30,6 +30,9 @@ interface WordGridProps {
   onNext: () => void;  
   // New prop: Ref object passed from parent to attach to the bento grid element
   bentoGridRef: RefObject<HTMLDivElement | null>; // <-- Add ref prop  
+  // New props: Callbacks to report dialog state changes
+  onShowImageDialogChange?: (isOpen: boolean) => void; // <-- New prop
+  onShowExampleDialogChange?: (isOpen: boolean) => void; // <-- New prop  
 }
 
 // Creates an animated word where each letter animates in sequence
@@ -58,7 +61,9 @@ const WordGrid: React.FC<WordGridProps> = ({
   onMasteredSuccess,
   onPrevious,
   onNext,
-  bentoGridRef
+  bentoGridRef,
+  onShowImageDialogChange, // <-- Receive new prop
+  onShowExampleDialogChange, // <-- Receive new prop  
  }) => {
 
   const { isAuthenticated } = useAuth();  
@@ -271,7 +276,10 @@ const WordGrid: React.FC<WordGridProps> = ({
       </div>      
 
         {/* Word Image - Centered in the page */}
-      <WordImageDisplay initialImageUrls={word.imageUrls} wordText={word.word_text} isWordLoading={isWordLoading}/>
+      <WordImageDisplay initialImageUrls={word.imageUrls} word={word} isWordLoading={isWordLoading}
+        onShowImageDialogChange={onShowImageDialogChange} // <-- Pass the callback
+        onShowExampleDialogChange={onShowExampleDialogChange} // <-- Pass the callback      
+      />
 
       <div className="bento-grid">
         {/* Definition Card */}

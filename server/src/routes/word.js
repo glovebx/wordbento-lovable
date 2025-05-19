@@ -547,8 +547,8 @@ function extractHttpLinks(text) {
   return links;
 }
 
-const generateImageByJiMengAi = async (c, word) => {
-  console.log(`Calling JiMeng AI for word: ${word}`);
+const generateImageByJiMengAi = async (c, word, example) => {
+  console.log(`Calling JiMeng AI for word: ${word} ${example}`);
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
 
@@ -556,9 +556,11 @@ const generateImageByJiMengAi = async (c, word) => {
   const GEMINI_API_ENDPOINT = c.env.JIMENG_API_ENDPOINT;
 
   try {
-    const prompt = `
-你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。
-              `;
+//     const prompt = `
+// 你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。
+//               `;
+
+const prompt = example && `"${example}"，根据这句话创作一张图片，要足够吸引眼球，加深对该单词的记忆。图片标题："${word}"，副标题"${example}"` || `你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。`
 
         const jsonData = {
           model: '',
@@ -975,9 +977,11 @@ word.post('/imagize', async (c) => {
   }
 
   let slug; // Removed type annotation
+  let example;
   try {
      const body = await c.req.json();
      slug = body.slug;
+     example = body.example || '';
   } catch (e) {
       console.error("Failed to parse request body:", e);
       return c.json({ message: 'Invalid JSON body' }, 400);
@@ -1037,8 +1041,9 @@ word.post('/imagize', async (c) => {
   //       return c.json({ message: 'Cannot generate data for empty slug.' }, 400);
   // }
   const wordToGenerate = slug.trim().toLowerCase();
+  const exampleToGenerate = example.trim();
 
-  const imageUrls = await generateImageByJiMengAi(c, wordToGenerate);
+  const imageUrls = await generateImageByJiMengAi(c, wordToGenerate, exampleToGenerate);
   // const imageUrls = ['https://p3-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/c0efd5fd4a414fbaab1232df5e876d6b~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=sGXKNhKHkj%2F2msIbhAQtcLlGNXk%3D&format=.jpeg', 
   //   'https://p9-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3bc050392177442ebed27dc883891b7a~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=uipvjRhc40XXAMDhIBEeO%2BEuit4%3D&format=.jpeg', 
   //   'https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/76b4331521494f5780d04c7682615124~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=Gnv%2Fp1XoAo5WqBYUWjIc%2BzoWHTQ%3D&format=.jpeg', 

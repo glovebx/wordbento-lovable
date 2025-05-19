@@ -56,7 +56,7 @@ const MasterButton: React.FC<MasterButtonProps> = ({ wordId, onMasteredSuccess, 
           toast({
             title: "成功",
             description: "单词已标记为已记牢。",
-            variant: "success",
+            variant: "default",
           });
           // Call the callback function provided by the parent component
           onMasteredSuccess();

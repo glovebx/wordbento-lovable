@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, unique } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, unique, index } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -49,13 +49,16 @@ export const resources = sqliteTable('resources', {
   source_type: text('source_type', { enum: ['url', 'article', 'pdf', 'image'] }).notNull(), // 'url' or 'article'
   content: text('content').notNull(), // The URL or article text
   exam_type: text('exam_type').notNull(), // Exam type
+  content_md5: text('content_md5').notNull(), // Exam type
   status: text('status', { enum: ['pending', 'processing', 'completed', 'failed'] }).notNull().default('pending'), // Task status
   result: text('result', { mode: 'json' }), // Store JSON result on completion
   error: text('error'), // Store error message on failure
   uuid: text("uuid").unique(),
   created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+    index('idx_resource_exam_type_content').on(table.exam_type, table.content_md5),
+]);
 
 export const archives = sqliteTable('archives', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),

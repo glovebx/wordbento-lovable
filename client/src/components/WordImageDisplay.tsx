@@ -4,10 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
-  // DialogHeader, // Not needed for a simple image dialog
-  // DialogFooter, // Not needed for a simple image dialog
-  // DialogTitle, // Not needed for a simple image dialog
-  // DialogDescription, // Not needed for a simple image dialog
+  DialogHeader, // Not needed for a simple image dialog
+  DialogFooter, // Not needed for a simple image dialog
+  DialogTitle, // Not needed for a simple image dialog
+  DialogDescription, // Not needed for a simple image dialog
 } from "@/components/ui/dialog"; // Adjust the import path
 import { AspectRatio } from "@/components/ui/aspect-ratio"; // Import AspectRatio
 
@@ -20,26 +20,36 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel"; // Adjust the import path
 
+// Import RadioGroup components for the new dialog
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label'; // Import Label for radio buttons
+
 import GeneratingFallback from '@/components/GeneratingFallback';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from './AuthModal';
 
 // Import the useGenerateImages hook
 import { useGenerateImages } from '@/hooks/use-generate-images'; // Adjust path as needed
-
+import { WordDataType } from '@/types/wordTypes';
 import { Button } from '@/components/ui/button'; // Import Button component
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'; // Import Loader icon
 
 interface WordImageDisplayProps {
   initialImageUrls: string[]; // Array of image URLs
-  wordText: string; // The word text, used for alt text
+  word: WordDataType;
   isWordLoading: boolean;
+
+  // New props: Callbacks to report dialog state changes
+  onShowImageDialogChange?: (isOpen: boolean) => void; // <-- New prop
+  onShowExampleDialogChange?: (isOpen: boolean) => void; // <-- New prop  
 }
 
 const WordImageDisplay: React.FC<WordImageDisplayProps> = ({ 
   initialImageUrls, 
-  wordText,
-  isWordLoading
+  word,
+  isWordLoading,
+  onShowImageDialogChange, // <-- Receive new prop
+  onShowExampleDialogChange, // <-- Receive new prop  
 }) => {
   // State to control the visibility of the image dialog
   const [showImageDialog, setShowImageDialog] = useState(false);
@@ -57,11 +67,31 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   // Use the useGenerateImages hook internally
   const { generateImages, isGeneratingImages, generationError } = useGenerateImages();
 
+    // State for the new example selection dialog
+  const [showExampleDialog, setShowExampleDialog] = useState(false);
+  const [selectedExample, setSelectedExample] = useState<string | null>(null); // State to hold the selected example string
+
   // Effect to update internal imageUrls state when initialImageUrls prop changes
   useEffect(() => {
     setImageUrls(initialImageUrls || []);
   }, [initialImageUrls]); // Dependency: initialImageUrls prop
 
+  // --- Effects to report dialog state changes ---
+  useEffect(() => {
+      if (onShowImageDialogChange) {
+        console.log(`showImageDialog ${showImageDialog}`)
+          onShowImageDialogChange(showImageDialog);
+      }
+  }, [showImageDialog, onShowImageDialogChange]); // Dependency: showImageDialog state
+
+  useEffect(() => {
+      if (onShowExampleDialogChange) {
+        console.log(`showExampleDialog ${showExampleDialog}`)
+          onShowExampleDialogChange(showExampleDialog);
+      }
+  }, [showExampleDialog, onShowExampleDialogChange]); // Dependency: showExampleDialog state
+  // --- End Effects ---
+    
   // Handler to open the image dialog and set the selected image
   const handleImageClick = useCallback((index: number) => {
     setSelectedImageIndex(index); // Set the index of the image to display in the dialog
@@ -76,22 +106,61 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   // };
 
   // Handler for the "Generate Images" button click
-  const handleGenerateButtonClick = async () => {
+  const handleGenerateButtonClick = useCallback(async () => {
     if (!isAuthenticated) {
       // If user is not authenticated, trigger the login prompt
       setShowAuthModal(true);
       return; // Stop here, wait for login
     }
 
-    // Call the parent-provided function to generate images
-    // The parent is responsible for making the API call and updating imageUrls state
-    const generatedUrls = await generateImages(wordText);
+    // // Call the parent-provided function to generate images
+    // // The parent is responsible for making the API call and updating imageUrls state
+    // const generatedUrls = await generateImages(word.word_text);
 
-    // If images were generated successfully, update the internal state
-    if (generatedUrls && generatedUrls.length > 0) {
-      setImageUrls(generatedUrls);
-    }      
-  };
+    // // If images were generated successfully, update the internal state
+    // if (generatedUrls && generatedUrls.length > 0) {
+    //   setImageUrls(generatedUrls);
+    // }  
+    // Check if English examples exist and are an array
+    const examples = word?.content?.examples?.en;
+    if (examples && Array.isArray(examples) && examples.length > 0) {
+      // If examples exist and are an array, open the example selection dialog
+      setShowExampleDialog(true);
+    } else {
+      // If no examples or not an array, proceed directly with image generation using just the word
+      console.log("No examples found or examples not in expected array format, generating image with word only.");
+      const generatedUrls = await generateImages(word.word_text, '');
+      if (generatedUrls && generatedUrls.length > 0) {
+        // setImageUrls(generatedUrls.map(img => img.url));
+        setImageUrls(generatedUrls);
+      }
+    }        
+  }, [isAuthenticated, generateImages, word]); // Added wordData dependency
+
+
+  // Handler when an example is selected in the dialog and confirmed
+  const handleExampleSelected = useCallback(async () => {
+      if (!selectedExample) {
+          console.warn("No example selected.");
+          // Optionally show a toast message
+          return;
+      }
+
+      setShowExampleDialog(false); // Close the example selection dialog
+      setSelectedExample(null); // Reset selected example state
+
+      console.log(`Generating image for word "${word.word_text}" with example: "${selectedExample}"`);
+
+      // Call the generateImages hook, passing the selected example
+      // Assuming the hook/backend is updated to handle this
+      const generatedUrls = await generateImages(word.word_text, selectedExample);
+
+      if (generatedUrls && generatedUrls.length > 0) {
+        // setImageUrls(generatedUrls.map(url => url));
+        setImageUrls(generatedUrls);
+      }
+  }, [generateImages, word, selectedExample]); // Dependencies: generateImages, wordText, selectedExample
+
 
   // --- Handlers for Dialog Navigation ---
   // Navigate to the previous image in the dialog
@@ -124,6 +193,9 @@ const handleNextImage = useCallback(() => {
   const isPreviousDisabled = selectedImageIndex === 0 || selectedImageIndex === null;
   // Next button is disabled if it's the last image or no image is selected
   const isNextDisabled = selectedImageIndex === imageUrls.length - 1 || selectedImageIndex === null;
+
+  // Get English examples for the dialog
+  const englishExamples = word?.content?.examples?.en || [];
 
   return (
     <>
@@ -179,7 +251,7 @@ const handleNextImage = useCallback(() => {
                     <AspectRatio ratio={16/9} className="bg-muted">
                       <img
                         src={url}
-                        alt={`Image ${index + 1} representing the word "${wordText}"`} // More specific alt text
+                        alt={`Image ${index + 1} representing the word "${word.word_text}"`} // More specific alt text
                         className="object-cover w-full h-full" // Cover the container
                       />
                     </AspectRatio>
@@ -204,7 +276,7 @@ const handleNextImage = useCallback(() => {
           {currentDialogImageUrl && ( // Only render img if a URL is selected
              <img
                src={currentDialogImageUrl} // Use the selected image URL
-               alt={`Enlarged image ${selectedImageIndex !== null ? selectedImageIndex + 1 : ''} for the word "${wordText}"`} // Alt text for enlarged image
+               alt={`Enlarged image ${selectedImageIndex !== null ? selectedImageIndex + 1 : ''} for the word "${word.word_text}"`} // Alt text for enlarged image
                className="object-contain w-full h-full max-h-[80vh]" // Use object-contain and max-height to fit
              />
           )}
@@ -247,6 +319,45 @@ const handleNextImage = useCallback(() => {
         </DialogContent>
       </Dialog>
 
+
+      {/* --- New: Example Selection Dialog --- */}
+      <Dialog open={showExampleDialog} onOpenChange={setShowExampleDialog}>
+          <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                  <DialogTitle>选择一个例句生成图片</DialogTitle>
+              </DialogHeader>
+              {englishExamples && Array.isArray(englishExamples) && englishExamples.length > 0 ? (
+                  <RadioGroup onValueChange={setSelectedExample} value={selectedExample || undefined} className="max-h-[300px] overflow-y-auto pr-4"> {/* Added max-height and overflow for scrolling */}
+                      {englishExamples.map((example: string, index: number) => (
+                          <div key={index} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer"> {/* Added styling */}
+                              <RadioGroupItem value={example} id={`example-${index}`} />
+                              <Label htmlFor={`example-${index}`} className="cursor-pointer text-base font-normal leading-relaxed"> {/* Adjusted font size and line height */}
+                                  {example}
+                              </Label>
+                          </div>
+                      ))}
+                  </RadioGroup>
+              ) : (
+                  <p className="text-center text-gray-500">没有找到英文例句。</p>
+              )}
+              <DialogFooter>
+                  <Button
+                      onClick={handleExampleSelected}
+                      disabled={!selectedExample || isGeneratingImages} // Disable if no example selected or generating
+                  >
+                      {isGeneratingImages ? (
+                          <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              生成中...
+                          </>
+                      ) : (
+                          "确定"
+                      )}
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+      {/* --- End: Example Selection Dialog --- */}
 
       <AuthModal 
         isOpen={showAuthModal}

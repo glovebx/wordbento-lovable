@@ -60,6 +60,22 @@ const Index = () => {
 
   // 调用自定义 Hook 获取缓存相关的状态和函数
   const { wordCache, fetchAndCacheWord, addToCache } = useWordCache();
+ 
+  // --- New States for Dialog Open Status ---
+  const [isImageDialogShowing, setIsImageDialogShowing] = useState(false); // <-- New state
+  const [isExampleDialogShowing, setIsExampleDialogShowing] = useState(false); // <-- New state
+ 
+  // --- New Callbacks to Update Dialog Status States ---
+  const handleImageDialogStateChange = useCallback((isOpen: boolean) => {
+      setIsImageDialogShowing(isOpen);
+      console.log(`Image Dialog is now: ${isOpen ? 'Open' : 'Closed'}`);
+  }, []);
+
+  const handleExampleDialogStateChange = useCallback((isOpen: boolean) => {
+      setIsExampleDialogShowing(isOpen);
+      console.log(`Example Dialog is now: ${isOpen ? 'Open' : 'Closed'}`);
+  }, []);
+  // --- End New States and Callbacks ---
 
   // 主要的 useEffect：负责获取当前单词数据
   useEffect(() => {
@@ -83,7 +99,7 @@ const Index = () => {
              description: `抱歉，无法加载单词 "${wordSlug}"。`,
              variant: "destructive",
           });
-           setWordData(null); // 确保数据为 null
+        //    setWordData(null); // 确保数据为 null
       }
       setIsWordLoading(false); // 无论成功或失败，主加载结束
     };
@@ -295,6 +311,17 @@ const handlePrevious = useCallback(async () => {
   // --- New useEffect for Keyboard Navigation ---
   useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
+          // Check if a dialog is currently open
+          if (isImageDialogShowing || isExampleDialogShowing) { // <-- Check dialog states
+              console.log("Dialog is open, keyboard navigation disabled.");
+              return; // Exit the handler if any dialog is open
+          }
+
+          // Disable keyboard navigation if word data or analysis is loading
+          if (isWordLoading || isAnalysisLoading) {
+              return;
+          }
+
           // Check if the user is currently typing in an input field
           // Get the active element
           const activeElement = document.activeElement;
@@ -303,11 +330,6 @@ const handlePrevious = useCallback(async () => {
 
           // If the user is typing, do not trigger navigation
           if (isTyping) {
-              return;
-          }
-
-          // Disable keyboard navigation if word data or analysis is loading
-          if (isWordLoading || isAnalysisLoading) {
               return;
           }
 
@@ -328,7 +350,7 @@ const handlePrevious = useCallback(async () => {
       return () => {
           window.removeEventListener('keydown', handleKeyDown);
       };
-  }, [isWordLoading, isAnalysisLoading, handlePrevious, handleNext]); // Dependencies: loading states and navigation handlers
+  }, [isWordLoading, isAnalysisLoading, handlePrevious, handleNext, isImageDialogShowing, isExampleDialogShowing]); // Dependencies: loading states and navigation handlers
   // --- End New useEffect for Keyboard Navigation ---
   
   // Function to clear the analysis result state
@@ -467,7 +489,7 @@ const handlePrevious = useCallback(async () => {
           );
       }
 
-      if (error) {
+      if (error && !wordData) {
           // 显示错误信息
            return (
               <div className="flex-1 flex items-center justify-center">
@@ -499,20 +521,24 @@ const handlePrevious = useCallback(async () => {
       return (
            <main className="flex-1">
               <AnalysisForm 
-              onSubmitAnalysis={startAnalysis} 
-              isWordLoading={isWordLoading}
-              isAnalysisLoading={isAnalysisLoading} 
-              analysisResult={analysisResult} 
-              onWordClick={handleSearch} 
-              onClearAnalysisResult={handleClearAnalysisResult}
-              onWordSearch={handleSearch}
-              currentWord={currentWord}/>
+                onSubmitAnalysis={startAnalysis} 
+                isWordLoading={isWordLoading}
+                isAnalysisLoading={isAnalysisLoading} 
+                analysisResult={analysisResult} 
+                onWordClick={handleSearch} 
+                onClearAnalysisResult={handleClearAnalysisResult}
+                onWordSearch={handleSearch}
+                currentWord={currentWord}
+              />
 
-              <WordGrid word={wordData} onMasteredSuccess={ handleNext } 
-              isWordLoading={isWordLoading}
-              onPrevious={handlePrevious} 
-              onNext={handleNext} 
-              bentoGridRef={bentoGridRef} // <-- Pass the ref here
+              <WordGrid word={wordData} 
+                onMasteredSuccess={ handleNext } 
+                isWordLoading={isWordLoading}
+                onPrevious={handlePrevious} 
+                onNext={handleNext} 
+                bentoGridRef={bentoGridRef} // <-- Pass the ref here
+                onShowImageDialogChange={handleImageDialogStateChange} // <-- Pass the callback
+                onShowExampleDialogChange={handleExampleDialogStateChange} // <-- Pass the callback              
               />
 
                     {/* Export Image Button - placed above the WordGrid */}

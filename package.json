@@ -29,6 +29,8 @@
       "@tailwindcss/oxide",
       "better-sqlite3",
       "esbuild",
+      "puppeteer",
+      "puppeteer-chromium-resolver",
       "sharp",
       "workerd"
     ]
