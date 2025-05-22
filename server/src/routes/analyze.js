@@ -10,7 +10,7 @@ import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 // The schema object itself is usually defined in a separate file and imported for drizzle initialization
 import * as schema from '../db/schema'; // Keep schema import for drizzle initialization
-import { sql, eq, and } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
+import { sql, eq, and, desc } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
 import { jsonrepair } from 'jsonrepair';
 import { cleanAiJsonResponse } from './word';
 import { calculateMD5 } from '../utils/passwords';
@@ -305,6 +305,46 @@ analyze.post('/', async (c) => {
       console.error("Failed to create analysis task in DB:", dbError);
       return c.json({ message: 'Failed to initiate analysis task.' }, 500);
   }
+});
+
+analyze.get('/history', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    // return c.json({ message: 'Forbidden' }, 403);
+    return c.json([], 200); // Return 200 OK for existing
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+  
+  try {
+      const existingResources = await db.select({
+          sourceType: schema.resources.source_type,
+          examType: schema.resources.exam_type,
+          content: schema.resources.content, 
+          result: schema.resources.result
+      })
+      .from(schema.resources)
+      .where(and(
+        eq(schema.resources.user_id, user.id), 
+        eq(schema.resources.status, 'completed'))
+        )
+      .orderBy(desc(schema.resources.id))
+      .limit(4);
+
+      if (existingResources.length > 0) {
+        existingResources.forEach(r => r.content = r.content.substring(0, 47) + '...');
+          // Record exists, return its UUID
+          console.log(`Existing resource found with length: ${existingResources.length}`);
+          return c.json(existingResources, 200); // Return 200 OK for existing
+      }
+
+  } catch (checkError) {
+      console.error("Failed to check for existing resource in DB:", checkError);
+      // Continue to insert if checking fails, or return an error depending on desired behavior
+      // For now, let's return an error if the check itself failed
+      return c.json({ message: 'Failed to check for existing resource.' }, 500);
+  }
+
 });
 
 // --- WebSocket Endpoint for Status Updates (New) ---

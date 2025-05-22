@@ -34,9 +34,9 @@ app.use(
 );
 
 // Public Routes
-const publicRoutes = ['/api/auth/register', '/api/auth/login', '/api/word/image', '/api/test/check-db', '/api/auth/session', '/api/test-kv-direct', '/api/analyze', '/ws/analyze'];
+const publicRoutes = ['/api/auth/register', '/api/auth/login', '/api/word/image', '/api/test/check-db', '/api/auth/session', '/api/test-kv-direct', '/ws/analyze'];
 // 如果不登录则用public，否则用登录用户信息
-const publicButPrivateRoutes = ['/api/word/search'];
+const publicButPrivateRoutes = ['/api/word/search', '/api/analyze/history'];
 
 // Authentication Middleware
 app.use('/api/*', async (c, next) => {
@@ -61,7 +61,7 @@ app.use('/api/*', async (c, next) => {
   console.log('Session ID from Cookie:', sessionId);
 
   if (!sessionId) {
-    if (!publicButPrivateRoutes.every(route => c.req.path.startsWith(route))) {
+    if (!publicButPrivateRoutes.some(route => c.req.path.startsWith(route))) {
       console.warn('No session ID found in cookies.');
       return c.json({ message: 'Unauthorized: Missing session ID' }, 401);  
     }

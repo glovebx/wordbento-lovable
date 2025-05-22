@@ -179,6 +179,29 @@ const handleNextImage = useCallback(() => {
     }
 }, [selectedImageIndex, imageUrls.length]); // Dependencies: selectedImageIndex, imageUrls.length
 
+// --- New useEffect for Keyboard Navigation ---
+  useEffect(() => {
+      const handleKeyDown = (event: KeyboardEvent) => {
+          // Handle arrow key presses
+          if (event.key === 'ArrowLeft') {
+              event.preventDefault(); // Prevent default browser scroll behavior
+              handlePreviousImage(); // Call the previous word handler
+          } else if (event.key === 'ArrowRight') {
+              event.preventDefault(); // Prevent default browser scroll behavior
+              handleNextImage(); // Call the next word handler
+          }
+      };
+
+      // Add the event listener to the window
+      window.addEventListener('keydown', handleKeyDown);
+
+      // Clean up the event listener when the component unmounts
+      return () => {
+          window.removeEventListener('keydown', handleKeyDown);
+      };
+  }, [handlePreviousImage, handleNextImage]); // Dependencies: loading states and navigation handlers
+  // --- End New useEffect for Keyboard Navigation ---
+
   // Determine if we should show the "Generate Images" button
   const showGenerateButton = (!imageUrls || imageUrls.length === 0) && !isGeneratingImages;
   // Determine if we should show the Carousel

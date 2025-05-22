@@ -359,6 +359,11 @@ const handlePrevious = useCallback(async () => {
     console.log("Analysis result cleared.");
   }, []); // No dependencies needed as it just sets state to null
 
+  const handleManualAnalysisResult = useCallback((words: string) => {
+    setAnalysisResult({words: JSON.parse(words)});
+    console.log("Analysis result reset manually.");
+  }, []); // No dependencies needed as it just sets state to null
+
    // --- New: Handle Export Image ---
     const handleExportImage = useCallback(async () => {
         // Check if the bento grid element is available via the ref
@@ -527,6 +532,7 @@ const handlePrevious = useCallback(async () => {
                 analysisResult={analysisResult} 
                 onWordClick={handleSearch} 
                 onClearAnalysisResult={handleClearAnalysisResult}
+                onManualAnalysisResult={handleManualAnalysisResult}
                 onWordSearch={handleSearch}
                 currentWord={currentWord}
               />

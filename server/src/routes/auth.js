@@ -149,6 +149,8 @@ auth.get('/session', async (c) => {
       console.warn('Session not found for session_id:', sessionId);
       return c.json({ user: null }, 200);
     }
+    // 删除user_id
+    delete sessionData.id;
     console.log('Session data found:', sessionData); // Debug log
     return c.json({ user: sessionData }, 200);
   } catch (err) {

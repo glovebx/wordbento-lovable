@@ -15,6 +15,7 @@ import {
 import GridCard from './GridCard';
 import WordImageDisplay from './WordImageDisplay';
 import PronunciationButton from './PronunciationButton';
+import TtsPronunciationButton from './TtsPronunciationButton';
 import { WordDataType } from '@/types/wordTypes';
 import MasterButton from './MasterButton'; // Adjust the import path
 import { Button } from '@/components/ui/button';
@@ -112,7 +113,8 @@ const WordGrid: React.FC<WordGridProps> = ({
                     <h1 className="text-5xl font-bold tracking-tight">
                       <AnimatedWord word={word.word_text} />
                     </h1>
-                    <PronunciationButton word={word.word_text} className="mt-1 export-hide" />
+                    {/* <PronunciationButton word={word.word_text} className="mt-1 export-hide" /> */}
+                    <TtsPronunciationButton word={word.word_text} example={word.content.examples && Array.isArray(word.content.examples.en) ? word.content.examples.en[0] : ''} className="mt-1 export-hide" />
                     {isAuthenticated && (
                       <MasterButton
                         wordId={word.id}
@@ -144,7 +146,8 @@ const WordGrid: React.FC<WordGridProps> = ({
                     <h1 className="text-5xl font-bold tracking-tight">
                       <AnimatedWord word={word.word_text} />
                     </h1>
-                    <PronunciationButton word={word.word_text} className="mt-1 export-hide" />
+                    {/* <PronunciationButton word={word.word_text} className="mt-1 export-hide" /> */}
+                    <TtsPronunciationButton word={word.word_text} example={word.content.examples && Array.isArray(word.content.examples.en) ? word.content.examples.en[0] : ''} className="mt-1 export-hide" />
                     {isAuthenticated && (
                       <MasterButton
                         wordId={word.id}

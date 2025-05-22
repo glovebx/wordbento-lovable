@@ -42,6 +42,12 @@ export const images = sqliteTable('images', {
   image_key: text('image_key').notNull()
 });
 
+export const videos = sqliteTable('videos', {
+  id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
+  word_id: integer('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
+  video_key: text('video_key').notNull()
+});
+
 // Schema for resources
 export const resources = sqliteTable('resources', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
@@ -59,6 +65,15 @@ export const resources = sqliteTable('resources', {
 }, (table) => [
     index('idx_resource_exam_type_content').on(table.exam_type, table.content_md5),
 ]);
+
+export const attachments = sqliteTable('attachments', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  resource_id: integer('resource_id').notNull().references(() => resources.id, { onDelete: 'cascade' }), // 定义外键和级联删除
+  audio_key: text('audio_key').notNull(),
+  video_key: text('video_key'),
+  caption_txt: text('caption_txt').notNull(),
+  caption_srt: text('caption_srt'),
+});
 
 export const archives = sqliteTable('archives', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),

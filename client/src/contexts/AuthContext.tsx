@@ -150,9 +150,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return false;
   };  
 
-  const logout = () => {
-    setUser(null);
-    setBookmarks([]);
+  const logout = async () => {
+    // setUser(null);
+    // setBookmarks([]);
+      try {
+        const response = await axiosPrivate.post('/api/auth/logout');
+        console.log('Response headers:', response.headers);
+        console.log('Response body:', response.data);
+
+        // setUser(null);
+        console.log('logout successfully.');
+      } catch (error) {
+          console.error('Failed to logout:', error);
+          // setUser(null);
+      } finally {
+          setUser(null);
+          setBookmarks([]);
+      }    
   };
 
   const toggleBookmark = (id: string) => {

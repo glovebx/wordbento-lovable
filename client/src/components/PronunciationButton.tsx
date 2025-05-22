@@ -72,7 +72,7 @@ const PronunciationButton: React.FC<PronunciationButtonProps> = ({
     <button
       onClick={speakText}
       className={cn(
-        'rounded-full p-2 transition-all rounded-full bg-green-500 text-white hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition duration-200 ease-in-out',
+        'rounded-full p-2 transition-all bg-green-500 text-white hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 duration-200 ease-in-out',
         isPlaying ? 'bg-primary/10 text-primary' : 'hover:bg-primary/5',
         className
       )}

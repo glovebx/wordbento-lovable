@@ -11,6 +11,7 @@
     "push:migration": "drizzle-kit push --db ./drizzle/sqlite.db"
   },
   "dependencies": {
+    "@andresaya/edge-tts": "^1.2.4",
     "@libsql/client": "^0.15.6",
     "@tsndr/cloudflare-worker-jwt": "^3.1.5",
     "better-sqlite3": "11.10.0",

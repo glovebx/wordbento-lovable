@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,13 +8,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod'; // Import zodResolver
 import { z } from 'zod'; // Import zod for schema definition
-import { Loader2, XCircle, Search } from 'lucide-react';
+import { Loader2, XCircle, Search, Clock } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils'; // Import cn for conditional class names
 
 import LoadingFallback from '@/components/LoadingFallback';
 // Import the AnalysisData interface
 import { AnalysisData, AnalysisResult } from '@/types/analysisTypes';
+import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis';
 
 
 // Define Zod schema for validation
@@ -45,6 +46,7 @@ interface AnalysisFormProps {
   onWordClick: (word: string) => void;
   // New prop: Function to clear the analysis result
   onClearAnalysisResult: () => void;  
+  onManualAnalysisResult: (words: string) => void;
   onWordSearch: (word: string) => void;
   currentWord: string;  
 }
@@ -56,11 +58,24 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   analysisResult, 
   onWordClick, 
   onClearAnalysisResult, 
+  onManualAnalysisResult,
   onWordSearch, 
   currentWord }) => {
   // sourceType state is still useful for conditionally rendering Input/Textarea
   const [sourceType, setSourceType] = useState<'url' | 'article'>('url');
   const [searchInput, setSearchInput] = useState('');
+  // 这里出错的话会导致页面无线循环刷新！！
+  const { recentSubmissions, isLoading: isLoadingHistory } = useRecentAnalysis();
+  const [words, setWords] = useState<string[]>([]); // State for words
+
+  // Use useEffect to update words when analysisResult changes
+  useEffect(() => {
+    if (analysisResult?.words) {
+      setWords(analysisResult.words);
+    } else {
+      setWords([]);
+    }
+  }, [analysisResult]); // Dependency array: re-run when analysisResult changes
 
   // Initialize react-hook-form with Zod resolver
   const form = useForm<AnalysisData>({
@@ -86,6 +101,9 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   // The onSubmit handler now just calls the parent's onSubmitAnalysis prop
   const onSubmit = (data: AnalysisData) => {
     onSubmitAnalysis(data); // Call the function provided by the parent component
+
+    // // Add to recent submissions
+    // addSubmission({ sourceType: data.sourceType, content: data.content, result: '' });    
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -95,8 +113,20 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
     }
   };
 
-  // Extract word list from analysisResult if available
-  const words = analysisResult?.words;
+  // const truncateContent = (content: string, maxLength: number = 50) => {
+  //   if (content.length <= maxLength) return content;
+  //   return content.substring(0, maxLength) + '...';
+  // };
+
+  // // Extract word list from analysisResult if available
+  // let words = analysisResult?.words;
+
+  const handleAnalysisManualResult = (submission: Submission) => {
+    if (submission.result && submission.result.startsWith("[")) {
+      // setWords(JSON.parse(submission.result))
+      onManualAnalysisResult(submission.result);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto px-4 mb-8 mt-4">
@@ -261,10 +291,41 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                   </FormItem>
                 )}
               />
+
+              {/* Recent Submissions - Flow Layout */}
+              <div className="mt-4">
+                {isLoadingHistory ? (
+                  <div className="py-4 flex justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : recentSubmissions.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {recentSubmissions.map((submission, index) => (
+                      <div 
+                        key={index}
+                        className="py-1.5 px-2.5 text-xs bg-muted/50 rounded-md flex items-center cursor-pointer hover:bg-muted/80 transition-colors max-w-full"
+                        onClick={() => handleAnalysisManualResult(submission)}
+                      >
+                        <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs mr-1.5 whitespace-nowrap">
+                          {submission.sourceType === 'url' ? 'URL' : '文章'}
+                        </span>
+                        <span className="truncate hover:text-primary transition-colors">
+                          {submission.content}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div/>
+                  // <div className="py-3 px-3 text-sm text-muted-foreground bg-muted/50 rounded-md">
+                  //   暂无历史提交记录
+                  // </div>
+                )}
+              </div>
             </form>
 
             {/* Display the word list if analysisResult is available and contains a wordList */}
-            {analysisResult && words && Array.isArray(words) && words.length > 0 && (
+            {words && Array.isArray(words) && words.length > 0 && (
                 <div className="container mx-auto px-4 py-4"> {/* Added padding */}
                     <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-semibold text-muted-foreground mb-0">提取的单词:</h3>

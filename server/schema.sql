@@ -102,6 +102,15 @@ CREATE TABLE IF NOT EXISTS images (
     FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE
 );
 
+-- videos 表：存储单词关联的AI视频
+CREATE TABLE IF NOT EXISTS videos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    word_id INTEGER NOT NULL,       -- 外键，关联到 words 表的 id
+    video_key TEXT NOT NULL,        -- R2 中的视频的key
+
+    FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS resources (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -122,3 +131,16 @@ CREATE TABLE IF NOT EXISTS resources (
 
 -- 为了方便查询，可以考虑添加索引 (保持不变)
 CREATE INDEX IF NOT EXISTS idx_resource_exam_type_content ON resources (exam_type, content_md5);
+
+-- attachments 表：存储解析资源关联的音频和字幕
+CREATE TABLE IF NOT EXISTS attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    resource_id INTEGER NOT NULL,       -- 外键，关联到 resources 表的 id
+    audio_key TEXT NOT NULL,            -- R2 中的音频文件的key
+    video_key TEXT,                     -- R2 中的视频文件的key
+    caption_txt TEXT NOT NULL,          -- 字幕文字稿，不带时间戳
+    caption_srt TEXT,                   -- 字幕，带时间戳
+
+    FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE CASCADE
+);
+
