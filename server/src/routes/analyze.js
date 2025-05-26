@@ -179,7 +179,7 @@ URL如下：${analysisData.content}`;
 
       const jsonStr = cleanAiJsonResponse(messageContent)
 
-      const repairedStr = jsonrepair(jsonStr)
+      const repairedStr = jsonrepair(jsonStr.toLowerCase())
       console.log(`repairedStr: ${repairedStr}`);
 
       const jsonWords = JSON.parse(repairedStr);
@@ -193,9 +193,311 @@ URL如下：${analysisData.content}`;
   }
 };
 
+const extractWordsByScraper = async (c, url) => {
+  console.log(`Calling Youtube Scraper API for url: ${url}`);
+  // This is a placeholder. You need to replace this with your actual API call.
+  // Example using fetch:
+
+  const YOUTUBE_SCRAPER_ENDPOINT = c.env.YOUTUBE_SCRAPER_ENDPOINT + '/analyze-youtube-http'
+
+  try {
+
+      const jsonData = { url: url };
+
+      const response = await fetch(YOUTUBE_SCRAPER_ENDPOINT, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(jsonData),
+      });
+
+      if (!response.ok) {
+          console.error(`Youtube Scraper API call failed: ${response.status} ${response.statusText}`);
+          return null;
+      }
+
+      const data = await response.json(); // No type assertion needed in JS
+      // console.log(data);
+
+      // 2. Check if the 'choices' array exists and is not empty
+      if (!data.task_id) {
+        console.error("Youtube Scraper API call failed: Response does not contain task_id.");
+        // Handle this case
+        // You might want to log the full response here to debug what was received
+        console.log("Full response:", data);
+        return null; // Or throw an error
+      }
+
+      return data;
+
+  } catch (error) {
+      console.error('Network error calling Youtube Scraper API:', error);
+      return null;
+  }
+};
+
+const pollingStatusFromScraper = async (c, taskId) => {
+  console.log(`Calling Youtube Scraper Polling API for taskId: ${taskId}`);
+  // This is a placeholder. You need to replace this with your actual API call.
+  // Example using fetch:
+
+  const YOUTUBE_SCRAPER_POLLING_ENDPOINT = c.env.YOUTUBE_SCRAPER_ENDPOINT + '/tasks/' + taskId;
+
+  try {
+
+      const response = await fetch(YOUTUBE_SCRAPER_POLLING_ENDPOINT, {
+          method: 'GET',
+          headers: {
+              'Content-Type': 'application/json',
+          }
+      });
+
+      if (!response.ok) {
+          console.error(`Youtube Scraper Polling API call failed: ${response.status} ${response.statusText}`);
+          return null;
+      }
+
+      const data = await response.json(); // No type assertion needed in JS
+      console.log(`pollingStatusFromScraper ${JSON.stringify(data)}`);
+
+      // 2. Check if the 'choices' array exists and is not empty
+      if (!data.task_id) {
+        console.error("Youtube Scraper Polling API call failed: Response does not contain task_id.");
+        // Handle this case
+        // You might want to log the full response here to debug what was received
+        console.log("Full response:", data);
+        return null; // Or throw an error
+      }
+
+      return data;
+
+  } catch (error) {
+      console.error('Network error calling Youtube Scraper Polling API:', error);
+      return null;
+  }
+};
+
+const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
+  console.log(`Calling Youtube Scraper SRT API for taskId: ${task.uuid}`);
+  // This is a placeholder. You need to replace this with your actual API call.
+  // Example using fetch:
+
+  const YOUTUBE_SCRAPER_SRT_ENDPOINT = c.env.YOUTUBE_SCRAPER_ENDPOINT + '/tasks/' + task.uuid + '/srt';
+
+  try {
+
+      const response = await fetch(YOUTUBE_SCRAPER_SRT_ENDPOINT, {
+          method: 'GET',
+        //   headers: {
+        //       'Content-Type': 'application/octet-stream',
+        //   }
+      });
+
+      if (!response.ok) {
+          console.error(`Youtube Scraper SRT API call failed: ${response.status} ${response.statusText}`);
+          return null;
+      }
+
+    // --- Add this line to convert the response body to a string ---
+    const srtContent = await response.text();
+    console.log("SRT Content Received:");
+    console.log(srtContent);
+    // -----------------------------------------------------------
+    if (srtContent) {
+        try {
+
+            const existingAttachments = await db.select({
+                id: schema.attachments.id
+            })
+            .from(schema.attachments)
+            .where(
+                and(
+                    eq(schema.attachments.resource_id, task.id),
+                )
+            )
+            .limit(1); // We only need to find one match
+            
+            if (existingAttachments.length > 0) {
+                await db.update(schema.attachments)
+                    .set({
+                        caption_txt: srtContent
+                    })
+                    .where(eq(schema.attachments.id, existingAttachments[0].id));
+            } else {
+                const insertedResult = await db.insert(schema.attachments).values({
+                    resource_id: task.id, // Associate with public user ID 0
+                    caption_txt: srtContent,
+                })
+                // Use .returning() in Drizzle for D1 to get the inserted row
+                .returning()
+                .get(); // .get() for a single row
+
+                // Check if insertion was successful and returned a row
+                if (!insertedResult) {
+                    throw new Error("Failed to insert srt into table or get inserted row.");
+                }
+            }
+        } catch (dbError) { // Removed type annotation
+            console.error(`Database transaction failed for task "${task.uuid}":`, dbError);
+        }
+    }
+
+    const analysisData = {
+        souceType: 'article',
+        content: srtContent,
+        examType: examType,
+    }
+
+    await simulateAnalysisTask(c, task.uuid, db, analysisData);
+
+  } catch (error) {
+      console.error('Network error calling Youtube Scraper SRT API:', error);
+    //   return null;
+  }
+};
+
+const getAudioFromScraperThenExtractWords = async (c, db, task, examType) => {
+  console.log(`Calling Youtube Scraper Audio API for taskId: ${task.uuid}`);
+  // This is a placeholder. You need to replace this with your actual API call.
+  // Example using fetch:
+
+  const YOUTUBE_SCRAPER_SRT_ENDPOINT = c.env.YOUTUBE_SCRAPER_ENDPOINT + '/tasks/' + task.uuid + '/audio';
+
+  try {
+
+      const response = await fetch(YOUTUBE_SCRAPER_SRT_ENDPOINT, {
+          method: 'GET',
+        //   headers: {
+        //       'Content-Type': 'application/octet-stream',
+        //   }
+      });
+
+      if (!response.ok) {
+          console.error(`Youtube Scraper Audio API call failed: ${response.status} ${response.statusText}`);
+          return null;
+      }
+
+    // --- Get the MP3 file as a Blob or ArrayBuffer ---
+    const audioBlob = await response.blob(); // Get the response body as a Blob
+    // Or, if you prefer ArrayBuffer: const audioBuffer = await response.arrayBuffer();
+    console.log(`Received audio blob of size: ${audioBlob.size} bytes`);
+
+    // --- Extract filename from Content-Disposition header ---
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let originalFilename = `wordbento-${task.uuid}.mp3`; // Fallback filename
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;=\n]*)/);
+      if (filenameMatch && filenameMatch[1]) {
+        originalFilename = filenameMatch[1].replace(/['"]/g, ''); // Remove quotes if present
+      }
+      // Handle UTF-8 encoded filenames (filename*=UTF-8'') if your server sends them
+      const filenameUtf8Match = contentDisposition.match(/filename\*=UTF-8''([^;=\n]*)/i);
+      if (filenameUtf8Match && filenameUtf8Match[1]) {
+        try {
+          originalFilename = decodeURIComponent(filenameUtf8Match[1]);
+        } catch (e) {
+          console.warn('Failed to decode UTF-8 filename from Content-Disposition', e);
+        }
+      }
+    }
+
+    console.log(`Decode audio filename from Content-Disposition ${originalFilename}`);
+
+    // 保存到r2
+    // Start a database transaction for inserting into multiple tables
+    try {
+    //   const objectKey = originalFilename
+      const objectPath = originalFilename
+      // const imageMimeType = 'image/png';
+      // Upload the binary data to R2
+      // The put method takes the object key, the data, and optional options like contentType
+      const r2Object = await c.env.WORDBENTO_R2.put(objectPath, audioBlob, {
+        contentType: 'audio/mpeg' //|| 'application/octet-stream', // Set the MIME type
+        // Add other options here if needed, e.g., customMetadata, httpMetadata
+        // httpMetadata: {
+        //     cacheControl: 'max-age=31536000', // Example: Cache for 1 year
+        // },
+      });
+
+      let r2ObjectKey;
+      if (r2Object) {
+          console.log(`Audio stored successfully in R2 with key: ${r2Object.key}`);
+          // Return the key of the stored object
+          r2ObjectKey = r2Object.key;
+      } else {
+           console.error("Failed to upload Audio to R2.");
+          //  return c.json({ message: `Failed to upload image for "${wordToGenerate}".` }, 500);
+          throw new Error("Failed to upload Audio to R2.");
+      }      
+
+      const existingAttachments = await db.select({
+        id: schema.attachments.id
+      })
+      .from(schema.attachments)
+      .where(
+          and(
+              eq(schema.attachments.resource_id, task.id),
+          )
+      )
+      .limit(1); // We only need to find one match
+
+      if (existingAttachments.length > 0) {
+        await db.update(schema.attachments)
+            .set({
+                audio_key: r2ObjectKey
+            })
+            .where(eq(schema.attachments.id, existingAttachments[0].id));
+      } else {
+        const insertedResult = await db.insert(schema.attachments).values({
+            resource_id: task.id, // Associate with public user ID 0
+            audio_key: r2ObjectKey,
+        })
+        // Use .returning() in Drizzle for D1 to get the inserted row
+        .returning()
+        .get(); // .get() for a single row
+
+        // Check if insertion was successful and returned a row
+        if (!insertedResult) {
+            throw new Error("Failed to insert audio into table or get inserted row.");
+        }
+    }
+    console.log(`Task "${task.uuid}" audio inserted successfully.`);
+
+    } catch (dbError) { // Removed type annotation
+        console.error(`Database transaction failed for task "${task.uuid}":`, dbError);
+    }
+
+
+  } catch (error) {
+      console.error('Network error calling Youtube Scraper Audio API:', error);
+    //   return null;
+  }
+};
+
+const isYouTubeLinkRegex = function(url) {
+  if (typeof url !== 'string' || url.trim() === '') {
+    return false;
+  }
+
+  // Regex for various YouTube URL formats
+  // - youtube.com (with optional www, m, music, gaming subdomains)
+  // - youtu.be
+  // - Handles http/https, optional query parameters
+  const youtubeRegex = /^(https?:\/\/)?(www\.|m\.|music\.|gaming\.)?(youtube\.com|youtu\.be)\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)/i;
+
+  return youtubeRegex.test(url);
+};
 
 // --- Analysis Task Submission Route (New) ---
 analyze.post('/', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+    // return c.json([], 200); // Return 200 OK for existing
+  }
+
   const db = drizzle(c.env.DB, { schema });
   let analysisData;
 
@@ -224,7 +526,7 @@ analyze.post('/', async (c) => {
   }
 
   // TODO: Get authenticated user ID (replace with actual auth logic)
-  const userId = 0; // Placeholder for public user or replace with actual user ID
+  const userId = user.id; // Placeholder for public user or replace with actual user ID
 
   // 2. Clean the content by removing leading/trailing whitespace (including newlines)
   const cleanedContent = analysisData.content.trim();
@@ -244,10 +546,14 @@ analyze.post('/', async (c) => {
       return c.json({ message: 'Failed to process content hash.' }, 500);
   }
 
+  // youtube链接需要额外处理
+    const isYoutube = isYouTubeLinkRegex(cleanedContent);
+
   // 3. Check if a record with the same exam_type and content_md5 already exists
   try {
-      const existingResource = await db.select({
-          uuid: schema.resources.uuid // Select only the uuid
+      const existingResources = await db.select({
+        status: schema.resources.status,
+        uuid: schema.resources.uuid // Select only the uuid
       })
       .from(schema.resources)
       .where(
@@ -258,10 +564,14 @@ analyze.post('/', async (c) => {
       )
       .limit(1); // We only need to find one match
 
-      if (existingResource.length > 0) {
-          // Record exists, return its UUID
-          console.log(`Existing resource found with UUID: ${existingResource[0].uuid}`);
-          return c.json({ uuid: existingResource[0].uuid }, 200); // Return 200 OK for existing
+      if (existingResources.length > 0) {
+        console.log(`existingResources: ${isYoutube}, ${JSON.stringify(existingResources[0])}`)
+        if (!isYoutube || (existingResources[0].status == 'completed' || existingResources[0].status == 'failed')) {
+            console.log('45678909876545678');
+             // Record exists, return its UUID
+            console.log(`Existing resource found with UUID: ${existingResources[0].uuid}`);
+            return c.json({ uuid: existingResources[0].uuid }, 200); // Return 200 OK for existing
+        }
       }
 
   } catch (checkError) {
@@ -271,9 +581,24 @@ analyze.post('/', async (c) => {
       return c.json({ message: 'Failed to check for existing resource.' }, 500);
   }
 
-  // 2. Create a new task in the database
-  const taskId = crypto.randomUUID(); // Generate a unique task ID
   try {
+    let taskId;
+    if (isYoutube) {
+        // 如果是youtube链接，需要额外处理
+        const scraperResult = await extractWordsByScraper(c, cleanedContent)
+        if (!scraperResult) {
+            return c.json({ message: 'Failed to initiate youtube analysis task1.' }, 500);    
+        }
+        console.log(scraperResult);
+        taskId = scraperResult.task_id;
+        if (!taskId) {
+            return c.json({ message: 'Failed to initiate youtube analysis task2.' }, 500);    
+        }
+    } else {  
+        // 2. Create a new task in the database
+        taskId = crypto.randomUUID(); // Generate a unique task ID
+    } 
+
       await db.insert(schema.resources).values({
           user_id: userId,
           source_type: analysisData.sourceType,
@@ -294,9 +619,11 @@ analyze.post('/', async (c) => {
       // Example: send a message to a queue, or trigger a separate worker process
       // await c.env.TASK_QUEUE.send({ taskId: taskId, data: analysisData }); // Example using a queue binding
 
-      // For this example, we'll simulate the task completion in a few seconds
-      // In a real app, the background process would do this.
-      await simulateAnalysisTask(c, taskId, db, { ...analysisData, content: cleanedContent }); // Call simulation function
+      if (!isYoutube) {
+        // For this example, we'll simulate the task completion in a few seconds
+        // In a real app, the background process would do this.
+        await simulateAnalysisTask(c, taskId, db, { ...analysisData, content: cleanedContent }); // Call simulation function
+      }
 
       // 4. Return the task ID to the client
       return c.json({ uuid: taskId }, 201); // 201 Created
@@ -318,12 +645,20 @@ analyze.get('/history', async (c) => {
   
   try {
       const existingResources = await db.select({
+        uuid: schema.resources.uuid,
           sourceType: schema.resources.source_type,
           examType: schema.resources.exam_type,
           content: schema.resources.content, 
-          result: schema.resources.result
+          result: schema.resources.result,
+          audioKey: schema.attachments.audio_key,
+          captionSrt: schema.attachments.caption_srt,
       })
       .from(schema.resources)
+        .leftJoin(schema.attachments,
+            and(
+                eq(schema.attachments.resource_id, schema.resources.id)
+            )
+        )      
       .where(and(
         eq(schema.resources.user_id, user.id), 
         eq(schema.resources.status, 'completed'))
@@ -332,7 +667,11 @@ analyze.get('/history', async (c) => {
       .limit(4);
 
       if (existingResources.length > 0) {
-        existingResources.forEach(r => r.content = r.content.substring(0, 47) + '...');
+        existingResources.forEach(r => {
+            r.content = r.content.substring(0, 47) + '...';
+            r.audioKey = !!r.audioKey;
+            r.captionSrt = !!r.captionSrt;
+        });
           // Record exists, return its UUID
           console.log(`Existing resource found with length: ${existingResources.length}`);
           return c.json(existingResources, 200); // Return 200 OK for existing
@@ -345,6 +684,151 @@ analyze.get('/history', async (c) => {
       return c.json({ message: 'Failed to check for existing resource.' }, 500);
   }
 
+});
+
+// 获取资源关联的音频
+analyze.get('/audio/:uuid', async (c) => {
+  // // Ensure the request has a JSON body
+  // if (!c.req.header('Content-Type')?.includes('application/json')) {
+  //     return c.json({ message: 'Invalid Content-Type, expected application/json' }, 415);
+  // }
+
+  console.log('Attempting to retrieve audio from local R2');
+
+  const uuid = c.req.param('uuid');
+  // If objectKey is empty, it's a bad request
+  if (!uuid) {
+    return new Response('Bad Request: Missing uuid.', { status: 400 });
+  }  
+
+  console.log(`Attempting to retrieve audio from local R2 with uuid: "${uuid}"`);
+
+  const db = drizzle(c.env.DB, { schema });
+  try {
+      const existingResources = await db.select({
+        id: schema.resources.id,
+      })
+      .from(schema.resources)
+      .where(eq(schema.resources.uuid, uuid))
+      .limit(1); // We only need to find one match
+
+    if (existingResources.length == 0) {
+        return new Response('Bad Request: Invalid uuid.', { status: 400 });
+    }
+
+    const resourceId = existingResources[0].id;
+
+    const existingAttachments = await db.select({
+        audio_key: schema.attachments.audio_key,
+    })
+    .from(schema.attachments)
+    .where(eq(schema.attachments.resource_id, resourceId))
+    .limit(1); // We only need to find one match    
+
+    if (existingAttachments.length == 0) {
+        return new Response('Bad Request: Invalid uuid.', { status: 400 });
+    }    
+
+    const objectKey = existingAttachments[0].audio_key;
+
+    // console.log(`Attempting to retrieve audio from local R2 with objectKey: "${objectKey}"`);
+
+    // Get the object from the R2 bucket
+    const object = await c.env.WORDBENTO_R2.get(objectKey);
+
+    // Check if the object exists
+    if (object === null) {
+      console.warn(`audio not found in local R2: "${objectKey}"`);
+      return new Response('Not Found', { status: 404 });
+    }
+
+    console.log(`Successfully retrieved audio "${object.httpMetadata}" from local R2.`);
+
+    // Return the image data with the correct content type
+    // We clone the headers to avoid modifying the original object headers
+    const headers = new Headers(object.httpMetadata);
+    headers.set('ETag', object.etag); // Include ETag for caching
+
+    // Add CORS headers if your frontend is on a different origin during local development
+    headers.set('Access-Control-Allow-Origin', '*'); // Allow all origins for local testing
+    headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', '*'); // Allow all headers
+    // 必须加上，否则客户端拖拽有问题
+    headers.set('Accept-Ranges', 'bytes');
+
+    return new Response(object.body, {
+      status: 200, // HTTP status code 200 OK
+      headers: headers,
+    });
+
+  } catch (error) {
+    console.error(`Error retrieving audio "${uuid}" from local R2:`, error);
+    return new Response('Internal Server Error: Failed to retrieve audio.', { status: 500 });
+  }
+});
+
+// 获取资源关联的字幕
+analyze.get('/srt/:uuid', async (c) => {
+  // // Ensure the request has a JSON body
+  // if (!c.req.header('Content-Type')?.includes('application/json')) {
+  //     return c.json({ message: 'Invalid Content-Type, expected application/json' }, 415);
+  // }
+
+  console.log('Attempting to retrieve srt from DB');
+
+  const uuid = c.req.param('uuid');
+  // If objectKey is empty, it's a bad request
+  if (!uuid) {
+    return new Response('Bad Request: Missing uuid.', { status: 400 });
+  }  
+
+  console.log(`Attempting to retrieve srt from DB with uuid: "${uuid}"`);
+
+  const db = drizzle(c.env.DB, { schema });
+  try {
+      const existingResources = await db.select({
+        id: schema.resources.id,
+      })
+      .from(schema.resources)
+      .where(eq(schema.resources.uuid, uuid))
+      .limit(1); // We only need to find one match
+
+    if (existingResources.length == 0) {
+        return new Response('Bad Request: Invalid uuid.', { status: 400 });
+    }
+
+    const resourceId = existingResources[0].id;
+
+    const existingAttachments = await db.select({
+        caption_srt: schema.attachments.caption_srt,
+    })
+    .from(schema.attachments)
+    .where(eq(schema.attachments.resource_id, resourceId))
+    .limit(1); // We only need to find one match    
+
+    if (existingAttachments.length == 0) {
+        return new Response('Bad Request: Invalid uuid.', { status: 400 });
+    }    
+
+    const captionSrt = existingAttachments[0].caption_srt;
+
+    const headers = new Headers();
+    // // Add CORS headers if your frontend is on a different origin during local development
+    // headers.set('Access-Control-Allow-Origin', '*'); // Allow all origins for local testing
+    // headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    // headers.set('Access-Control-Allow-Headers', '*'); // Allow all headers
+
+    headers.set('Content-Type', 'text/plain;charset=UTF-8');
+
+    return new Response(captionSrt, {
+      status: 200, // HTTP status code 200 OK
+      headers: headers,
+    });
+
+  } catch (error) {
+    console.error(`Error retrieving srt "${uuid}" from DB:`, error);
+    return new Response('Internal Server Error: Failed to retrieve srt.', { status: 500 });
+  }
 });
 
 // --- WebSocket Endpoint for Status Updates (New) ---
@@ -373,6 +857,8 @@ analyze.get('/:taskId', async (c) => {
       return c.text('Task not found', 404);
   }
 
+  const isYoutube = isYouTubeLinkRegex(existingTask.content);
+
   // Handle the WebSocket upgrade using new WebSocketPair()
   const { 0: client, 1: server } = new WebSocketPair();
 
@@ -384,11 +870,48 @@ analyze.get('/:taskId', async (c) => {
   // --- Polling Logic ---
   // Poll the database periodically for task status updates
   let lastStatus = existingTask.status; // Keep track of the last status sent
+  const examType = existingTask.exam_type;
   let pollingInterval = null;
+
+  const alreadyScraped = new Set();
 
   const startPolling = () => {
       pollingInterval = setInterval(async () => {
           try {
+            if (isYoutube) {
+                const scraperResult = await pollingStatusFromScraper(c, taskId)
+                console.log(`scraperResult ${scraperResult}`)
+                if (scraperResult) {
+                    // 返回了mp3和字幕，需要再次调用获得最终结果
+                    if (scraperResult.status == 'success') {
+                        // 获取字幕，然后调用ai获取结果
+                        if (!alreadyScraped.has(existingTask.uuid)) {
+                            alreadyScraped.add(existingTask.uuid)
+                            await getSrtFromScraperThenExtractWords(c, db, existingTask, examType);
+                            await getAudioFromScraperThenExtractWords(c, db, existingTask, examType);
+                        }
+
+                        // // 成功
+                        // await db.update(schema.resources)
+                        //     .set({
+                        //         status: 'completed',
+                        //         result: JSON.stringify(candidates), // Store result as JSON string
+                        //         updated_at: sql`CURRENT_TIMESTAMP`
+                        //     })
+                        //     .where(eq(schema.resources.uuid, taskId));
+                    } else if (scraperResult.status == 'failed') {
+                        // 成功
+                        await db.update(schema.resources)
+                            .set({
+                                status: 'failed',
+                                // result: JSON.stringify(candidates), // Store result as JSON string
+                                updated_at: sql`CURRENT_TIMESTAMP`
+                            })
+                            .where(eq(schema.resources.uuid, taskId));
+                    }
+                }
+            }
+
               const task = await db.select()
                   .from(schema.resources)
                   .where(eq(schema.resources.uuid, taskId))
@@ -425,6 +948,30 @@ analyze.get('/:taskId', async (c) => {
                   if (task.status === 'completed') {
                       // Include the result if completed
                       update.result = { words: JSON.parse(task.result) };
+
+                        const existingAttachments = await db.select({
+                            audio_key: schema.attachments.audio_key,
+                            caption_srt: schema.attachments.caption_srt
+                        })
+                        .from(schema.attachments)
+                        .where(
+                            and(
+                                eq(schema.attachments.resource_id, task.id),
+                            )
+                        )
+                        .limit(1); // We only need to find one match
+
+                        if (existingAttachments.length > 0) {
+                            const audio_key = existingAttachments[0].audio_key;
+                            const caption_srt = existingAttachments[0].caption_srt;
+                            if (audio_key) {
+                                update.result.update({audioKey: audio_key})
+                            }
+                            if (caption_srt) {
+                                update.result.update({captionSrt: caption_srt})
+                            }
+                        }
+
                       console.log(`Sending completed status for task ID ${taskId}.`);
                   } else if (task.status === 'failed') {
                       // Include the error if failed
@@ -463,7 +1010,7 @@ analyze.get('/:taskId', async (c) => {
               pollingInterval = null;
               server.close(1011, 'Polling error'); // 1011: Internal Error
           }
-      }, 2000); // Poll every 2 seconds (adjust as needed)
+      }, 5000); // Poll every 5 seconds (adjust as needed)
   };
 
   // Start polling immediately after the connection is accepted
@@ -530,9 +1077,6 @@ const simulateAnalysisTask = async (c, taskId, db, analysisData) => {
 
   let candidates = await extractWordsByAi(c, analysisData);
   if (!candidates || candidates.length === 0) {
-    // 去重
-    const uniqueElements = new Set(candidates);
-    candidates = Array.from(uniqueElements);
 
     await db.update(schema.resources)
     .set({
@@ -543,6 +1087,9 @@ const simulateAnalysisTask = async (c, taskId, db, analysisData) => {
     .where(eq(schema.resources.uuid, taskId));
     return null;
   }
+    // 去重
+    const uniqueElements = new Set(candidates);
+    candidates = Array.from(uniqueElements);
 
   // 成功
   await db.update(schema.resources)

@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { axiosPrivate } from "@/lib/axios"; // Adjust path to your axiosPrivate
 import { useToast } from '@/hooks/use-toast';
 
 export type Submission = {
+  uuid: string;
   sourceType: 'url' | 'article';
   examType: string;
   content: string;
   result: string;
+  audioKey: boolean;
+  captionSrt: boolean;
 };
 
-export const useRecentAnalysis = () => {
+export const useRecentAnalysis = (isAuthenticated: boolean) => {
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
+  // const [srt, setSrt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -33,7 +37,7 @@ export const useRecentAnalysis = () => {
     };
     
     fetchSubmissions();
-  }, [toast]);
+  }, [toast, isAuthenticated]);
 
   // Add new submission to the recent list
   const addSubmission = (newSubmission: Submission) => {
@@ -56,7 +60,24 @@ export const useRecentAnalysis = () => {
     });
   };
 
-  return { recentSubmissions, isLoading, addSubmission };
+  const getSrt = async (uuid: string) => {
+      try {
+        const response = await axiosPrivate.get(`/api/analyze/srt/${uuid}`);
+        // console.log('Response headers:', response.headers);
+        // console.log('Response body:', response.data);
+
+        // console.log('get srt successfully.');
+        if (response.status === 200) {
+          return response.data;
+        }
+        return null;
+      } catch (error) {
+          console.error('Failed to get srt:', error);
+          return null;
+      }    
+  };
+
+  return { recentSubmissions, isLoading, addSubmission, getSrt };
 };
 
 // Simulated API function - in a real application, this would be a proper API call
@@ -66,10 +87,10 @@ const fetchRecentSubmissions = async (): Promise<Submission[]> => {
   
   try {
     // /api/analyze
-    const submissionResponse = await axiosPrivate.get('/api/analyze/history');
+    const response = await axiosPrivate.get('/api/analyze/history');
 
-    if (submissionResponse.status === 200 || submissionResponse.status === 201) {
-      const submittedTask = submissionResponse.data;
+    if (response.status === 200 || response.status === 201) {
+      const submittedTask = response.data;
       return submittedTask;
     }
   } catch (err) {

@@ -7,7 +7,7 @@ import {
   DialogHeader, // Not needed for a simple image dialog
   DialogFooter, // Not needed for a simple image dialog
   DialogTitle, // Not needed for a simple image dialog
-  DialogDescription, // Not needed for a simple image dialog
+  // DialogDescription, // Not needed for a simple image dialog
 } from "@/components/ui/dialog"; // Adjust the import path
 import { AspectRatio } from "@/components/ui/aspect-ratio"; // Import AspectRatio
 
@@ -38,7 +38,7 @@ interface WordImageDisplayProps {
   initialImageUrls: string[]; // Array of image URLs
   word: WordDataType;
   isWordLoading: boolean;
-
+  onImagesGenerated: (word: string) => void;
   // New props: Callbacks to report dialog state changes
   onShowImageDialogChange?: (isOpen: boolean) => void; // <-- New prop
   onShowExampleDialogChange?: (isOpen: boolean) => void; // <-- New prop  
@@ -48,6 +48,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   initialImageUrls, 
   word,
   isWordLoading,
+  onImagesGenerated,
   onShowImageDialogChange, // <-- Receive new prop
   onShowExampleDialogChange, // <-- Receive new prop  
 }) => {
@@ -131,6 +132,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       console.log("No examples found or examples not in expected array format, generating image with word only.");
       const generatedUrls = await generateImages(word.word_text, '');
       if (generatedUrls && generatedUrls.length > 0) {
+        onImagesGenerated(word.word_text);
         // setImageUrls(generatedUrls.map(img => img.url));
         setImageUrls(generatedUrls);
       }
@@ -156,6 +158,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       const generatedUrls = await generateImages(word.word_text, selectedExample);
 
       if (generatedUrls && generatedUrls.length > 0) {
+        onImagesGenerated(word.word_text);
         // setImageUrls(generatedUrls.map(url => url));
         setImageUrls(generatedUrls);
       }

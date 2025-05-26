@@ -36,6 +36,7 @@ export const useGenerateImages = () => {
         //    description: `已为单词 "${wordText}" 生成图片。`,
         //    variant: "default",
         // });
+
         return response.data.imageUrls; // Return the array of image URLs
       } else {
         console.error("Hook: Image generation API returned unexpected response:", response);

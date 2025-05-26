@@ -39,12 +39,21 @@ export const word_content = sqliteTable('word_content', {
 export const images = sqliteTable('images', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
   word_id: integer('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
+  prompt: text('prompt'),
   image_key: text('image_key').notNull()
+});
+
+export const audios = sqliteTable('audios', {
+  id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
+  word_id: integer('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
+  prompt: text('prompt'),
+  audio_key: text('audio_key').notNull()
 });
 
 export const videos = sqliteTable('videos', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
   word_id: integer('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
+  prompt: text('prompt'),
   video_key: text('video_key').notNull()
 });
 
@@ -69,9 +78,9 @@ export const resources = sqliteTable('resources', {
 export const attachments = sqliteTable('attachments', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   resource_id: integer('resource_id').notNull().references(() => resources.id, { onDelete: 'cascade' }), // 定义外键和级联删除
-  audio_key: text('audio_key').notNull(),
+  audio_key: text('audio_key'),
   video_key: text('video_key'),
-  caption_txt: text('caption_txt').notNull(),
+  caption_txt: text('caption_txt'),
   caption_srt: text('caption_srt'),
 });
 

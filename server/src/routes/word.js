@@ -1195,7 +1195,6 @@ word.get('/image/:key', async (c) => {
   }
 });
 
-
 // --- Mark Word as Mastered Route (Existing) ---
 word.put('/master/:id', async (c) => {
   // ... (existing mark as mastered logic)

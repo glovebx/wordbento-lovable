@@ -40,3 +40,32 @@
 .read-the-docs {
   color: #888;
 }
+
+/* In your global CSS file (e.g., globals.css) */
+
+/* For Webkit browsers (Chrome, Safari) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #333; /* Darker background for the track */
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #666; /* Color of the scroll thumb */
+  border-radius: 10px;
+  border: 2px solid #333; /* Padding around the thumb */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #888; /* Color on hover */
+}
+
+/* For Firefox (less customization options) */
+.custom-scrollbar {
+  scrollbar-width: thin; /* "auto" or "thin" */
+  scrollbar-color: #666 #333; /* thumb and track color */
+}

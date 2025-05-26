@@ -3,6 +3,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import WordGrid from '@/components/WordGrid';
 
+import AudioPlayer from '../components/AudioPlayer'; // Import the new component
 import AnalysisForm from '@/components/AnalysisForm';
 import { useAnalysisTask } from '@/hooks/use-analysis-task'; // Import the new analysis task hook
 import { AnalysisResult } from '@/types/analysisTypes'; // Import types
@@ -14,6 +15,7 @@ import { NavigationMode, useWordCache } from '@/hooks/use-word-cache';
 import { WordDataType } from '@/types/wordTypes';
 import { Button } from '@/components/ui/button'; // Import Button component
 import { Download } from 'lucide-react'; // Import Download icon
+import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis';
 
 // Import html2canvas library
 import html2canvas from 'html2canvas';
@@ -25,6 +27,15 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
 
   const { toast } = useToast();
+
+  // New state to manage the audio player
+  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+  const [currentAudioUrl, setCurrentAudioUrl] = useState<string | undefined>(undefined);
+  const [currentSubtitleContent, setCurrentSubtitleContent] = useState<string | undefined>(undefined);
+
+  const [currentResource, setCurrentResource] = useState<string | undefined>(undefined);
+
+  const { getSrt } = useRecentAnalysis(false);
 
   // State to store the analysis result when completed
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -59,12 +70,17 @@ const Index = () => {
   const bentoGridRef = useRef<HTMLDivElement>(null);
 
   // 调用自定义 Hook 获取缓存相关的状态和函数
-  const { wordCache, fetchAndCacheWord, addToCache } = useWordCache();
+  const { wordCache, fetchAndCacheWord, addToCache, removeFromCache } = useWordCache();
  
   // --- New States for Dialog Open Status ---
   const [isImageDialogShowing, setIsImageDialogShowing] = useState(false); // <-- New state
   const [isExampleDialogShowing, setIsExampleDialogShowing] = useState(false); // <-- New state
  
+  const handleImagesGenerated = useCallback((word: string) => {
+      removeFromCache(word);
+      console.log(`${word} has been removed from cache`);
+  }, []);
+
   // --- New Callbacks to Update Dialog Status States ---
   const handleImageDialogStateChange = useCallback((isOpen: boolean) => {
       setIsImageDialogShowing(isOpen);
@@ -76,6 +92,14 @@ const Index = () => {
       console.log(`Example Dialog is now: ${isOpen ? 'Open' : 'Closed'}`);
   }, []);
   // --- End New States and Callbacks ---
+
+  const handleCloseAudioPlayer = useCallback(() => {
+    setShowAudioPlayer(false);
+    setCurrentAudioUrl(undefined); // Clear audio URL on close
+    setCurrentSubtitleContent(undefined); // Clear subtitles on close
+    // Optionally pause audio here if it's still playing
+    // (You'd need to expose a pause function from AudioPlayer or manage audioRef here)
+  }, []);
 
   // 主要的 useEffect：负责获取当前单词数据
   useEffect(() => {
@@ -359,9 +383,34 @@ const handlePrevious = useCallback(async () => {
     console.log("Analysis result cleared.");
   }, []); // No dependencies needed as it just sets state to null
 
-  const handleManualAnalysisResult = useCallback((words: string) => {
-    setAnalysisResult({words: JSON.parse(words)});
+// 主要的 useEffect：负责获取当前单词数据
+  useEffect(() => {
+    if (!currentResource) return;
+
+    const fetchCurrentWord = async (resource: string) => {
+      // 使用 fetchAndCacheWord 函数来获取数据，它会先检查缓存
+      const data = await getSrt(resource); // 等待数据获取或从缓存返回
+
+      if (data) {
+          setCurrentSubtitleContent(data);
+      }
+    };
+
+    fetchCurrentWord(currentResource);
+
+  }, [currentResource]);
+
+  const handleManualAnalysisResult = useCallback((submission: Submission) => {
+    setAnalysisResult({words: JSON.parse(submission.result)});
     console.log("Analysis result reset manually.");
+
+    if (submission.audioKey) {
+        setCurrentAudioUrl(`http://localhost:8787/api/analyze/audio/${submission.uuid}`)
+        setShowAudioPlayer(true);
+    }
+    if (submission.captionSrt) {
+        setCurrentResource(submission.uuid)
+    }
   }, []); // No dependencies needed as it just sets state to null
 
    // --- New: Handle Export Image ---
@@ -543,10 +592,19 @@ const handlePrevious = useCallback(async () => {
                 onPrevious={handlePrevious} 
                 onNext={handleNext} 
                 bentoGridRef={bentoGridRef} // <-- Pass the ref here
+                onImagesGenerated={handleImagesGenerated}
                 onShowImageDialogChange={handleImageDialogStateChange} // <-- Pass the callback
                 onShowExampleDialogChange={handleExampleDialogStateChange} // <-- Pass the callback              
               />
 
+      {/* Conditionally render the AudioPlayer */}
+      {showAudioPlayer && currentAudioUrl && (
+        <AudioPlayer
+          audioUrl={currentAudioUrl}
+          subtitleContent={currentSubtitleContent}
+          onClose={handleCloseAudioPlayer}
+        />
+      )}
                     {/* Export Image Button - placed above the WordGrid */}
                     <div className="container mx-auto px-4 py-4 text-right">
                         <Button

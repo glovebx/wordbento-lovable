@@ -48,6 +48,20 @@ export const useWordCache = () => {
   const wordCacheRef = useRef<Map<string, WordDataType>>(new Map());
   const cacheOrderRef = useRef<string[]>([]); // 用于追踪缓存键的顺序，实现简单的LRU（最近最少使用）策略
 
+  const removeFromCache = useCallback((slug: string) => {
+      const cache = wordCacheRef.current;
+      const order = cacheOrderRef.current;
+
+      // 如果 item 已经存在于缓存中，先从顺序数组中移除其旧位置
+      const existingIndex = order.indexOf(slug);
+      if (existingIndex > -1) {
+          order.splice(existingIndex, 1); // 从原位置移除
+      }
+      if (cache.has(slug)) {
+        cache.delete(slug); // 从 Map 中删除
+      }
+  }, []);
+
   // Helper function to add/update cache and manage size
   // 使用 useCallback 确保函数引用稳定，避免不必要的重新创建
   const addToCache = useCallback((slug: string, data: WordDataType) => {
@@ -122,6 +136,7 @@ export const useWordCache = () => {
   return {
     wordCache: wordCacheRef.current, // 返回缓存 Map 实例，供组件直接进行 contains 检查和 get 操作
     fetchAndCacheWord, // 返回获取并缓存单词的函数
+    removeFromCache,
     addToCache, // 返回添加到缓存的函数，以防组件在别处获取数据后想手动添加到缓存（例如初始加载或搜索成功后）
   };
 };

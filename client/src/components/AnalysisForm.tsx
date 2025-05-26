@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod'; // Import zodResolver
 import { z } from 'zod'; // Import zod for schema definition
-import { Loader2, XCircle, Search, Clock } from 'lucide-react';
+import { Loader2, XCircle, Search } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils'; // Import cn for conditional class names
 
@@ -16,7 +16,8 @@ import LoadingFallback from '@/components/LoadingFallback';
 // Import the AnalysisData interface
 import { AnalysisData, AnalysisResult } from '@/types/analysisTypes';
 import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis';
-
+import { useAuth } from '@/contexts/AuthContext';
+import AuthModal from './AuthModal';
 
 // Define Zod schema for validation
 const analysisFormSchema = z.object({
@@ -46,7 +47,7 @@ interface AnalysisFormProps {
   onWordClick: (word: string) => void;
   // New prop: Function to clear the analysis result
   onClearAnalysisResult: () => void;  
-  onManualAnalysisResult: (words: string) => void;
+  onManualAnalysisResult: (submission: Submission) => void;
   onWordSearch: (word: string) => void;
   currentWord: string;  
 }
@@ -61,12 +62,17 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   onManualAnalysisResult,
   onWordSearch, 
   currentWord }) => {
-  // sourceType state is still useful for conditionally rendering Input/Textarea
+
+    const { isAuthenticated } = useAuth();  
+
+    // sourceType state is still useful for conditionally rendering Input/Textarea
   const [sourceType, setSourceType] = useState<'url' | 'article'>('url');
   const [searchInput, setSearchInput] = useState('');
   // 这里出错的话会导致页面无线循环刷新！！
-  const { recentSubmissions, isLoading: isLoadingHistory } = useRecentAnalysis();
+  const { recentSubmissions, isLoading: isLoadingHistory } = useRecentAnalysis(isAuthenticated);
   const [words, setWords] = useState<string[]>([]); // State for words
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Use useEffect to update words when analysisResult changes
   useEffect(() => {
@@ -100,6 +106,12 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
 
   // The onSubmit handler now just calls the parent's onSubmitAnalysis prop
   const onSubmit = (data: AnalysisData) => {
+    if (!isAuthenticated) {
+      // If user is not authenticated, trigger the login prompt
+      setShowAuthModal(true);
+      return; // Stop here, wait for login
+    }
+
     onSubmitAnalysis(data); // Call the function provided by the parent component
 
     // // Add to recent submissions
@@ -124,7 +136,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   const handleAnalysisManualResult = (submission: Submission) => {
     if (submission.result && submission.result.startsWith("[")) {
       // setWords(JSON.parse(submission.result))
-      onManualAnalysisResult(submission.result);
+      onManualAnalysisResult(submission);
     }
   };
 
@@ -271,7 +283,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                     {sourceType === 'url' ? (
                       <FormControl>
                         <Input
-                          placeholder="请输入URL链接"
+                          placeholder="请输入URL链接（支持youtube）"
                           disabled={isAnalysisLoading} // Disable while loading
                           {...field}
                         />
@@ -367,7 +379,13 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
           </Form>
         </TabsContent>
       </Tabs>   
-    </div>  
+
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {}}
+      />            
+    </div>      
   );
 };
 

@@ -34,7 +34,7 @@ app.use(
 );
 
 // Public Routes
-const publicRoutes = ['/api/auth/register', '/api/auth/login', '/api/word/image', '/api/test/check-db', '/api/auth/session', '/api/test-kv-direct', '/ws/analyze'];
+const publicRoutes = ['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/word/image', '/api/test/check-db', '/api/test-kv-direct', '/ws/analyze', '/api/analyze/audio', '/api/analyze/srt'];
 // 如果不登录则用public，否则用登录用户信息
 const publicButPrivateRoutes = ['/api/word/search', '/api/analyze/history'];
 

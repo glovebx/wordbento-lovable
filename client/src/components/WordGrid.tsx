@@ -14,7 +14,7 @@ import {
 
 import GridCard from './GridCard';
 import WordImageDisplay from './WordImageDisplay';
-import PronunciationButton from './PronunciationButton';
+// import PronunciationButton from './PronunciationButton';
 import TtsPronunciationButton from './TtsPronunciationButton';
 import { WordDataType } from '@/types/wordTypes';
 import MasterButton from './MasterButton'; // Adjust the import path
@@ -32,6 +32,7 @@ interface WordGridProps {
   // New prop: Ref object passed from parent to attach to the bento grid element
   bentoGridRef: RefObject<HTMLDivElement | null>; // <-- Add ref prop  
   // New props: Callbacks to report dialog state changes
+  onImagesGenerated: (word: string) => void;
   onShowImageDialogChange?: (isOpen: boolean) => void; // <-- New prop
   onShowExampleDialogChange?: (isOpen: boolean) => void; // <-- New prop  
 }
@@ -63,6 +64,7 @@ const WordGrid: React.FC<WordGridProps> = ({
   onPrevious,
   onNext,
   bentoGridRef,
+  onImagesGenerated,
   onShowImageDialogChange, // <-- Receive new prop
   onShowExampleDialogChange, // <-- Receive new prop  
  }) => {
@@ -175,43 +177,6 @@ const WordGrid: React.FC<WordGridProps> = ({
             )}
           </div>
         </div>
-{/* 
-        <div className="flex justify-center items-center gap-8 mb-6">
-          <Button 
-            variant="outline"
-            size="icon"
-            onClick={onPrevious}
-            className="hover:bg-muted"
-            title="上一个单词"
-          >
-            <ArrowLeft className="h-6 w-6" />
-          </Button>      
-        <div className="flex flex-col items-center">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <h1 className="text-5xl font-bold tracking-tight">
-              <AnimatedWord word={word.word_text} />
-            </h1>
-            <PronunciationButton word={word.word_text} className="mt-1" />
-            <MasterButton
-              wordId={word.id}
-              onMasteredSuccess={onMasteredSuccess}
-              className="mt-1" // Example: Pass a class name to style the button
-            />
-          </div>
-          <p className="text-xl text-gray-600">
-            {word.phonetic} · {word.meaning}
-          </p>
-        </div>
-          <Button 
-            variant="outline"
-            size="icon"
-            onClick={onNext}
-            className="hover:bg-muted"
-            title="下一个单词"
-          >
-            <ArrowRight className="h-6 w-6" />
-          </Button>
-        </div> */}
 
         <div className="text-left max-w-2xl mx-auto px-4"> {/* Container for definition text */}
                 {/* Optional: Include the icon next to the definition title/text */}
@@ -279,7 +244,10 @@ const WordGrid: React.FC<WordGridProps> = ({
       </div>      
 
         {/* Word Image - Centered in the page */}
-      <WordImageDisplay initialImageUrls={word.imageUrls} word={word} isWordLoading={isWordLoading}
+      <WordImageDisplay initialImageUrls={word.imageUrls} 
+        word={word} 
+        isWordLoading={isWordLoading}
+        onImagesGenerated={onImagesGenerated}
         onShowImageDialogChange={onShowImageDialogChange} // <-- Pass the callback
         onShowExampleDialogChange={onShowExampleDialogChange} // <-- Pass the callback      
       />
