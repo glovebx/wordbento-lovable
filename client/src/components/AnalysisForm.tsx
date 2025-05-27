@@ -134,7 +134,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   // let words = analysisResult?.words;
 
   const handleAnalysisManualResult = (submission: Submission) => {
-    if (submission.result && submission.result.startsWith("[")) {
+    if (submission.words && submission.words.startsWith("[")) {
       // setWords(JSON.parse(submission.result))
       onManualAnalysisResult(submission);
     }

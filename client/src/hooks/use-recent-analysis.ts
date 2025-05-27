@@ -7,7 +7,7 @@ export type Submission = {
   sourceType: 'url' | 'article';
   examType: string;
   content: string;
-  result: string;
+  words: string;
   audioKey: boolean;
   captionSrt: boolean;
 };

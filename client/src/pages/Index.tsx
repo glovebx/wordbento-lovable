@@ -403,8 +403,8 @@ const handlePrevious = useCallback(async () => {
   }, [currentSrtResource]);
 
   const handleManualAnalysisResult = useCallback((submission: Submission) => {
-    setAnalysisResult({words: JSON.parse(submission.result)});
-    console.log("Analysis result reset manually.");
+    setAnalysisResult({words: JSON.parse(submission.words)});
+    // console.log("Analysis result reset manually.");
 
     if (submission.audioKey) {
         setCurrentAudioUrl(`http://localhost:8787/api/analyze/audio/${submission.uuid}`)
@@ -416,6 +416,7 @@ const handlePrevious = useCallback(async () => {
         setCurrentSrtResource(undefined);
     }
   }, []); // No dependencies needed as it just sets state to null
+
 
    // --- New: Handle Export Image ---
     const handleExportImage = useCallback(async () => {

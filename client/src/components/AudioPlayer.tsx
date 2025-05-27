@@ -87,37 +87,72 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     localStorageManager.setItem(AUDIO_PLAYER_KEYS.SUBTITLE_OFFSET, subtitleOffset);
   }, [subtitleOffset, localStorageManager]);
 
-  // Effect to reset player state when audioUrl changes
+  // Effect 1: Handles audio loading and reset (only when audioUrl changes)
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
-      // Pause current playback
+      // These resets should ONLY happen when the audio source changes
       audio.pause();
       setIsPlaying(false);
-      
-      // Reset current time and related states
       audio.currentTime = 0;
       setCurrentTime(0);
       setCurrentActiveCueIndex(null);
-      setDuration(0); // Reset duration until new audio is loaded
-      setIsLoading(true); // Set loading true for the new audio
-
-      // The `audio.src` will automatically update when the component re-renders
-      // due to `audioUrl` prop change, which then triggers 'loadeddata' once ready.
+      setDuration(0); 
+      // Set isLoading to true only when the audio source genuinely changes.
+      // It will be set to false by the 'loadeddata' event.
+      setIsLoading(true); 
     }
-    // Also re-parse subtitles if subtitleContent might change with audioUrl
+  }, [audioUrl]); // Only depends on audioUrl
+
+  // Effect 2: Handles subtitle parsing (when subtitleContent or isMobile changes)
+  useEffect(() => {
     if (subtitleContent) {
       try {
-        const parsed = parseSrt(isMobile, subtitleContent);
+        // isMobile is a dependency here because parseSrt might behave differently
+        // based on whether it's a mobile environment or not.
+        const parsed = parseSrt(isMobile, subtitleContent); 
         setParsedCues(parsed.sort((a, b) => a.startTime - b.startTime));
       } catch (error) {
         console.error('SRT解析失败:', error);
+        setParsedCues([]);
       }
     } else {
       setParsedCues([]);
     }
+  }, [subtitleContent, isMobile]); // Depends on subtitleContent and isMobile
 
-  }, [audioUrl, isMobile, subtitleContent]); // Dependencies: audioUrl, isMobile (for subtitle parsing), subtitleContent
+  // // Effect to reset player state when audioUrl changes
+  // useEffect(() => {
+  //   const audio = audioRef.current;
+  //   if (audio) {
+  //     // Pause current playback
+  //     audio.pause();
+  //     setIsPlaying(false);
+      
+  //     // Reset current time and related states
+  //     audio.currentTime = 0;
+  //     setCurrentTime(0);
+  //     setCurrentActiveCueIndex(null);
+  //     setDuration(0); // Reset duration until new audio is loaded
+  //     // 运行中切换 isMobile 会造成isLoading一直是true
+  //     setIsLoading(true); // Set loading true for the new audio
+
+  //     // The `audio.src` will automatically update when the component re-renders
+  //     // due to `audioUrl` prop change, which then triggers 'loadeddata' once ready.
+  //   }
+  //   // Also re-parse subtitles if subtitleContent might change with audioUrl
+  //   if (subtitleContent) {
+  //     try {
+  //       const parsed = parseSrt(isMobile, subtitleContent);
+  //       setParsedCues(parsed.sort((a, b) => a.startTime - b.startTime));
+  //     } catch (error) {
+  //       console.error('SRT解析失败:', error);
+  //     }
+  //   } else {
+  //     setParsedCues([]);
+  //   }
+
+  // }, [audioUrl, subtitleContent, isMobile]); // Dependencies: audioUrl, isMobile (for subtitle parsing), subtitleContent
 
   // Optimized binary search with adjacent checks
   const findActiveCueOptimized = useCallback(
@@ -503,9 +538,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
             >
               {highlightText(cue.text)}
               {/* Debugging: Display precise timestamps */}
-              <small className="opacity-50 block text-xs">
+              {/* <small className="opacity-50 block text-xs">
                 {cue.startTime.toFixed(2)} - {cue.endTime.toFixed(2)}
-              </small>
+              </small> */}
             </p>
           ))}
         </div>

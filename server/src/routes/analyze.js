@@ -649,7 +649,7 @@ analyze.get('/history', async (c) => {
           sourceType: schema.resources.source_type,
           examType: schema.resources.exam_type,
           content: schema.resources.content, 
-          result: schema.resources.result,
+          words: schema.resources.result,
           audioKey: schema.attachments.audio_key,
           captionSrt: schema.attachments.caption_srt,
       })
@@ -878,40 +878,6 @@ analyze.get('/:taskId', async (c) => {
   const startPolling = () => {
       pollingInterval = setInterval(async () => {
           try {
-            if (isYoutube) {
-                const scraperResult = await pollingStatusFromScraper(c, taskId)
-                console.log(`scraperResult ${scraperResult}`)
-                if (scraperResult) {
-                    // 返回了mp3和字幕，需要再次调用获得最终结果
-                    if (scraperResult.status == 'success') {
-                        // 获取字幕，然后调用ai获取结果
-                        if (!alreadyScraped.has(existingTask.uuid)) {
-                            alreadyScraped.add(existingTask.uuid)
-                            await getSrtFromScraperThenExtractWords(c, db, existingTask, examType);
-                            await getAudioFromScraperThenExtractWords(c, db, existingTask, examType);
-                        }
-
-                        // // 成功
-                        // await db.update(schema.resources)
-                        //     .set({
-                        //         status: 'completed',
-                        //         result: JSON.stringify(candidates), // Store result as JSON string
-                        //         updated_at: sql`CURRENT_TIMESTAMP`
-                        //     })
-                        //     .where(eq(schema.resources.uuid, taskId));
-                    } else if (scraperResult.status == 'failed') {
-                        // 成功
-                        await db.update(schema.resources)
-                            .set({
-                                status: 'failed',
-                                // result: JSON.stringify(candidates), // Store result as JSON string
-                                updated_at: sql`CURRENT_TIMESTAMP`
-                            })
-                            .where(eq(schema.resources.uuid, taskId));
-                    }
-                }
-            }
-
               const task = await db.select()
                   .from(schema.resources)
                   .where(eq(schema.resources.uuid, taskId))
@@ -931,6 +897,40 @@ analyze.get('/:taskId', async (c) => {
                   clearInterval(pollingInterval);
                   server.close(1011, 'Task disappeared'); // 1011: Internal Error
                   return;
+              }
+
+              if (isYoutube && (task.status !== 'completed' && task.status !== 'failed')) {
+                  const scraperResult = await pollingStatusFromScraper(c, taskId)
+                  console.log(`scraperResult ${scraperResult}`)
+                  if (scraperResult) {
+                      // 返回了mp3和字幕，需要再次调用获得最终结果
+                      if (scraperResult.status == 'success') {
+                          // 获取字幕，然后调用ai获取结果
+                          if (!alreadyScraped.has(existingTask.uuid)) {
+                              alreadyScraped.add(existingTask.uuid)
+                              await getSrtFromScraperThenExtractWords(c, db, existingTask, examType);
+                              await getAudioFromScraperThenExtractWords(c, db, existingTask, examType);
+                          }
+
+                          // // 成功
+                          // await db.update(schema.resources)
+                          //     .set({
+                          //         status: 'completed',
+                          //         result: JSON.stringify(candidates), // Store result as JSON string
+                          //         updated_at: sql`CURRENT_TIMESTAMP`
+                          //     })
+                          //     .where(eq(schema.resources.uuid, taskId));
+                      } else if (scraperResult.status == 'failed') {
+                          // 成功
+                          await db.update(schema.resources)
+                              .set({
+                                  status: 'failed',
+                                  // result: JSON.stringify(candidates), // Store result as JSON string
+                                  updated_at: sql`CURRENT_TIMESTAMP`
+                              })
+                              .where(eq(schema.resources.uuid, taskId));
+                      }
+                  }
               }
 
               // Send status update if status has changed or if it's the final status
@@ -954,21 +954,17 @@ analyze.get('/:taskId', async (c) => {
                             caption_srt: schema.attachments.caption_srt
                         })
                         .from(schema.attachments)
-                        .where(
-                            and(
-                                eq(schema.attachments.resource_id, task.id),
-                            )
-                        )
+                        .where(eq(schema.attachments.resource_id, task.id))
                         .limit(1); // We only need to find one match
 
                         if (existingAttachments.length > 0) {
                             const audio_key = existingAttachments[0].audio_key;
                             const caption_srt = existingAttachments[0].caption_srt;
                             if (audio_key) {
-                                update.result.update({audioKey: audio_key})
+                                update.result['audioKey'] = !!audio_key
                             }
                             if (caption_srt) {
-                                update.result.update({captionSrt: caption_srt})
+                                update.result['captionSrt'] = !!caption_srt
                             }
                         }
 
