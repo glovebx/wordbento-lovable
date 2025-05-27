@@ -321,13 +321,13 @@ const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
             if (existingAttachments.length > 0) {
                 await db.update(schema.attachments)
                     .set({
-                        caption_txt: srtContent
+                        caption_srt: srtContent
                     })
                     .where(eq(schema.attachments.id, existingAttachments[0].id));
             } else {
                 const insertedResult = await db.insert(schema.attachments).values({
                     resource_id: task.id, // Associate with public user ID 0
-                    caption_txt: srtContent,
+                    caption_srt: srtContent,
                 })
                 // Use .returning() in Drizzle for D1 to get the inserted row
                 .returning()
@@ -645,7 +645,7 @@ analyze.get('/history', async (c) => {
   
   try {
       const existingResources = await db.select({
-        uuid: schema.resources.uuid,
+          uuid: schema.resources.uuid,
           sourceType: schema.resources.source_type,
           examType: schema.resources.exam_type,
           content: schema.resources.content, 
@@ -947,7 +947,7 @@ analyze.get('/:taskId', async (c) => {
 
                   if (task.status === 'completed') {
                       // Include the result if completed
-                      update.result = { words: JSON.parse(task.result) };
+                      update.result = { uuid: task.uuid, words: JSON.parse(task.result) };
 
                         const existingAttachments = await db.select({
                             audio_key: schema.attachments.audio_key,

@@ -60,6 +60,15 @@ const Index = () => {
         setAnalysisResult(hookTaskResult);
         // TODO: You might want to clear wordData or navigate to a results view here
         // setWordData(null); // Example: Clear word data to show only analysis results
+        if (hookTaskResult.audioKey) {
+            setCurrentAudioUrl(`http://localhost:8787/api/analyze/audio/${hookTaskResult.uuid}`)
+            setShowAudioPlayer(true);
+        }
+        if (hookTaskResult.captionSrt) {
+            setCurrentSrtResource(hookTaskResult.uuid)
+        } else {
+            setCurrentSrtResource(undefined);
+        }        
     } else if (taskStatus === 'failed' || taskStatus === 'idle') {
         // Clear analysis result if task failed or reset to idle
         // setAnalysisResult(null);
