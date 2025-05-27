@@ -66,7 +66,7 @@ const parseTimeToSeconds = (timeStr: string): number => {
 
 //   return cues;
 // };
-export const parseSrt = (srtContent: string): SubtitleCue[] => {
+export const parseSrt = (isMobile: boolean, srtContent: string): SubtitleCue[] => {
   const cues: SubtitleCue[] = [];
 
   // 匹配一个完整的SRT字幕块的正则表达式
@@ -91,13 +91,70 @@ export const parseSrt = (srtContent: string): SubtitleCue[] => {
     if (id && timeMatch) {
       const startTime = parseTimeToSeconds(timeMatch[1]);
       const endTime = parseTimeToSeconds(timeMatch[2]);
-
       cues.push({ id, startTime, endTime, text });
     }
   }
 
-  const fixedCues = fixSrtTimestampOverlaps(cues);
+  // 1. 先对原始解析的字幕进行时间戳交叉修复 (这一步是必要的，否则合并后的时间可能会更乱)
+  let fixedCues = fixSrtTimestampOverlaps(cues);
+  // 2. 根据isMobile参数决定是否进行字幕合并，并在此处分配连续ID
+  const processedCues = processCuesForDisplay(fixedCues, isMobile);
+  // 3. 对合并后的字幕再次进行时间戳交叉修复 (因为合并可能再次引入交叉)
+  // 这一步非常重要，尤其是在合并逻辑中如果没有精确控制endTime时。
+  fixedCues = fixSrtTimestampOverlaps(processedCues);
+
   return fixedCues;
+};
+
+/**
+ * 将两段字幕合并成一条新的字幕。
+ * @param cue1 第一条字幕。
+ * @param cue2 第二条字幕。
+ * @returns 合并后的新字幕。
+ */
+const mergeTwoCues = (cue1: SubtitleCue, cue2: SubtitleCue): SubtitleCue => {
+  return {
+    // ID可以根据实际需求生成，这里简单地使用第一条的ID
+    id: cue1.id,
+    // 新字幕的开始时间是第一条的开始时间
+    startTime: cue1.startTime,
+    // 新字幕的结束时间是第二条的结束时间
+    endTime: cue2.endTime,
+    // 文字以空格连接合并
+    text: `${cue1.text} ${cue2.text}`,
+  };
+};
+
+/**
+ * 根据是否为PC端，将原始字幕进行合并处理，并分配连续的ID。
+ * 当为PC端时，每两条字幕合并成一条。
+ *
+ * @param originalCues 原始解析的字幕数组。
+ * @param isMobile 是否为手机端。
+ * @returns 处理后的字幕数组。
+ */
+export const processCuesForDisplay = (originalCues: SubtitleCue[], isMobile: boolean): SubtitleCue[] => {
+  if (isMobile) {
+    // 手机端直接返回原始字幕，但仍然需要确保ID是连续的，以防原始文件不规范
+    return originalCues.map((cue, index) => ({ ...cue, id: index + 1 }));
+  }
+
+  const mergedCues: SubtitleCue[] = [];
+  let currentId = 1; // 从1开始分配ID
+
+  for (let i = 0; i < originalCues.length; i += 2) {
+    const cue1 = originalCues[i];
+    const cue2 = originalCues[i + 1];
+
+    if (cue1 && cue2) {
+      const merged = mergeTwoCues(cue1, cue2);
+      mergedCues.push({ ...merged, id: currentId++ });
+    } else if (cue1) {
+      // 如果只剩一条，则单独添加，并分配ID
+      mergedCues.push({ ...cue1, id: currentId++ });
+    }
+  }
+  return mergedCues;
 };
 
 /**

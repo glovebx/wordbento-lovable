@@ -33,7 +33,7 @@ const Index = () => {
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | undefined>(undefined);
   const [currentSubtitleContent, setCurrentSubtitleContent] = useState<string | undefined>(undefined);
 
-  const [currentResource, setCurrentResource] = useState<string | undefined>(undefined);
+  const [currentSrtResource, setCurrentSrtResource] = useState<string | undefined>(undefined);
 
   const { getSrt } = useRecentAnalysis(false);
 
@@ -97,8 +97,7 @@ const Index = () => {
     setShowAudioPlayer(false);
     setCurrentAudioUrl(undefined); // Clear audio URL on close
     setCurrentSubtitleContent(undefined); // Clear subtitles on close
-    // Optionally pause audio here if it's still playing
-    // (You'd need to expose a pause function from AudioPlayer or manage audioRef here)
+    setCurrentSrtResource(undefined);
   }, []);
 
   // 主要的 useEffect：负责获取当前单词数据
@@ -385,7 +384,10 @@ const handlePrevious = useCallback(async () => {
 
 // 主要的 useEffect：负责获取当前单词数据
   useEffect(() => {
-    if (!currentResource) return;
+    if (!currentSrtResource) {
+        setCurrentSubtitleContent(undefined);
+        return;
+    }
 
     const fetchCurrentWord = async (resource: string) => {
       // 使用 fetchAndCacheWord 函数来获取数据，它会先检查缓存
@@ -396,9 +398,9 @@ const handlePrevious = useCallback(async () => {
       }
     };
 
-    fetchCurrentWord(currentResource);
+    fetchCurrentWord(currentSrtResource);
 
-  }, [currentResource]);
+  }, [currentSrtResource]);
 
   const handleManualAnalysisResult = useCallback((submission: Submission) => {
     setAnalysisResult({words: JSON.parse(submission.result)});
@@ -409,7 +411,9 @@ const handlePrevious = useCallback(async () => {
         setShowAudioPlayer(true);
     }
     if (submission.captionSrt) {
-        setCurrentResource(submission.uuid)
+        setCurrentSrtResource(submission.uuid)
+    } else {
+        setCurrentSrtResource(undefined);
     }
   }, []); // No dependencies needed as it just sets state to null
 
@@ -602,6 +606,7 @@ const handlePrevious = useCallback(async () => {
         <AudioPlayer
           audioUrl={currentAudioUrl}
           subtitleContent={currentSubtitleContent}
+          highlightWords={analysisResult?.words || []}
           onClose={handleCloseAudioPlayer}
         />
       )}
