@@ -71,6 +71,8 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   // 这里出错的话会导致页面无线循环刷新！！
   const { recentSubmissions, isLoading: isLoadingHistory } = useRecentAnalysis(isAuthenticated);
   const [words, setWords] = useState<string[]>([]); // State for words
+// New state to control showing all words
+  const [showAllWords, setShowAllWords] = useState(false); // <-- New state
 
   const [showAuthModal, setShowAuthModal] = useState(false);
 
@@ -81,6 +83,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
     } else {
       setWords([]);
     }
+    setShowAllWords(false); // Reset showAllWords when new analysis result comes in    
   }, [analysisResult]); // Dependency array: re-run when analysisResult changes
 
   // Initialize react-hook-form with Zod resolver
@@ -139,6 +142,11 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
       onManualAnalysisResult(submission);
     }
   };
+  // Define the limit for words to display initially
+  const displayLimit = 25; // This corresponds to approximately 5 rows in a flex-wrap layout
+
+  // Determine which words to display based on showAllWords state
+  const wordsToDisplay = showAllWords ? words : words.slice(0, displayLimit); // <-- Use words.slice()
 
   return (
     <div className="max-w-4xl mx-auto px-4 mb-8 mt-4">
@@ -338,44 +346,61 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
 
             {/* Display the word list if analysisResult is available and contains a wordList */}
             {words && Array.isArray(words) && words.length > 0 && (
-                <div className="container mx-auto px-4 py-4"> {/* Added padding */}
+                <div className="container mx-auto px-4 py-4">
                     <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-semibold text-muted-foreground mb-0">提取的单词:</h3>
                     <Button
-                          variant="ghost" // Use ghost variant for a less prominent button
-                          size="sm" // Small size
-                          onClick={onClearAnalysisResult} // Call the clear function prop
-                          className="text-red-500 hover:text-red-700" // Style the button with red color
-                          title="清除分析结果" // Add a tooltip
+                          variant="ghost"
+                          size="sm"
+                          onClick={onClearAnalysisResult}
+                          className="text-red-500 hover:text-red-700"
+                          title="清除分析结果"
                       >
-                          <XCircle className="h-4 w-4 mr-1" /> {/* Add an icon */}
+                          <XCircle className="h-4 w-4 mr-1" />
                           清除
-                      </Button>   
-                      </div>               
-                    {/* Fluid layout for word tags */}
+                      </Button>
+                      </div>
                     <div className="flex flex-wrap gap-2">
-                        {words.map((word, index) => (
+                        {wordsToDisplay.map((word, index) => (
                             <Button
-                                key={index} // Use index as key if words are not guaranteed unique/stable
-                                variant="outline" // Use outline variant for a tag look
-                                size="sm" // Small size
-                                onClick={() => onWordClick(word)} // Call the onWordClick prop
-                                // className="cursor-pointer" // Indicate it's clickable
+                                key={index}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => onWordClick(word)}
                                 className={cn(
                                     "cursor-pointer",
-                                    word === currentWord ? "bg-blue-500 text-white hover:bg-blue-600" : "hover:bg-gray-100" // Apply specific styles for highlight
-                                )}                                
+                                    word === currentWord ? "bg-blue-500 text-white hover:bg-blue-600" : "hover:bg-gray-100"
+                                )}
                             >
                                 {word}
                             </Button>
                         ))}
                     </div>
-                    {/* Optional: Display other analysis results (summary, etc.) */}
-                    {/* <pre className="bg-gray-100 p-4 rounded-md overflow-auto mt-4">
-                        {JSON.stringify(analysisResult, null, 2)}
-                    </pre> */}
+                    {/* Conditional "Show All" or "Hide" button */}
+                    {words.length > displayLimit && !showAllWords && (
+                        <div className="text-center mt-4">
+                            <Button
+                                variant="link"
+                                onClick={() => setShowAllWords(true)}
+                                className="text-blue-600 hover:text-blue-800"
+                            >
+                                显示全部
+                            </Button>
+                        </div>
+                    )}
+                    {words.length > displayLimit && showAllWords && (
+                        <div className="text-center mt-4">
+                            <Button
+                                variant="link"
+                                onClick={() => setShowAllWords(false)}
+                                className="text-blue-600 hover:text-blue-800"
+                            >
+                                收起
+                            </Button>
+                        </div>
+                    )}
                 </div>
-            )}      
+            )}                
           </Form>
         </TabsContent>
       </Tabs>   

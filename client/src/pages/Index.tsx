@@ -17,6 +17,9 @@ import { Button } from '@/components/ui/button'; // Import Button component
 import { Download } from 'lucide-react'; // Import Download icon
 import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis';
 
+// Import the new FloatingImageCarousel component
+import FloatingImageCarousel from '@/components/FloatingImageCarousel';
+
 // Import html2canvas library
 import html2canvas from 'html2canvas';
 
@@ -78,6 +81,12 @@ const Index = () => {
   // Create a ref to hold the DOM element of the bento grid within WordGrid
   const bentoGridRef = useRef<HTMLDivElement>(null);
 
+  // --- New states for FloatingImageCarousel ---
+  const [showFloatingImageCarousel, setShowFloatingImageCarousel] = useState(false);
+  const [floatingCarouselWord, setFloatingCarouselWord] = useState('');
+  const [floatingCarouselPosition, setFloatingCarouselPosition] = useState<DOMRect | null>(null);
+  // --- End new states ---
+
   // 调用自定义 Hook 获取缓存相关的状态和函数
   const { wordCache, fetchAndCacheWord, addToCache, removeFromCache } = useWordCache();
  
@@ -125,10 +134,10 @@ const Index = () => {
       } else {
           // fetchAndCacheWord 返回 null 意味着获取失败（网络错误或 API 返回非 OK）
           // fetchAndCacheWord 内部已打印错误，这里更新组件状态并显示 toast
-          setError(`无法加载单词 "${wordSlug}"。`);
+          setError(`无法加载单词 ${wordSlug}。`);
            toast({
              title: "获取单词详情失败",
-             description: `抱歉，无法加载单词 "${wordSlug}"。`,
+             description: `抱歉，无法加载单词 ${wordSlug}。`,
              variant: "destructive",
           });
         //    setWordData(null); // 确保数据为 null
@@ -348,22 +357,32 @@ const handlePrevious = useCallback(async () => {
               console.log("Dialog is open, keyboard navigation disabled.");
               return; // Exit the handler if any dialog is open
           }
-
-          // Disable keyboard navigation if word data or analysis is loading
-          if (isWordLoading || isAnalysisLoading) {
-              return;
-          }
-
           // Check if the user is currently typing in an input field
           // Get the active element
           const activeElement = document.activeElement;
           // Check if the active element is an input or textarea
           const isTyping = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
 
-          // If the user is typing, do not trigger navigation
-          if (isTyping) {
+          // If the user is typing AND the key is an arrow key, allow default behavior (cursor movement)
+          if (isTyping && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+              // Do nothing, let the browser handle the cursor movement within the input
               return;
           }
+
+          // If the user is typing (but not an arrow key) or if loading, disable global navigation
+          if (isTyping || isWordLoading || isAnalysisLoading) {
+              return; // Exit the handler, preventing global navigation for other keys or during loading
+          }
+
+        //   // Disable keyboard navigation if word data or analysis is loading
+        //   if (isWordLoading || isAnalysisLoading) {
+        //       return;
+        //   }
+
+        //   // If the user is typing, do not trigger navigation
+        //   if (isTyping) {
+        //       return;
+        //   }
 
           // Handle arrow key presses
           if (event.key === 'ArrowLeft') {
@@ -542,6 +561,20 @@ const handlePrevious = useCallback(async () => {
     }, [bentoGridRef, wordData, toast]); // Dependencies: bentoGridRef, wordData (for filename), toast
     // --- End: Handle Export Image ---
 
+    // --- New callback for highlighted word click ---
+    const handleHighlightedWordClick = useCallback((word: string, rect: DOMRect) => {
+        setFloatingCarouselWord(word);
+        setFloatingCarouselPosition(rect);
+        setShowFloatingImageCarousel(true);
+    }, []);
+
+    const handleCloseFloatingCarousel = useCallback(() => {
+        setShowFloatingImageCarousel(false);
+        setFloatingCarouselWord('');
+        setFloatingCarouselPosition(null);
+    }, []);
+    // --- End new callback ---
+
     // 根据加载状态、错误状态和数据状态渲染不同的内容
     const renderContent = () => {
       if (isWordLoading && !wordData) {
@@ -611,6 +644,15 @@ const handlePrevious = useCallback(async () => {
                 onShowExampleDialogChange={handleExampleDialogStateChange} // <-- Pass the callback              
               />
 
+    {/* Render FloatingImageCarousel conditionally */}
+    {showFloatingImageCarousel && floatingCarouselPosition && wordData && (
+        <FloatingImageCarousel
+            wordText={floatingCarouselWord}
+            position={floatingCarouselPosition}
+            onClose={handleCloseFloatingCarousel}
+        />
+    )}
+
       {/* Conditionally render the AudioPlayer */}
       {showAudioPlayer && currentAudioUrl && (
         <AudioPlayer
@@ -618,6 +660,7 @@ const handlePrevious = useCallback(async () => {
           subtitleContent={currentSubtitleContent}
           highlightWords={analysisResult?.words || []}
           onClose={handleCloseAudioPlayer}
+        onHighlightedWordClick={handleHighlightedWordClick} // <-- Pass the new callback
         />
       )}
                     {/* Export Image Button - placed above the WordGrid */}
@@ -640,7 +683,7 @@ const handlePrevious = useCallback(async () => {
     <AuthProvider>
       <div className="min-h-screen flex flex-col">
         <Header/>
-        {renderContent()} {/* 调用渲染内容的函数 */}
+        {renderContent()} {/* 调用渲染内容的函数 */}        
       </div>
     </AuthProvider>
   );

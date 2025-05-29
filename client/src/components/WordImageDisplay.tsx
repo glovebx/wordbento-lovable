@@ -185,6 +185,18 @@ const handleNextImage = useCallback(() => {
 // --- New useEffect for Keyboard Navigation ---
   useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
+          // Check if the user is currently typing in an input field
+          // Get the active element
+          const activeElement = document.activeElement;
+          // Check if the active element is an input or textarea
+          const isTyping = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+
+          // If the user is typing AND the key is an arrow key, allow default behavior (cursor movement)
+          if (isTyping && (event.key === 'ArrowLeft' || event.key === 'ArrowRight')) {
+              // Do nothing, let the browser handle the cursor movement within the input
+              return;
+          }
+                  
           // Handle arrow key presses
           if (event.key === 'ArrowLeft') {
               event.preventDefault(); // Prevent default browser scroll behavior

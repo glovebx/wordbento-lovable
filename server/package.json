@@ -12,8 +12,8 @@
   },
   "dependencies": {
     "@andresaya/edge-tts": "^1.2.4",
-    "@libsql/client": "^0.15.6",
-    "@tsndr/cloudflare-worker-jwt": "^3.1.5",
+    "@libsql/client": "^0.15.7",
+    "@tsndr/cloudflare-worker-jwt": "^3.1.7",
     "better-sqlite3": "11.10.0",
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
@@ -33,9 +33,9 @@
     "concurrently": "^9.1.2",
     "drizzle-kit": "^0.31.1",
     "drizzle-orm": "^0.43.1",
-    "esbuild": "^0.25.4",
+    "esbuild": "^0.25.5",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
-    "wrangler": "^4.15.2"
+    "wrangler": "^4.17.0"
   }
 }

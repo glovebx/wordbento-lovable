@@ -1,5 +1,4 @@
 // components/AudioPlayer.tsx
-
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Play, Pause, Volume2, VolumeX, Subtitles, X, Settings } from 'lucide-react';
@@ -9,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { parseSrt, SubtitleCue } from '../utils/subtitleParser';
 import { throttle } from 'lodash-es';
-// Import the new LocalStorageManager
+import { useIsMobile } from '@/hooks/use-mobile';
 import LocalStorageManager from '../utils/storage';
 
 // Define your specific keys for AudioPlayer here, no longer in storage.ts
@@ -23,11 +22,13 @@ interface AudioPlayerProps {
   subtitleContent?: string;
   highlightWords?: string[];
   onClose: () => void;
+  // New prop: Callback when a highlighted word is clicked
+  onHighlightedWordClick?: (word: string, rect: DOMRect) => void; // Pass word and its bounding rect  
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, highlightWords = ['AI', 'tool'], onClose }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, highlightWords = [], onClose, onHighlightedWordClick }) => {
   // Fallback if useIsMobile is not defined or available
-  const isMobile = window.innerWidth <= 768; 
+  const isMobile = useIsMobile();
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -354,6 +355,24 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       <>
         {parts.map((part, index) => {
           const isHighlight = highlightWords.some(word => word.toLowerCase() === part.toLowerCase());
+          if (isHighlight && onHighlightedWordClick) {
+            return (
+              <span
+                key={index}
+                className={cn(
+                  isHighlight ? 'bg-yellow-300 text-black px-1 rounded cursor-pointer hover:bg-yellow-400 transition-colors' : '',
+                )}
+                onClick={(e) => {
+                  // Prevent the click from propagating to parent elements if desired
+                  e.stopPropagation();
+                  // Call the callback with the word and its bounding rectangle
+                  onHighlightedWordClick(part, e.currentTarget.getBoundingClientRect());
+                }}
+              >
+                {part}
+              </span>
+            );
+          }          
           return (
             <span
               key={index}
@@ -365,7 +384,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
         })}
       </>
     );
-  }, [highlightWords]);
+  }, [highlightWords, onHighlightedWordClick]);
 
   const getSubtitlesToDisplay = useMemo(() => {
     if (currentActiveCueIndex === null || !showSubtitles) {

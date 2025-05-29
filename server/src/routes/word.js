@@ -1015,7 +1015,7 @@ word.post('/imagize', async (c) => {
            .where(eq(schema.images.word_id, existingWord.id));
           //  .limit(1);
           if (images && images.length > 0) {
-            const imageUrls = images.map(img => `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
+            const imageUrls = images.map(img => img.image_key.startsWith('http') && img.image_key || `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
 
             return c.json({imageUrls: imageUrls}, 200);
           }
@@ -1054,6 +1054,7 @@ word.post('/imagize', async (c) => {
       const insertedImageResult = await db.insert(schema.images).values({
         word_id: existingWord.id, // Associate with public user ID 0
         image_key: imageKey,
+        prompt: exampleToGenerate
         })
         // Use .returning() in Drizzle for D1 to get the inserted row
         .returning()
@@ -1117,26 +1118,27 @@ word.post('/imagize', async (c) => {
           //  return c.json({ message: `Failed to upload image for "${wordToGenerate}".` }, 500);
           throw new Error("Failed to upload image to R2.");
       }      
-          // Insert into words table
-          // Assuming associating with 'public' user (id=0) for simplicity
-          // In a real app, use the authenticated user's ID
-          const insertedImageResult = await db.insert(schema.images).values({
-              word_id: existingWord.id, // Associate with public user ID 0
-              image_key: r2ObjectKey,
-          })
-          // Use .returning() in Drizzle for D1 to get the inserted row
-          .returning()
-          .get(); // .get() for a single row
+        // Insert into words table
+        // Assuming associating with 'public' user (id=0) for simplicity
+        // In a real app, use the authenticated user's ID
+        const insertedImageResult = await db.insert(schema.images).values({
+            word_id: existingWord.id, // Associate with public user ID 0
+            image_key: r2ObjectKey,
+            prompt: exampleToGenerate
+        })
+        // Use .returning() in Drizzle for D1 to get the inserted row
+        .returning()
+        .get(); // .get() for a single row
 
-          // Check if insertion was successful and returned a row
-          if (!insertedImageResult) {
-            throw new Error("Failed to insert image into table or get inserted row.");
-          }
+        // Check if insertion was successful and returned a row
+        if (!insertedImageResult) {
+          throw new Error("Failed to insert image into table or get inserted row.");
+        }
 
-        console.log(`Word "${wordToGenerate}" and image inserted successfully.`);
-        // return c.json({'key': r2ObjectKey}, 200);
-        return c.json({imageUrls: [`${c.env.VITE_BASE_URL}/api/word/image/${r2ObjectKey}`]}, 200);
-        // return c.json({inlines: [inlineData]}, 200);
+      console.log(`Word "${wordToGenerate}" and image inserted successfully.`);
+      // return c.json({'key': r2ObjectKey}, 200);
+      return c.json({imageUrls: [`${c.env.VITE_BASE_URL}/api/word/image/${r2ObjectKey}`]}, 200);
+      // return c.json({inlines: [inlineData]}, 200);
 
     } catch (dbError) { // Removed type annotation
         console.error(`Database transaction failed for word "${wordToGenerate}":`, dbError);
@@ -1272,7 +1274,7 @@ word.put('/master/:id', async (c) => {
   }
 });
 
-// 创建单词关联的图片
+// 创建单词关联的音频
 word.post('/tts', async (c) => {
   // Ensure the request has a JSON body
   if (!c.req.header('Content-Type')?.includes('application/json')) {
