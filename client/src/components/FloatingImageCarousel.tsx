@@ -32,9 +32,9 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
   const [imageUrls, setImageUrls] = useState<string[]>([]);
 
     // Use the useGenerateImages hook internally
-    const { generateImages, isGeneratingImages, generationError } = useGenerateImages();
+    const { generateImages, isGeneratingImages } = useGenerateImages();
 
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+//   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
 
   useEffect(() => {
@@ -51,31 +51,33 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
                 // setImageUrls(generatedUrls.map(img => img.url));
                 setImageUrls(generatedUrls);
             } else {
-                setImageUrls([]);
+                // setImageUrls([]);
+                onClose();
             }
             
         } catch (error) {
             console.error('Failed to fetch session:', error);
-            setImageUrls([]);
+            // setImageUrls([]);
+            onClose();
         }
     };
 
     fetchImageUrls(wordText);
   }, [isAuthenticated, generateImages, wordText]);
 
-  // Reset current image index when wordText changes or images are re-fetched
-  useEffect(() => {
-    setCurrentImageIndex(0);
-  }, [imageUrls]); // imageUrls as a dependency ensures reset when images are loaded/reloaded
+//   // Reset current image index when wordText changes or images are re-fetched
+//   useEffect(() => {
+//     setCurrentImageIndex(0);
+//   }, [imageUrls]); // imageUrls as a dependency ensures reset when images are loaded/reloaded
 
-  // Handle carousel navigation
-  const handlePrevious = useCallback(() => {
-    setCurrentImageIndex((prevIndex) => (prevIndex === 0 ? imageUrls.length - 1 : prevIndex - 1));
-  }, [imageUrls.length]);
+//   // Handle carousel navigation
+//   const handlePrevious = useCallback(() => {
+//     setCurrentImageIndex((prevIndex) => (prevIndex === 0 ? imageUrls.length - 1 : prevIndex - 1));
+//   }, [imageUrls.length]);
 
-  const handleNext = useCallback(() => {
-    setCurrentImageIndex((prevIndex) => (prevIndex === imageUrls.length - 1 ? 0 : prevIndex + 1));
-  }, [imageUrls.length]);
+//   const handleNext = useCallback(() => {
+//     setCurrentImageIndex((prevIndex) => (prevIndex === imageUrls.length - 1 ? 0 : prevIndex + 1));
+//   }, [imageUrls.length]);
 
   // Calculate dynamic style for positioning
   // Position the carousel above the clicked word, centered horizontally
@@ -101,7 +103,7 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
         variant="ghost"
         size="icon"
         onClick={onClose}
-        className="absolute top-1 right-1 text-white hover:bg-gray-700"
+        className="absolute z-10 top-1 right-1 text-white hover:bg-gray-700"
       >
         <X className="h-5 w-5" />
       </Button>
@@ -126,8 +128,8 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
               </CarouselItem>
             ))}
           </CarouselContent>
-          <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 text-white hover:bg-gray-700" onClick={handlePrevious} />
-          <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 text-white hover:bg-gray-700" onClick={handleNext} />
+          <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 text-white hover:bg-gray-700"/>
+          <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 text-white hover:bg-gray-700" />
         </Carousel>
       ) : (
         <div className="flex flex-col items-center justify-center text-white text-center p-4">
