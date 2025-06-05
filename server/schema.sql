@@ -126,6 +126,7 @@ CREATE TABLE IF NOT EXISTS videos (
 CREATE TABLE IF NOT EXISTS resources (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
     source_type TEXT CHECK(source_type IN ('url', 'article', 'pdf', 'image')) NOT NULL,
     content TEXT NOT NULL,
     -- exam_type TEXT CHECK(exam_type IN ('TOEFL', 'GRE', 'TOEIC', 'SAT')) NOT NULL,

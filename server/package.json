@@ -12,15 +12,15 @@
   },
   "dependencies": {
     "@andresaya/edge-tts": "^1.2.4",
-    "@libsql/client": "^0.15.7",
-    "@tsndr/cloudflare-worker-jwt": "^3.1.7",
+    "@libsql/client": "^0.15.8",
+    "@tsndr/cloudflare-worker-jwt": "^3.2.0",
     "better-sqlite3": "11.10.0",
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "djwt": "^2.0.0",
     "dotenv": "^16.5.0",
-    "hono": "^4.7.10",
+    "hono": "^4.7.11",
     "jsonrepair": "^3.12.0",
     "langs": "^2.0.0",
     "mariadb": "^3.4.2",
@@ -32,10 +32,10 @@
     "@types/node": "^22.15.17",
     "concurrently": "^9.1.2",
     "drizzle-kit": "^0.31.1",
-    "drizzle-orm": "^0.43.1",
+    "drizzle-orm": "^0.44.1",
     "esbuild": "^0.25.5",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
-    "wrangler": "^4.17.0"
+    "wrangler": "^4.18.0"
   }
 }

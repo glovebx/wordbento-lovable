@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from "axios";
 
 // API Base URL from .env configuration
 // import.meta.env is typically typed by your build tool (like Vite)
-const baseURL: string | undefined = import.meta.env.VITE_APP_API_BASE_URL;
+export const baseURL: string | undefined = import.meta.env.VITE_APP_API_BASE_URL;
 
 if (!baseURL) {
   // Log an error if the base URL is missing

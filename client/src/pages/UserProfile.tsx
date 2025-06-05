@@ -44,9 +44,9 @@ const UserProfile = () => {
   const [isSavingGemini, setIsSavingGemini] = useState(false);
   const [isSavingDeepseek, setIsSavingDeepseek] = useState(false);
 
-  if (!isAuthenticated) {
-    return <Navigate to="/" />;
-  }
+  // if (!isAuthenticated) {
+  //   return <Navigate to="/" />;
+  // }
 
   const scrollToSection = (section: string) => {
     setActiveSection(section);

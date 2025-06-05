@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { axiosPrivate } from "@/lib/axios";
 
 interface ImageData {
   url: string;

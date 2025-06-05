@@ -14,7 +14,7 @@ import { sql, eq, and, desc } from 'drizzle-orm'; // Import sql tag for raw SQL 
 import { jsonrepair } from 'jsonrepair';
 import { cleanAiJsonResponse } from './word';
 import { calculateMD5 } from '../utils/passwords';
-import DownSub from '../scraper/DownSub.js';
+import { extractTextFromSrt } from '../utils/languageParser';
 
 const analyze = new Hono();
 
@@ -305,6 +305,9 @@ const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
     console.log(srtContent);
     // -----------------------------------------------------------
     if (srtContent) {
+      const txtContent = extractTextFromSrt(srtContent)
+    console.log("TXT Content Received:");
+    console.log(txtContent);      
         try {
 
             const existingAttachments = await db.select({
@@ -321,13 +324,15 @@ const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
             if (existingAttachments.length > 0) {
                 await db.update(schema.attachments)
                     .set({
-                        caption_srt: srtContent
+                        caption_srt: srtContent,
+                        caption_txt: txtContent
                     })
                     .where(eq(schema.attachments.id, existingAttachments[0].id));
             } else {
                 const insertedResult = await db.insert(schema.attachments).values({
                     resource_id: task.id, // Associate with public user ID 0
                     caption_srt: srtContent,
+                    caption_txt: txtContent
                 })
                 // Use .returning() in Drizzle for D1 to get the inserted row
                 .returning()
@@ -341,15 +346,15 @@ const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
         } catch (dbError) { // Removed type annotation
             console.error(`Database transaction failed for task "${task.uuid}":`, dbError);
         }
-    }
+        
+      const analysisData = {
+          souceType: 'article',
+          content: txtContent,
+          examType: examType,
+      }
 
-    const analysisData = {
-        souceType: 'article',
-        content: srtContent,
-        examType: examType,
+      await simulateAnalysisTask(c, task.uuid, db, analysisData);        
     }
-
-    await simulateAnalysisTask(c, task.uuid, db, analysisData);
 
   } catch (error) {
       console.error('Network error calling Youtube Scraper SRT API:', error);
@@ -566,7 +571,8 @@ analyze.post('/', async (c) => {
 
       if (existingResources.length > 0) {
         console.log(`existingResources: ${isYoutube}, ${JSON.stringify(existingResources[0])}`)
-        if (!isYoutube || (existingResources[0].status == 'completed' || existingResources[0].status == 'failed')) {
+        // if (!isYoutube || (existingResources[0].status == 'completed' || existingResources[0].status == 'failed')) {
+        if (!isYoutube || (existingResources[0].status !== 'failed')) {
             console.log('45678909876545678');
              // Record exists, return its UUID
             console.log(`Existing resource found with UUID: ${existingResources[0].uuid}`);
@@ -599,8 +605,12 @@ analyze.post('/', async (c) => {
         taskId = crypto.randomUUID(); // Generate a unique task ID
     } 
 
+      // 新增标题
+      const title = cleanedContent.length > 50 && cleanedContent.substring(0, 47) + '...' || cleanedContent;
+
       await db.insert(schema.resources).values({
           user_id: userId,
+          title: title,
           source_type: analysisData.sourceType,
           content: cleanedContent,
           exam_type: analysisData.examType,
@@ -684,6 +694,156 @@ analyze.get('/history', async (c) => {
       return c.json({ message: 'Failed to check for existing resource.' }, 500);
   }
 
+});
+
+
+analyze.get('/list/:limit/:page', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    // return c.json({ message: 'Forbidden' }, 403);
+    return c.json([], 200); // Return 200 OK for existing
+  }
+
+  // 从查询参数中提取 page 和 limit
+  const page = parseInt(c.req.param('page') || '1', 10);
+  const limit = parseInt(c.req.param('limit') || '20', 10); // 每页20条数据
+
+    console.log(`page and limit: ${page} ${limit}`)
+  // 验证 page 和 limit
+  if (isNaN(page) || page < 1) {
+    return c.json({ message: 'Invalid page number. Must be a positive integer.' }, 400);
+  }
+  if (isNaN(limit) || limit < 1 || limit > 100) { // 设置最大 limit 以防止滥用
+    return c.json({ message: 'Invalid limit. Must be between 1 and 100.' }, 400);
+  }
+
+  const offset = (page - 1) * limit;
+
+  const db = drizzle(c.env.DB, { schema });
+  
+  try {
+    // 1.1. 获取总记录数
+    const countResult = await db.select({
+        count: sql`count(${schema.resources.id})`
+    })
+    .from(schema.resources)
+    .where(eq(schema.resources.user_id, user.id));
+
+    const totalCount = countResult[0].count;
+        
+    const paginatedResources = await db.select({
+        id: schema.resources.id,
+        uuid: schema.resources.uuid,
+        title: schema.resources.title,
+        sourceType: schema.resources.source_type,
+        examType: schema.resources.exam_type,
+        content: schema.resources.content, 
+        words: schema.resources.result,
+        status: schema.resources.status,
+        createdAt: schema.resources.created_at,
+        audioKey: schema.attachments.audio_key,
+        captionSrt: schema.attachments.caption_srt,
+    })
+    .from(schema.resources)
+      .leftJoin(schema.attachments,
+          and(
+              eq(schema.attachments.resource_id, schema.resources.id)
+          )
+      )      
+    .where(eq(schema.resources.user_id, user.id))
+    .orderBy(desc(schema.resources.id))
+    .limit(limit)
+    .offset(offset);
+
+    if (paginatedResources.length > 0) {
+      paginatedResources.forEach(r => {
+          r.content = r.content.substring(0, 47) + '...';
+          r.audioKey = !!r.audioKey;
+          r.captionSrt = !!r.captionSrt;
+      });
+        // Record exists, return its UUID
+        console.log(`Existing resource found with length: ${paginatedResources.length}`);
+        // return c.json(existingResources, 200); // Return 200 OK for existing
+    }
+
+    // 返回分页数据和总记录数
+    return c.json({
+      data: paginatedResources,
+      totalCount: totalCount
+    }, 200);    
+
+  } catch (checkError) {
+      console.error("Failed to check for existing resource in DB:", checkError);
+      return c.json({ message: 'Failed to list existing resources.' }, 500);
+  }
+
+});
+
+
+// 2. /resource/:id 端点：获取单个资源的完整详细信息，包括所有附件
+// 返回 ResourceWithAttachments
+analyze.get('/detail/:id', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  const resourceId = parseInt(c.req.param('id') || '0', 10);
+  if (!resourceId) {
+    return c.json({ message: 'Invalid resource ID.' }, 400);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+
+  try {
+    // 2.1. 获取资源本身
+    const resource = await db.select({
+        id: schema.resources.id,
+        uuid: schema.resources.uuid,
+        sourceType: schema.resources.source_type,
+        examType: schema.resources.exam_type,
+        content: schema.resources.content, 
+        words: schema.resources.result,
+    })
+      .from(schema.resources)
+      .where(and(
+        eq(schema.resources.id, resourceId),
+        eq(schema.resources.user_id, user.id) // 确保用户只能访问自己的资源
+      ))
+      .limit(1);
+
+    if (resource.length === 0) {
+      return c.json({ message: 'Resource not found or unauthorized.' }, 404);
+    }
+
+    // 2.2. 获取该资源的所有附件
+    const attachments = await db.select({
+        id: schema.attachments.id,
+        // resourceId: schema.attachments.resource_id,
+        audioKey: schema.attachments.audio_key,
+        videoKey: schema.attachments.video_key,
+        captionSrt: schema.attachments.caption_srt, 
+        captionTxt: schema.attachments.caption_txt, 
+    })
+      .from(schema.attachments)
+      .where(eq(schema.attachments.resource_id, resourceId));
+
+    // 2.3. 组合资源和附件，形成 ResourceWithAttachments 结构
+    const fullResource = {
+      ...resource[0], // Assuming resource[0] contains all fields from schema.resources
+      attachments: attachments,
+    };
+
+    // Note: The `result` column from resources is mapped to `words` in frontend.
+    // Ensure `resource[0].result` is correctly handled if it needs renaming to `words`.
+    // For simplicity, we assume `result` is directly compatible or renamed on frontend.
+
+    return c.json(fullResource, 200);
+
+  } catch (error) {
+    console.error(`Failed to fetch resource ${resourceId}:`, error);
+    return c.json({ message: 'Failed to fetch resource details.' }, 500);
+  }
 });
 
 // 获取资源关联的音频

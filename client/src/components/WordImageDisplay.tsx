@@ -126,6 +126,9 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
     const examples = word?.content?.examples?.en;
     if (examples && Array.isArray(examples) && examples.length > 0) {
       // If examples exist and are an array, open the example selection dialog
+      if (!selectedExample) {
+        setSelectedExample(examples[0]);
+      }
       setShowExampleDialog(true);
     } else {
       // If no examples or not an array, proceed directly with image generation using just the word
@@ -196,7 +199,7 @@ const handleNextImage = useCallback(() => {
               // Do nothing, let the browser handle the cursor movement within the input
               return;
           }
-                  
+
           // Handle arrow key presses
           if (event.key === 'ArrowLeft') {
               event.preventDefault(); // Prevent default browser scroll behavior

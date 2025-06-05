@@ -61,6 +61,7 @@ export const videos = sqliteTable('videos', {
 export const resources = sqliteTable('resources', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
   user_id: integer('user_id').notNull(), // User who initiated the task
+  title: text('title').notNull(), // The Title of URL or article
   source_type: text('source_type', { enum: ['url', 'article', 'pdf', 'image'] }).notNull(), // 'url' or 'article'
   content: text('content').notNull(), // The URL or article text
   exam_type: text('exam_type').notNull(), // Exam type

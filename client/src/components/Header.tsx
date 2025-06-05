@@ -31,6 +31,10 @@ const Header: React.FC<HeaderProps> = ({
   const handleNavigateToProfile = () => {
     navigate('/profile'); // Navigate to the /profile route
   };
+  // Handler for clicking "我的收藏"
+  const handleNavigateToAnalysisHistory = () => {
+    navigate('/history'); // Navigate to the /profile route
+  };  
 
   return (
     <header className="sticky top-0 z-10 bg-background border-b shadow-sm">
@@ -51,6 +55,7 @@ const Header: React.FC<HeaderProps> = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={handleNavigateToProfile}>个人中心</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleNavigateToAnalysisHistory}>解析历史</DropdownMenuItem>
                   {/* <DropdownMenuItem>学习记录</DropdownMenuItem> */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout}>退出登录</DropdownMenuItem>
