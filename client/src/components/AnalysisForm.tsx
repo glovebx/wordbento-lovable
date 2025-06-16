@@ -1,25 +1,24 @@
+// components/AnalysisForm.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'; // Import FormMessage for validation errors
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod'; // Import zodResolver
-import { z } from 'zod'; // Import zod for schema definition
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Loader2, XCircle, Search } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils'; // Import cn for conditional class names
+import { cn } from '@/lib/utils';
 
 import LoadingFallback from '@/components/LoadingFallback';
-// Import the AnalysisData interface
 import { AnalysisData, AnalysisResult } from '@/types/analysisTypes';
-import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis';
+import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis'; // Make sure Submission is imported
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from './AuthModal';
 
-// Define Zod schema for validation
 const analysisFormSchema = z.object({
   sourceType: z.enum(['url', 'article'], {
     required_error: "请选择资源类型。",
@@ -27,25 +26,17 @@ const analysisFormSchema = z.object({
   content: z.string().min(1, {
     message: "内容不能为空。",
   }),
-  // examType: z.enum(['托福', 'GRE', 'TOEIC', 'SAT', '6级'], { // Ensure '6级' is included here
-  //    required_error: "请选择考试类型。",
-  // }),
   examType: z.string().min(1, {
     message: "请选择考试类型。",
   })  
 });
 
 interface AnalysisFormProps {
-  // onAnalyze prop now takes the form data and returns void (async handled by hook)
   onSubmitAnalysis: (data: AnalysisData) => void;
   isWordLoading: boolean;
-  // Receive loading state from the parent/hook
   isAnalysisLoading: boolean;
-  // Receive the analysis result to display extracted words
   analysisResult: AnalysisResult | null;
-  // Receive the handleSearch function to make words clickable
   onWordClick: (word: string) => void;
-  // New prop: Function to clear the analysis result
   onClearAnalysisResult: () => void;  
   onManualAnalysisResult: (submission: Submission) => void;
   onWordSearch: (word: string) => void;
@@ -59,66 +50,64 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   analysisResult, 
   onWordClick, 
   onClearAnalysisResult, 
-  onManualAnalysisResult,
+  onManualAnalysisResult, 
   onWordSearch, 
   currentWord }) => {
 
     const { isAuthenticated } = useAuth();  
 
-    // sourceType state is still useful for conditionally rendering Input/Textarea
   const [sourceType, setSourceType] = useState<'url' | 'article'>('url');
   const [searchInput, setSearchInput] = useState('');
-  // 这里出错的话会导致页面无线循环刷新！！
-  const { recentSubmissions, isLoading: isLoadingHistory } = useRecentAnalysis(isAuthenticated);
-  const [words, setWords] = useState<string[]>([]); // State for words
-// New state to control showing all words
-  const [showAllWords, setShowAllWords] = useState(false); // <-- New state
+  // 从 useRecentAnalysis 钩子中解构出 hasMore 和 loadMore
+  const { recentSubmissions, isLoading: isLoadingHistory, hasMore, loadMore } = useRecentAnalysis(isAuthenticated);
+  const [words, setWords] = useState<string[]>([]);
+  const [showAllWords, setShowAllWords] = useState(false);
 
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Use useEffect to update words when analysisResult changes
   useEffect(() => {
     if (analysisResult?.words) {
       setWords(analysisResult.words);
     } else {
       setWords([]);
     }
-    setShowAllWords(false); // Reset showAllWords when new analysis result comes in    
-  }, [analysisResult]); // Dependency array: re-run when analysisResult changes
+    setShowAllWords(false);
+  }, [analysisResult]);
 
-  // Initialize react-hook-form with Zod resolver
   const form = useForm<AnalysisData>({
     resolver: zodResolver(analysisFormSchema),
     defaultValues: {
       sourceType: 'url',
       content: '',
-      examType: 'TOEFL' // Set a default exam type
+      examType: 'TOEFL'
     }
   });
 
-  // Watch the sourceType field to update local state and clear content
-  // Use form.watch instead of local state for sourceType if you prefer form state as source of truth
-  // const watchedSourceType = form.watch('sourceType');
-
   const handleSourceTypeChange = (value: 'url' | 'article') => {
-    setSourceType(value); // Update local state for conditional rendering
-    form.setValue('sourceType', value); // Update form state
-    form.setValue('content', ''); // Clear content when switching type
-    form.clearErrors('content'); // Clear content errors
+    setSourceType(value);
+    form.setValue('sourceType', value);
+    form.setValue('content', '');
+    form.clearErrors('content');
   };
 
-  // The onSubmit handler now just calls the parent's onSubmitAnalysis prop
   const onSubmit = (data: AnalysisData) => {
     if (!isAuthenticated) {
-      // If user is not authenticated, trigger the login prompt
       setShowAuthModal(true);
-      return; // Stop here, wait for login
+      return;
     }
 
-    onSubmitAnalysis(data); // Call the function provided by the parent component
+    if (data.sourceType === 'url') {
+      const trimmedContent = data.content.trim();
+      const lettersOnlyRegex = /^[\p{L}]+$/u;
 
-    // // Add to recent submissions
-    // addSubmission({ sourceType: data.sourceType, content: data.content, result: '' });    
+      if (lettersOnlyRegex.test(trimmedContent)) {
+        console.log(`Detected single word "${trimmedContent}" in URL field. Calling onWordSearch.`);
+        onWordSearch(trimmedContent);
+        return;
+      }
+    }
+
+    onSubmitAnalysis(data);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -128,25 +117,19 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
     }
   };
 
-  // const truncateContent = (content: string, maxLength: number = 50) => {
-  //   if (content.length <= maxLength) return content;
-  //   return content.substring(0, maxLength) + '...';
-  // };
-
-  // // Extract word list from analysisResult if available
-  // let words = analysisResult?.words;
-
   const handleAnalysisManualResult = (submission: Submission) => {
     if (submission.words && submission.words.startsWith("[")) {
-      // setWords(JSON.parse(submission.result))
       onManualAnalysisResult(submission);
     }
+    // Set form fields based on the selected submission for easier re-analysis/viewing
+    form.setValue('sourceType', submission.sourceType);
+    form.setValue('content', submission.content);
+    form.setValue('examType', submission.examType);
+    setSourceType(submission.sourceType); // Also update local state for radio group display
   };
-  // Define the limit for words to display initially
-  const displayLimit = 25; // This corresponds to approximately 5 rows in a flex-wrap layout
 
-  // Determine which words to display based on showAllWords state
-  const wordsToDisplay = showAllWords ? words : words.slice(0, displayLimit); // <-- Use words.slice()
+  const displayLimit = 25;
+  const wordsToDisplay = showAllWords ? words : words.slice(0, displayLimit);
 
   return (
     <div className="max-w-4xl mx-auto px-4 mb-8 mt-4">
@@ -157,13 +140,9 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
         </TabsList>
         
         <TabsContent value="search" className="mt-4 relative">
-          {/* Loading Overlay for AnalysisForm */}
-          {/* Show this overlay when EITHER Analysis Task is loading OR Word data is loading */}
           {(isWordLoading || isAnalysisLoading) && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-md"> {/* Absolute positioning, covers parent */}
-                  {/* Use FourSquare or LoadingFallback based on preference for this size */}
-                  {/* <FourSquare color="#a855f74d" /> */}
-                  <LoadingFallback message={isWordLoading ? "正在加载单词..." : "分析处理中..."} /> {/* Pass dynamic message */}
+              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-md">
+                  <LoadingFallback message={isWordLoading ? "正在加载单词..." : "分析处理中..."} />
               </div>
           )}          
           <form onSubmit={handleSearch} className="flex items-center gap-2 max-w-md mx-auto">
@@ -181,33 +160,26 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
         </TabsContent>
 
         <TabsContent value="analyze" className="mt-4 relative">
-          {/* Loading Overlay for AnalysisForm */}
-          {/* Show this overlay when EITHER Analysis Task is loading OR Word data is loading */}
           {(isAnalysisLoading || isWordLoading) && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-md"> {/* Absolute positioning, covers parent */}
-                  {/* Use FourSquare or LoadingFallback based on preference for this size */}
-                  {/* <FourSquare color="#a855f74d" /> */}
-                  <LoadingFallback message={isAnalysisLoading ? "分析处理中..." : "正在加载单词..."} /> {/* Pass dynamic message */}
+              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-md">
+                  <LoadingFallback message={isAnalysisLoading ? "分析处理中..." : "正在加载单词..."} />
               </div>
           )}
 
           <Form {...form}>
-            {/* Use form.handleSubmit to wrap your onSubmit function */}
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-4xl mx-auto px-4 mb-8 mt-4">
-              {/* First row: Source Type Selection + Exam Type Dropdown + Submit Button */}
               <div className="flex flex-wrap items-center gap-4">
-                {/* Source Type Radio Group */}
                 <FormField
                   control={form.control}
                   name="sourceType"
                   render={({ field }) => (
-                      <FormItem className="space-y-0"> {/* Reduce space */}
+                      <FormItem className="space-y-0">
                           <FormControl>
                               <RadioGroup
-                                  onValueChange={handleSourceTypeChange} // Use custom handler
+                                  onValueChange={handleSourceTypeChange}
                                   defaultValue={field.value}
                                   className="flex space-x-6"
-                                  disabled={isAnalysisLoading} // Disable while loading
+                                  disabled={isAnalysisLoading}
                                 >                         
                                   <FormItem className="flex items-center space-x-2">
                                     <FormControl>
@@ -223,35 +195,30 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                                   </FormItem>
                                 </RadioGroup>
                           </FormControl>
-                          {/* FormMessage can be added here if you want validation feedback for the radio group */}
-                          {/* <FormMessage /> */}
                       </FormItem>
                   )}
                 />
 
-                {/* Submit Button - Moved here */}
-                {/* Use isAnalysisLoading prop from parent to disable */}
                 <Button className="ml-auto" type="submit" disabled={isAnalysisLoading || isWordLoading}>
                   {isAnalysisLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      处理中... {/* Button text indicating processing */}
+                      处理中...
                     </>
                   ) : (
-                    "解析" // Button text when idle
+                    "解析"
                   )}
                 </Button>
 
-                {/* Exam Type Select Dropdown */}
                 <FormField
                   control={form.control}
                   name="examType"
                   render={({ field }) => (
-                    <FormItem className="w-24"> {/* Fixed width */}
+                    <FormItem className="w-24">
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
-                        disabled={isAnalysisLoading} // Disable while loading
+                        disabled={isAnalysisLoading}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -269,20 +236,16 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                   )}
                 />
               </div>
-              {/* Add FormMessage for examType validation */}
               <FormField
                   control={form.control}
                   name="examType"
                   render={({ field }) => (
                       <FormItem>
-                          {/* This FormMessage will display validation errors for examType */}
                           <FormMessage />
                       </FormItem>
                   )}
               />
 
-
-              {/* Content Input (URL or Textarea) */}
               <FormField
                 control={form.control}
                 name="content"
@@ -292,7 +255,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                       <FormControl>
                         <Input
                           placeholder="请输入URL链接（支持youtube）"
-                          disabled={isAnalysisLoading} // Disable while loading
+                          disabled={isAnalysisLoading}
                           {...field}
                         />
                       </FormControl>
@@ -301,12 +264,11 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                         <Textarea
                           placeholder="请输入文章内容"
                           className="min-h-[150px]"
-                          disabled={isAnalysisLoading} // Disable while loading
+                          disabled={isAnalysisLoading}
                           {...field}
                         />
                       </FormControl>
                     )}
-                    {/* Add FormMessage for content validation */}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -314,7 +276,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
 
               {/* Recent Submissions - Flow Layout */}
               <div className="mt-4">
-                {isLoadingHistory ? (
+                {isLoadingHistory && recentSubmissions.length === 0 ? (
                   <div className="py-4 flex justify-center">
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   </div>
@@ -322,7 +284,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                   <div className="flex flex-wrap gap-2">
                     {recentSubmissions.map((submission, index) => (
                       <div 
-                        key={index}
+                        key={submission.uuid} // Use uuid as key for stability
                         className="py-1.5 px-2.5 text-xs bg-muted/50 rounded-md flex items-center cursor-pointer hover:bg-muted/80 transition-colors max-w-full"
                         onClick={() => handleAnalysisManualResult(submission)}
                       >
@@ -337,9 +299,27 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                   </div>
                 ) : (
                   <div/>
-                  // <div className="py-3 px-3 text-sm text-muted-foreground bg-muted/50 rounded-md">
-                  //   暂无历史提交记录
-                  // </div>
+                )}
+                
+                {/* "更多" 按钮 */}
+                {hasMore && ( // 只有当 hasMore 为 true 才显示
+                  <div className="mt-4 text-center">
+                    <Button 
+                      variant="outline" 
+                      onClick={loadMore} 
+                      disabled={isLoadingHistory} // 如果正在加载历史记录，则禁用
+                      className="px-6 py-2 rounded-md shadow-sm"
+                    >
+                      {isLoadingHistory ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          加载中...
+                        </>
+                      ) : (
+                        "更多"
+                      )}
+                    </Button>
+                  </div>
                 )}
               </div>
             </form>

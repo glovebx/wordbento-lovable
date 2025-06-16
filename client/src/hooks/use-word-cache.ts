@@ -92,11 +92,11 @@ export const useWordCache = () => {
 
   // Helper function to check cache or fetch data from API, then add to cache
   // 这个函数是核心，负责检查缓存，如果未命中则从 API 获取，成功后添加到缓存
-  const fetchAndCacheWord = useCallback(async (slug: string, mode = NavigationMode.Search): Promise<WordDataType | null> => {
+  const fetchAndCacheWord = useCallback(async (slug: string, mode = NavigationMode.Search, mhi: boolean = false): Promise<WordDataType | null> => {
       const cache = wordCacheRef.current;
 
       // 1. 检查缓存
-      if (mode === NavigationMode.Search && slug.length > 0 && cache.has(slug)) {
+      if (mode === NavigationMode.Search && slug.length > 0 && cache.has(slug) && !mhi) {
           // console.log(`Cache hit for ${slug}`); // Optional logging
           // 如果缓存命中，更新其在顺序数组中的位置到末尾 (LRU)
           const order = cacheOrderRef.current;
@@ -112,7 +112,7 @@ export const useWordCache = () => {
       // 2. 缓存未命中，从 API 获取数据
       try {
         //   const response = await fetch(`/api/word/${slug}`);
-        const response = await axiosPrivate.post('/api/word/search', JSON.stringify({ slug: slug, mode: mode }));
+        const response = await axiosPrivate.post('/api/word/search', JSON.stringify({ slug: slug, mode: mode, mhi: mhi }));
         console.log('Response headers:', response.headers);
         console.log('Response body:', response.data);
 

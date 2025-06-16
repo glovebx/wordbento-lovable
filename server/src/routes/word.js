@@ -659,10 +659,12 @@ word.post('/search', async (c) => {
     let slug; // Removed type annotation
     // 0 表示搜索、1表示下一个、-1表示上一个
     let mode = NavigationMode.Search;
+    let mustHaveImage;
     try {
        const body = await c.req.json();
        slug = body.slug;
        mode = body.mode;
+       mustHaveImage = !!body.mhi;
     } catch (e) {
         console.error("Failed to parse request body:", e);
         return c.json({ message: 'Invalid JSON body' }, 400);
@@ -690,15 +692,21 @@ word.post('/search', async (c) => {
 
     console.warn(`login user: ${ userId }`);
 
+    // const simpleWordsFields = {
+    //         id: schema.words.id,
+    //         word_text: schema.words.word_text,
+    //       }  
+
     const wordsFields = {
             id: schema.words.id,
             word_text: schema.words.word_text,
             phonetic: schema.words.phonetic,
             meaning: schema.words.meaning,
-            created_at: schema.words.created_at,
-            updated_at: schema.words.updated_at,            
+            // created_at: schema.words.created_at,
+            // updated_at: schema.words.updated_at,            
           }  
 
+    let query;
     // Check if slug is provided and not empty
     if (slug && typeof slug === 'string' && slug.trim() !== '') {
         const searchSlug = slug.trim().toLowerCase(); // Use lowercase for search
@@ -706,43 +714,80 @@ word.post('/search', async (c) => {
         const prefix = searchSlug + '%';
 
         // Use Drizzle query builder
-        // First try exact match for primary search
-        const result = await db.select()
-          .from(schema.words)
-          .where(eq(schema.words.word_text, searchSlug))
-          .limit(1);
+        // 构建初始查询
+        query = db.select(wordsFields).from(schema.words);
 
+        // 如果 mustHaveImage 为 true，则添加 INNER JOIN images 表的条件
+        // INNER JOIN 会确保只有在 images 表中有匹配 word_id 的 words 记录才会被返回
+        if (mustHaveImage) {
+          query = query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
+        }
+
+        // 应用 where 条件：根据 word_text 匹配
+        query = query.where(eq(schema.words.word_text, searchSlug));
+
+        // 限制只返回一个结果
+        query = query.limit(1);
+
+        // // First try exact match for primary search
+        // const result = await db.select()
+        //   .from(schema.words)
+        //   .where(eq(schema.words.word_text, searchSlug))
+        //   .limit(1);
+
+        // 执行最终的查询
+        const result = await query;
+        
         if (result.length > 0) {
              existingWord = result[0];
              console.log(`Found exact match for "${searchSlug}" - ID: ${existingWord.id}`);
         } else {
             // If no exact match, try prefix match
              console.log(`No exact match for "${searchSlug}", trying prefix match.`);
-             let prefixResult;
-             if (userId && mode !== NavigationMode.Search) {
-              prefixResult = await db.select(wordsFields)
-                  .from(schema.words)
-                  // Use sql tag for LIKE with binding
-                  // .where(sql`${schema.words.word_text} LIKE ${prefix}`)
-                  .leftJoin(schema.archives,
+            //  let prefixResult;
+            query = db.select(wordsFields).from(schema.words);
+            if (mustHaveImage) {
+              query = query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
+            }
+
+            if (userId && mode !== NavigationMode.Search) {
+
+              query = query.leftJoin(schema.archives,
                       and(
                           eq(schema.words.id, schema.archives.word_id),
                           eq(schema.archives.user_id, userId)
                       )
-                  )
-                  .where(and(
+                  ).where(and(
                     sql`${schema.words.word_text} LIKE ${prefix}`,
                     isNull(schema.archives.word_id)
-                  )) // Filter out words with a matching archive entry
-                  .limit(1); // Get the first prefix match
-             } else {
-              prefixResult = await db.select()
-                  .from(schema.words)
-                  // Use sql tag for LIKE with binding
-                  .where(sql`${schema.words.word_text} LIKE ${prefix}`)
-                  .limit(1); // Get the first prefix match
-             }
+                  )
+                ); 
+              // prefixResult = await db.select(wordsFields)
+              //     .from(schema.words)
+              //     // Use sql tag for LIKE with binding
+              //     // .where(sql`${schema.words.word_text} LIKE ${prefix}`)
+              //     .leftJoin(schema.archives,
+              //         and(
+              //             eq(schema.words.id, schema.archives.word_id),
+              //             eq(schema.archives.user_id, userId)
+              //         )
+              //     )
+              //     .where(and(
+              //       sql`${schema.words.word_text} LIKE ${prefix}`,
+              //       isNull(schema.archives.word_id)
+              //     )) // Filter out words with a matching archive entry
+              //     .limit(1); // Get the first prefix match
+            } else {
+              query = query.where(sql`${schema.words.word_text} LIKE ${prefix}`)
+            //   prefixResult = await db.select()
+            //       .from(schema.words)
+            //       // Use sql tag for LIKE with binding
+            //       .where(sql`${schema.words.word_text} LIKE ${prefix}`)
+            //       .limit(1); // Get the first prefix match
+            }
 
+             query = query.limit(1);
+             const prefixResult = await query;
              if (prefixResult.length > 0) {
                  existingWord = prefixResult[0];
                  console.log(`Found prefix match for "${searchSlug}" - ${existingWord.word_text} (ID: ${existingWord.id})`);
@@ -754,27 +799,44 @@ word.post('/search', async (c) => {
     } else {
         // Slug is empty, randomly get one word
         console.log("Slug is empty, fetching a random word.");
-        let randomResult;
-        if (userId) {        
-          randomResult = await db.select(wordsFields)
-            .from(schema.words)
-            .leftJoin(schema.archives,
+        // let randomResult;
+        query = db.select(wordsFields).from(schema.words);
+        if (mustHaveImage) {
+          query = query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
+        }        
+        if (userId) {
+          query = query.leftJoin(schema.archives,
                 and(
                     eq(schema.words.id, schema.archives.word_id),
                     eq(schema.archives.user_id, userId)
                 )
             )
             .where(isNull(schema.archives.word_id)) // Filter out words with a matching archive entry             
-            // Use sql tag for RANDOM()
-            .orderBy(sql`RANDOM()`)
-            .limit(1);
+
+          // randomResult = await db.select(simpleWordsFields)
+          //   .from(schema.words)
+          //   .leftJoin(schema.archives,
+          //       and(
+          //           eq(schema.words.id, schema.archives.word_id),
+          //           eq(schema.archives.user_id, userId)
+          //       )
+          //   )
+          //   .where(isNull(schema.archives.word_id)) // Filter out words with a matching archive entry             
+          //   // Use sql tag for RANDOM()
+          //   .orderBy(sql`RANDOM()`)
+          //   .limit(1);
         } else {
-          randomResult = await db.select()
-            .from(schema.words)
-            // Use sql tag for RANDOM()
-            .orderBy(sql`RANDOM()`)
-            .limit(1);
+          // randomResult = await db.select(simpleWordsFields)
+          //   .from(schema.words)
+          //   // Use sql tag for RANDOM()
+          //   .orderBy(sql`RANDOM()`)
+          //   .limit(1);
         }
+        query = query.orderBy(sql`RANDOM()`);
+        query = query.limit(1);
+
+        const randomResult = await query;
+
         if (randomResult.length > 0) {
             existingWord = randomResult[0];
             console.log(`Fetched random word: ${existingWord.word_text} (ID: ${existingWord.id})`);
@@ -788,12 +850,14 @@ word.post('/search', async (c) => {
         console.log(`Fetching content for existing word ID: ${existingWord.id}`);
 
         if (mode !== NavigationMode.Search) {
-          let nextResult;
+
+          query = db.select(wordsFields).from(schema.words);
+          if (mustHaveImage) {
+            query = query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
+          }
+
           if (userId) {
-            nextResult = await db.select(wordsFields)
-            .from(schema.words)
-            // .where(mode === NavigationMode.Next ? gt(schema.words.id, existingWord.id) : lt(schema.words.id, existingWord.id))
-            .leftJoin(schema.archives,
+            query = query.leftJoin(schema.archives,
                 and(
                     eq(schema.words.id, schema.archives.word_id),
                     eq(schema.archives.user_id, userId)
@@ -803,15 +867,38 @@ word.post('/search', async (c) => {
               mode === NavigationMode.Next ? gt(schema.words.id, existingWord.id) : lt(schema.words.id, existingWord.id),
               isNull(schema.archives.word_id)
             )) // Filter out words with a matching archive entry
-            .orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id))            
-            .limit(1);
+            // .orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id))
+
+            // nextResult = await db.select(wordsFields)
+            // .from(schema.words)
+            // // .where(mode === NavigationMode.Next ? gt(schema.words.id, existingWord.id) : lt(schema.words.id, existingWord.id))
+            // .leftJoin(schema.archives,
+            //     and(
+            //         eq(schema.words.id, schema.archives.word_id),
+            //         eq(schema.archives.user_id, userId)
+            //     )
+            // )
+            // .where(and(
+            //   mode === NavigationMode.Next ? gt(schema.words.id, existingWord.id) : lt(schema.words.id, existingWord.id),
+            //   isNull(schema.archives.word_id)
+            // )) // Filter out words with a matching archive entry
+            // .orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id))
+            // .limit(1);
           } else {
-            nextResult = await db.select()
-            .from(schema.words)
-            .where(mode === NavigationMode.Next ? gt(schema.words.id, existingWord.id) : lt(schema.words.id, existingWord.id))
-            .orderBy(mode === NavigationMode.Next ? sql`id ASC` : sql`id DESC`)
-            .limit(1);
+            // nextResult = await db.select()
+            // .from(schema.words)
+            // .where(mode === NavigationMode.Next ? gt(schema.words.id, existingWord.id) : lt(schema.words.id, existingWord.id))
+            // .orderBy(mode === NavigationMode.Next ? sql`id ASC` : sql`id DESC`)
+            // .limit(1);
+            query = query.where(mode === NavigationMode.Next ? gt(schema.words.id, existingWord.id) : lt(schema.words.id, existingWord.id))
+            // .orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id))
+            // .orderBy(mode === NavigationMode.Next ? sql`id ASC` : sql`id DESC`)
           }
+
+          query = query.orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id));
+          query = query.limit(1);
+
+          const nextResult = await query;
 
           if (nextResult.length > 0) {
               existingWord = nextResult[0];
@@ -838,10 +925,11 @@ word.post('/search', async (c) => {
         return c.json(wordData, 200);
 
     } else {
-      if (mode !== NavigationMode.Search) {
+      if (mode !== NavigationMode.Search || mustHaveImage) {
         console.log("No more word data.");
         return c.json({}, 200);
       }
+
       // 3. Process New Word (If Not Found) - Call AI and Insert
       console.log(`Word "${slug}" not found in DB. Calling AI.`);
 

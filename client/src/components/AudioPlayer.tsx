@@ -15,6 +15,7 @@ import LocalStorageManager from '../utils/storage';
 const AUDIO_PLAYER_KEYS = {
   PLAYBACK_RATE: 'playbackRate',
   SUBTITLE_OFFSET: 'subtitleOffset',
+  SUBTITLE_FONT_SIZE: 'subtitleFontSize', // New key for font size
 } as const;
 
 interface AudioPlayerProps {
@@ -27,7 +28,6 @@ interface AudioPlayerProps {
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, highlightWords = [], onClose, onHighlightedWordClick }) => {
-  // Fallback if useIsMobile is not defined or available
   const isMobile = useIsMobile();
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -42,19 +42,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   const [tempSliderValue, setTempSliderValue] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  // const [subtitleOffset, setSubtitleOffset] = useState(0); // Offset in 1.0x speed seconds
-  // const [playbackRate, setPlaybackRate] = useState(1.0);
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
 
   const lastCueIndex = useRef(-1); // Cache for last active cue index
 
   // Create a memoized instance of LocalStorageManager,
   // using audioUrl as the unique scope for this player's settings.
-  // localStorageManager correctly memoized on resourceUUID
   const localStorageManager = useMemo(() => {
-    // console.log('Creating new LocalStorageManager for UUID:', audioUrl); // Debugging line
     return new LocalStorageManager(`ap_${audioUrl}`);
   }, [audioUrl]);
+
+  const commonStorageManager = useMemo(() => {
+    return new LocalStorageManager('ap_common');
+  }, []);
 
   // Use a function for useState initial value to read from localStorage immediately
   const [playbackRate, setPlaybackRate] = useState<number>(() => {
@@ -66,18 +66,30 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     const storedOffset = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.SUBTITLE_OFFSET);
     return storedOffset !== null ? storedOffset : 0;
   });
-  // --- FIX ENDS HERE ---
+
+  // NEW: State for subtitle font size
+  const [subtitleFontSize, setSubtitleFontSize] = useState<number>(() => {
+    const storedFontSize = commonStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.SUBTITLE_FONT_SIZE);
+    return storedFontSize !== null ? storedFontSize : 24; // Default font size
+  });
 
   // Load settings from local storage on component mount or audioUrl change
+  // (Ensures initial values are loaded correctly if memoization wasn't perfect or state reset)
   useEffect(() => {
-    // Load playbackRate
     const storedPlaybackRate = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.PLAYBACK_RATE);
     setPlaybackRate(storedPlaybackRate !== null ? storedPlaybackRate : 1.0);
 
-    // Load subtitleOffset
     const storedSubtitleOffset = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.SUBTITLE_OFFSET);
     setSubtitleOffset(storedSubtitleOffset !== null ? storedSubtitleOffset : 0);
+
+    // const storedFontSize = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.SUBTITLE_FONT_SIZE);
+    // setSubtitleFontSize(storedFontSize !== null ? storedFontSize : 24); // Load font size
   }, [audioUrl, localStorageManager]); 
+
+  useEffect(() => {
+    const storedFontSize = commonStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.SUBTITLE_FONT_SIZE);
+    setSubtitleFontSize(storedFontSize !== null ? storedFontSize : 24); // Load font size
+  }, [commonStorageManager]); 
 
   // Save settings to local storage whenever they change
   useEffect(() => {
@@ -88,29 +100,28 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     localStorageManager.setItem(AUDIO_PLAYER_KEYS.SUBTITLE_OFFSET, subtitleOffset);
   }, [subtitleOffset, localStorageManager]);
 
+  useEffect(() => {
+    commonStorageManager.setItem(AUDIO_PLAYER_KEYS.SUBTITLE_FONT_SIZE, subtitleFontSize); // Save font size
+  }, [subtitleFontSize, commonStorageManager]);
+
   // Effect 1: Handles audio loading and reset (only when audioUrl changes)
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
-      // These resets should ONLY happen when the audio source changes
       audio.pause();
       setIsPlaying(false);
       audio.currentTime = 0;
       setCurrentTime(0);
       setCurrentActiveCueIndex(null);
       setDuration(0); 
-      // Set isLoading to true only when the audio source genuinely changes.
-      // It will be set to false by the 'loadeddata' event.
       setIsLoading(true); 
     }
-  }, [audioUrl]); // Only depends on audioUrl
+  }, [audioUrl]); 
 
   // Effect 2: Handles subtitle parsing (when subtitleContent or isMobile changes)
   useEffect(() => {
     if (subtitleContent) {
       try {
-        // isMobile is a dependency here because parseSrt might behave differently
-        // based on whether it's a mobile environment or not.
         const parsed = parseSrt(isMobile, subtitleContent); 
         setParsedCues(parsed.sort((a, b) => a.startTime - b.startTime));
       } catch (error) {
@@ -120,40 +131,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     } else {
       setParsedCues([]);
     }
-  }, [subtitleContent, isMobile]); // Depends on subtitleContent and isMobile
-
-  // // Effect to reset player state when audioUrl changes
-  // useEffect(() => {
-  //   const audio = audioRef.current;
-  //   if (audio) {
-  //     // Pause current playback
-  //     audio.pause();
-  //     setIsPlaying(false);
-      
-  //     // Reset current time and related states
-  //     audio.currentTime = 0;
-  //     setCurrentTime(0);
-  //     setCurrentActiveCueIndex(null);
-  //     setDuration(0); // Reset duration until new audio is loaded
-  //     // 运行中切换 isMobile 会造成isLoading一直是true
-  //     setIsLoading(true); // Set loading true for the new audio
-
-  //     // The `audio.src` will automatically update when the component re-renders
-  //     // due to `audioUrl` prop change, which then triggers 'loadeddata' once ready.
-  //   }
-  //   // Also re-parse subtitles if subtitleContent might change with audioUrl
-  //   if (subtitleContent) {
-  //     try {
-  //       const parsed = parseSrt(isMobile, subtitleContent);
-  //       setParsedCues(parsed.sort((a, b) => a.startTime - b.startTime));
-  //     } catch (error) {
-  //       console.error('SRT解析失败:', error);
-  //     }
-  //   } else {
-  //     setParsedCues([]);
-  //   }
-
-  // }, [audioUrl, subtitleContent, isMobile]); // Dependencies: audioUrl, isMobile (for subtitle parsing), subtitleContent
+  }, [subtitleContent, isMobile]);
 
   // Optimized binary search with adjacent checks
   const findActiveCueOptimized = useCallback(
@@ -216,8 +194,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   );
 
   const handleTimeUpdate = useCallback(
-    // Reduce throttle interval to 33ms (approx 30fps) for smoother updates.
-    // If issues persist, consider lowering to 16ms or removing throttle for debugging.
     throttle(() => {
       const audio = audioRef.current;
       if (!audio || isSliderDragging) return;
@@ -225,24 +201,22 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       const currentAudioTime = audio.currentTime; // This is time at current playbackRate
       setCurrentTime(currentAudioTime);
       
-      // 正确公式：内容时间轴 = 实际时间 × 播放速率 + 字幕偏移
-      // const contentTime = (currentAudioTime * playbackRate) + subtitleOffset;
       const contentTime = currentAudioTime + subtitleOffset;
 
       const activeCueIndex = findActiveCueOptimized(contentTime);
 
       setCurrentActiveCueIndex(activeCueIndex);
 
-      // console.log(
-      //   `实际: ${audio.currentTime.toFixed(2)}s | ` +
-      //   `速率: ${playbackRate}x | ` +
-      //   `内容: ${contentTime.toFixed(2)}s | ` +
-      //   `字幕: ${activeCueIndex  ?? '无'}`
-      // );
-
     }, 33), // Changed throttle to 33ms
-    [isSliderDragging, findActiveCueOptimized, subtitleOffset, playbackRate]
+    [isSliderDragging, findActiveCueOptimized, subtitleOffset] // playbackRate is used in audio.playbackRate, not directly in contentTime calc
   );
+
+  const handlePlayPause = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio && !isLoading) { // Only allow play/pause if not loading
+      audio[isPlaying ? 'pause' : 'play']();
+    }
+  }, [isPlaying, isLoading]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -254,7 +228,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       audio.playbackRate = playbackRate; // Ensure initial rate is set
     };
 
-    const handlePlayPause = () => setIsPlaying(!audio.paused);
+    // Use a named function for play/pause to avoid re-creating it for event listener
+    const handleAudioPlayPauseEvent = () => setIsPlaying(!audio.paused);
 
     const handleEnded = () => {
       setIsPlaying(false);
@@ -265,32 +240,46 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
 
     audio.addEventListener('loadeddata', handleLoadedData);
     audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('play', handlePlayPause);
-    audio.addEventListener('pause', handlePlayPause);
+    audio.addEventListener('play', handleAudioPlayPauseEvent);
+    audio.addEventListener('pause', handleAudioPlayPauseEvent);
     audio.addEventListener('ended', handleEnded);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadeddata', handleLoadedData);
-      audio.removeEventListener('play', handlePlayPause);
-      audio.removeEventListener('pause', handlePlayPause);
-      audio.removeEventListener('ended', handleEnded); // Remove the named function
-      handleTimeUpdate.cancel();
+      audio.removeEventListener('play', handleAudioPlayPauseEvent);
+      audio.removeEventListener('pause', handleAudioPlayPauseEvent);
+      audio.removeEventListener('ended', handleEnded); 
+      handleTimeUpdate.cancel(); // Cancel any pending throttled calls
     };
   }, [handleTimeUpdate, playbackRate]); // Dependencies for useEffect
 
-  // useEffect(() => {
-  //   if (subtitleContent) {
-  //     try {
-  //       const parsed = parseSrt(isMobile, subtitleContent);
-  //       setParsedCues(parsed.sort((a, b) => a.startTime - b.startTime));
-  //     } catch (error) {
-  //       console.error('SRT解析失败:', error);
-  //     }
-  //   } else {
-  //     setParsedCues([]);
-  //   }
-  // }, [subtitleContent, isMobile]);
+  // NEW: Effect to handle spacebar keydown for play/pause toggle
+  useEffect(() => {
+    const handleSpacebarToggle = (event: KeyboardEvent) => {
+      // Check if the target of the event is an input or textarea
+      const target = event.target as HTMLElement;
+      const tagName = target.tagName;
+
+      // If the user is typing in an input or textarea, or if player is loading,
+      // prevent spacebar from toggling play/pause.
+      if (tagName === 'INPUT' || tagName === 'TEXTAREA' || isLoading) {
+        return; 
+      }
+
+      // If spacebar is pressed
+      if (event.key === ' ') {
+        event.preventDefault(); // Prevent default action (e.g., page scrolling)
+        handlePlayPause(); // Toggle play/pause
+      }
+    };
+
+    window.addEventListener('keydown', handleSpacebarToggle);
+
+    return () => {
+      window.removeEventListener('keydown', handleSpacebarToggle);
+    };
+  }, [handlePlayPause, isLoading]); // Dependencies: handlePlayPause function and isLoading state
 
   useEffect(() => {
     if (audioRef.current) {
@@ -303,18 +292,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     if (audioRef.current) {
       audioRef.current.playbackRate = playbackRate;
 
-      // 强制触发时间更新以重新计算字幕位置
+      // Force a time update to re-calculate subtitle position if playback rate changes
       const event = new Event('timeupdate');
       audioRef.current.dispatchEvent(event);      
     }
   }, [playbackRate]);
-
-  const handlePlayPause = () => {
-    const audio = audioRef.current;
-    if (audio) {
-      audio[isPlaying ? 'pause' : 'play']();
-    }
-  };
 
   const onSliderValueChange = useCallback((value: number[]) => {
     setIsSliderDragging(true);
@@ -327,12 +309,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       audio.currentTime = value[0];
       setCurrentTime(value[0]);
       
-      // 正确公式：内容时间轴 = 拖动位置 × 播放速率 + 偏移
       const contentTime = value[0] + subtitleOffset;
       setCurrentActiveCueIndex(findActiveCueOptimized(contentTime));
     }
     setIsSliderDragging(false);
-  }, [findActiveCueOptimized, subtitleOffset, playbackRate]);
+  }, [findActiveCueOptimized, subtitleOffset]);
 
   const formatTime = useCallback((time: number) => {
     if (isNaN(time) || time < 0) return '0:00';
@@ -363,9 +344,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
                   isHighlight ? 'bg-yellow-300 text-black px-1 rounded cursor-pointer hover:bg-yellow-400 transition-colors' : '',
                 )}
                 onClick={(e) => {
-                  // Prevent the click from propagating to parent elements if desired
                   e.stopPropagation();
-                  // Call the callback with the word and its bounding rectangle
                   onHighlightedWordClick(part, e.currentTarget.getBoundingClientRect());
                 }}
               >
@@ -542,24 +521,49 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
               disabled={isLoading}
             />
           </div>
+          {/* NEW: Subtitle Font Size Setting */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Label htmlFor="subtitle-font-size" className="text-sm shrink-0 w-24 text-right">字幕文字大小:</Label>
+            <Slider
+              id="subtitle-font-size"
+              value={[subtitleFontSize]}
+              min={12} // Minimum font size
+              max={36} // Maximum font size
+              step={1} // Step by 1px
+              onValueChange={(val) => setSubtitleFontSize(val[0])}
+              className="flex-1 w-full sm:w-auto"
+              disabled={isLoading}
+            />
+            <Input
+              type="number"
+              step="1"
+              value={subtitleFontSize.toFixed(0)} // Display as integer
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                if (!isNaN(val)) {
+                  setSubtitleFontSize(Math.max(12, Math.min(36, val))); // Constrain value
+                }
+              }}
+              className="w-24 text-center bg-gray-700 border-gray-600 text-white"
+              disabled={isLoading}
+            />
+          </div>
         </div>
       )}
 
       {showSubtitles && getSubtitlesToDisplay.length > 0 && (
         <div className={cn(
           "absolute left-0 right-0 bg-black text-white p-4 rounded-t-lg text-center animate-fade-in", // bg-black for solid background
-          showSettingsPanel ? "bottom-[calc(100% + 120px)]" : "bottom-[calc(100%+0px)]"
+          // Adjust bottom position to account for settings panel height
+          showSettingsPanel ? "bottom-[calc(100% + 220px)]" : "bottom-[calc(100%+0px)]" // Increased offset if settings panel is open
         )}>
           {getSubtitlesToDisplay.map((cue) => (
             <p
               key={cue.id}
-              className="text-lg leading-relaxed font-bold"
+              className="leading-relaxed font-bold"
+              style={{ fontSize: `${subtitleFontSize}px` }} // Apply dynamic font size
             >
               {highlightText(cue.text)}
-              {/* Debugging: Display precise timestamps */}
-              {/* <small className="opacity-50 block text-xs">
-                {cue.startTime.toFixed(2)} - {cue.endTime.toFixed(2)}
-              </small> */}
             </p>
           ))}
         </div>

@@ -1,3 +1,4 @@
+// hooks/use-recent-analysis.ts
 import { useState, useEffect, useCallback } from 'react';
 import { axiosPrivate } from "@/lib/axios"; // Adjust path to your axiosPrivate
 import { useToast } from '@/hooks/use-toast';
@@ -10,63 +11,111 @@ export type Submission = {
   words: string;
   audioKey: boolean;
   captionSrt: boolean;
+  timestamp: number; // Ensure timestamp exists for ordering
 };
+
+const BATCH_SIZE = 10; // Number of submissions to load per request
 
 export const useRecentAnalysis = (isAuthenticated: boolean) => {
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
-  // const [srt, setSrt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0); // Tracks current page loaded
+  const [hasMore, setHasMore] = useState(true); // True if there might be more data
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchSubmissions = async () => {
-      setIsLoading(true);
-      try {
-        const submissions = await fetchRecentSubmissions();
-        setRecentSubmissions(submissions);
-      } catch (error) {
-        console.error('Failed to load recent submissions:', error);
+  // Internal helper to fetch submissions with pagination
+  const fetchSubmissions = useCallback(async (page: number) => {
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      setHasMore(false); // No more data if not authenticated
+      setRecentSubmissions([]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Assuming your backend API supports 'limit' and 'offset' for pagination
+      const offset = page * BATCH_SIZE;
+      const response = await axiosPrivate.get(`/api/analyze/history?limit=${BATCH_SIZE}&offset=${offset}`);
+
+      if (response.status === 200 || response.status === 201) {
+        const newSubmissions: Submission[] = response.data;
+        
+        setRecentSubmissions(prev => {
+          // Filter out duplicates if newSubmissions contain items already in prev
+          const existingIds = new Set(prev.map(sub => sub.uuid));
+          const uniqueNewSubmissions = newSubmissions.filter(sub => !existingIds.has(sub.uuid));
+          return [...prev, ...uniqueNewSubmissions];
+        });
+        
+        // Determine if there are potentially more submissions
+        setHasMore(newSubmissions.length === BATCH_SIZE);
+      } else {
         toast({
           title: "加载历史记录失败",
-          description: "无法获取您的最近提交记录",
+          description: `服务器错误: ${response.status}`,
           variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
+        setHasMore(false); // No more data on error
       }
-    };
-    
-    fetchSubmissions();
-  }, [toast, isAuthenticated]);
+    } catch (error: any) {
+      console.error('Failed to load recent submissions:', error);
+      toast({
+        title: "加载历史记录失败",
+        description: `无法获取您的最近提交记录: ${error.message || '网络错误'}`,
+        variant: "destructive",
+      });
+      setHasMore(false); // No more data on error
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, toast]);
 
-  // Add new submission to the recent list
-  const addSubmission = (newSubmission: Submission) => {
+  // Effect for initial load and when isAuthenticated changes
+  useEffect(() => {
+    // Reset state and load first page when isAuthenticated changes
+    setRecentSubmissions([]);
+    setCurrentPage(0);
+    setHasMore(true); // Assume there's more data for a fresh start
+    if (isAuthenticated) {
+      fetchSubmissions(0);
+    } else {
+      setIsLoading(false); // No loading if not authenticated
+    }
+  }, [isAuthenticated, fetchSubmissions]);
+
+  // Function to load more submissions (exposed to component)
+  const loadMore = useCallback(() => {
+    if (!isLoading && hasMore) {
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
+      fetchSubmissions(nextPage);
+    }
+  }, [isLoading, hasMore, currentPage, fetchSubmissions]);
+
+  // Add new submission to the recent list (only adds to the in-memory list, not Firestore)
+  // This version handles adding a new submission at the top if it's genuinely new,
+  // or moving it to the top if it already exists, maintaining uniqueness.
+  // It no longer limits to 4, as the full list will be managed by pagination.
+  const addSubmission = useCallback((newSubmission: Submission) => {
     setRecentSubmissions(prevSubmissions => {
-      // Check if this submission already exists
-      const exists = prevSubmissions.some(
-        sub => sub.sourceType === newSubmission.sourceType && sub.content === newSubmission.content
-      );
+      // Check if this submission (by uuid) already exists
+      const exists = prevSubmissions.some(sub => sub.uuid === newSubmission.uuid);
       
       if (exists) {
-        // Move the existing submission to the top
-        const filteredSubmissions = prevSubmissions.filter(
-          sub => !(sub.sourceType === newSubmission.sourceType && sub.content === newSubmission.content)
-        );
-        return [newSubmission, ...filteredSubmissions].slice(0, 4);
+        // If exists, filter it out and add the updated/new one to the top
+        const filteredSubmissions = prevSubmissions.filter(sub => sub.uuid !== newSubmission.uuid);
+        return [newSubmission, ...filteredSubmissions];
       } else {
-        // Add new submission to the top and keep only 4 items
-        return [newSubmission, ...prevSubmissions].slice(0, 4);
+        // If new, just add to the top
+        return [newSubmission, ...prevSubmissions];
       }
     });
-  };
+  }, []);
 
-  const getSrt = async (uuid: string) => {
+  const getSrt = useCallback(async (uuid: string) => {
       try {
         const response = await axiosPrivate.get(`/api/analyze/srt/${uuid}`);
-        // console.log('Response headers:', response.headers);
-        // console.log('Response body:', response.data);
-
-        // console.log('get srt successfully.');
         if (response.status === 200) {
           return response.data;
         }
@@ -75,38 +124,7 @@ export const useRecentAnalysis = (isAuthenticated: boolean) => {
           console.error('Failed to get srt:', error);
           return null;
       }    
-  };
+  }, []);
 
-  return { recentSubmissions, isLoading, addSubmission, getSrt };
-};
-
-// Simulated API function - in a real application, this would be a proper API call
-const fetchRecentSubmissions = async (): Promise<Submission[]> => {
-  // In a real app, you would fetch from your backend using the userId
-  console.log('Fetching recent submissions for current user');
-  
-  try {
-    // /api/analyze
-    const response = await axiosPrivate.get('/api/analyze/history');
-
-    if (response.status === 200 || response.status === 201) {
-      const submittedTask = response.data;
-      return submittedTask;
-    }
-  } catch (err) {
-      // 网络错误
-      console.error('Network error fetching analysis history":', err);
-  }
-
-  return [];
-  // // Simulate API delay
-  // await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // // Return mock data - in a real app this would come from your database
-  // return [
-  //   { type: 'url', content: 'https://example.com/english-vocabulary-article' },
-  //   { type: 'url', content: 'https://language-learning.org/toefl-preparation' },
-  //   { type: 'article', content: 'The importance of vocabulary acquisition in language learning cannot be overstated...' },
-  //   { type: 'article', content: 'Many students struggle with reading comprehension in their second language...' }
-  // ];
+  return { recentSubmissions, isLoading, addSubmission, getSrt, hasMore, loadMore };
 };

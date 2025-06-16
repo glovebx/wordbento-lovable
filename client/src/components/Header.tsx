@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from './AuthModal';
 import ThemeToggle from './ThemeToggle';
@@ -12,14 +13,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { User } from 'lucide-react';
+import { User, Grid, BookOpen } from 'lucide-react';
 // Import the useNavigate hook from react-router-dom
 import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
+  viewMode: 'grid' | 'flashcard';
+  onViewModeChange: (mode: 'grid' | 'flashcard') => void;  
 }
 
 const Header: React.FC<HeaderProps> = ({
+  viewMode,
+  onViewModeChange  
 }) => {
   // const [searchInput, setSearchInput] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -36,6 +41,10 @@ const Header: React.FC<HeaderProps> = ({
     navigate('/history'); // Navigate to the /profile route
   };  
 
+  const handleToggle = (checked: boolean) => {
+    onViewModeChange(checked ? 'flashcard' : 'grid');
+  };
+
   return (
     <header className="sticky top-0 z-10 bg-background border-b shadow-sm">
       <div className="container mx-auto px-4 py-3">
@@ -43,6 +52,18 @@ const Header: React.FC<HeaderProps> = ({
           <div className="text-xl font-bold">Word-Bento 单词学习</div>
 
           <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-2">
+              <Grid className="h-4 w-4" />
+              <span className="text-sm hidden sm:inline">网格模式</span>
+              <Switch 
+                checked={viewMode === 'flashcard'}
+                onCheckedChange={handleToggle}
+              />
+              <span className="text-sm hidden sm:inline">卡片模式</span>
+              <BookOpen className="h-4 w-4" />
+            </div>
+
             <ThemeToggle />
             
             {isAuthenticated ? (
