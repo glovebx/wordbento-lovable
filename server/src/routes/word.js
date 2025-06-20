@@ -192,6 +192,45 @@ const formatDbResultToWordResponse = (c, word, contentRecords, imageRecords) => 
     };
 };
 
+/**
+ * 从一组图片URL中读取每张图片的二进制流。
+ * @param {string[]} imageUrls 包含图片URL的字符串数组。
+ * @returns {Promise<ArrayBuffer[]>} 一个 Promise，解析为包含每张图片 ArrayBuffer 的数组。
+ * 如果任何图片加载失败，该 Promise 将会 reject。
+ */
+const readImageBinaryStreams = async (imageUrls) => {  
+  const allResultsPromises = imageUrls.map(async (url) => {
+    try {
+      console.log(`正在读取图片: ${url}`);
+      const response = await fetch(url, {
+        mode: 'cors' // 确保处理跨域请求，如果图片不在同一域
+      });
+
+      if (!response.ok) {
+        // 如果HTTP请求不成功（例如404，500等），则返回包含错误信息的对象
+        const errorMessage = `HTTP 错误: ${response.status} ${response.statusText}`;
+        console.error(`无法加载图片 ${url}: ${errorMessage}`);
+        return { url: url, error: errorMessage };
+      }
+
+      // 获取响应的二进制数据作为 ArrayBuffer
+      const arrayBuffer = await response.arrayBuffer();
+      console.log(`成功读取图片: ${url}, 大小: ${arrayBuffer.byteLength} 字节`);
+      return { url: url, data: arrayBuffer }; // 成功时返回数据
+    } catch (error) {
+      // 捕获网络错误或其他异常，返回包含错误信息的对象
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`读取图片 ${url} 失败:`, errorMessage);
+      return { url: url, error: errorMessage }; // 失败时返回错误
+    }
+  });
+
+  // Promise.all 会等待所有 Promise 完成，无论它们是成功还是解析为包含错误的对象
+  const results = await Promise.all(allResultsPromises);
+
+  console.log("所有图片加载尝试已完成。");
+  return results;
+}
 
 // Placeholder function to call Gemini AI API
 // Replace with your actual API call logic
@@ -1137,102 +1176,146 @@ word.post('/imagize', async (c) => {
   //   'https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/76b4331521494f5780d04c7682615124~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=Gnv%2Fp1XoAo5WqBYUWjIc%2BzoWHTQ%3D&format=.jpeg', 
   //   'https://p9-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/4b7a4ad7e2cb4e11bc1ff38ab4d23da8~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=UJ8O08ado9UGzoi%2FLya%2FXR4CPRk%3D&format=.jpeg']
 
+  let mimeType = 'image/jpeg';  // 即梦默认生成jpeg图片
+  let allImageResults = [];
   if (imageUrls && imageUrls.length > 0) {
-    for (const imageKey of imageUrls) {
-      const insertedImageResult = await db.insert(schema.images).values({
-        word_id: existingWord.id, // Associate with public user ID 0
-        image_key: imageKey,
-        prompt: exampleToGenerate
-        })
-        // Use .returning() in Drizzle for D1 to get the inserted row
-        .returning()
-        .get(); // .get() for a single row
-
-      // Check if insertion was successful and returned a row
-      if (!insertedImageResult) {
-        throw new Error("Failed to insert image into table or get inserted row.");
-      }
-    }
-
-    console.log(`Word "${wordToGenerate}" and image inserted successfully.`);
-    // return c.json({'key': r2ObjectKey}, 200);
-    return c.json({imageUrls: imageUrls}, 200);    
+    console.log('开始加载图片...');
+    allImageResults = await readImageBinaryStreams(imageUrls);
+    console.log('所有图片加载结果:', allImageResults);
   }
 
-  const inlineData = await generateImageByGeminiAi(c, wordToGenerate);
+  if (!allImageResults || allImageResults.length == 0) {
+    const inlineData = await generateImageByGeminiAi(c, wordToGenerate);
 
     if (!inlineData) {
       console.error(`AI failed to generate image for "${wordToGenerate}" or returned unexpected format.`);
       return c.json({ message: `Failed to generate image for "${wordToGenerate}".` }, 500);
     }
 
-    const mimeType = inlineData.mimeType || 'application/octet-stream';
+    mimeType = inlineData.mimeType || 'application/octet-stream';
     // Convert the base64 string to a Uint8Array
     // Buffer.from() works in Cloudflare Workers and returns a Uint8Array
     let imageBinaryData;
     try {
         imageBinaryData = Buffer.from(inlineData.data, "base64");
         console.log(`Converted base64 image data to Uint8Array of size: ${imageBinaryData.byteLength} bytes`);
+        allImageResults.push({ url: '', data: imageBinaryData }); // 成功时返回数据
     } catch (e) {
         console.error("Failed to convert base64 string to binary data:", e);
         // return null; // Or throw an error
         return c.json({ message: `Failed to generate binary image for "${wordToGenerate}".` }, 500);
     }
+  }
+
+  // if (imageUrls && imageUrls.length > 0) {
+  //   for (const imageKey of imageUrls) {
+  //     const insertedImageResult = await db.insert(schema.images).values({
+  //       word_id: existingWord.id, // Associate with public user ID 0
+  //       image_key: imageKey,
+  //       prompt: exampleToGenerate
+  //       })
+  //       // Use .returning() in Drizzle for D1 to get the inserted row
+  //       .returning()
+  //       .get(); // .get() for a single row
+
+  //     // Check if insertion was successful and returned a row
+  //     if (!insertedImageResult) {
+  //       throw new Error("Failed to insert image into table or get inserted row.");
+  //     }
+  //   }
+
+  //   console.log(`Word "${wordToGenerate}" and image inserted successfully.`);
+  //   // return c.json({'key': r2ObjectKey}, 200);
+  //   return c.json({imageUrls: imageUrls}, 200);    
+  // }
 
     console.log(`AI image received, inserting into R2. ${mimeType}`);
 
-    // Start a database transaction for inserting into multiple tables
-    try {
-      const objectKey = nanoid(10);
-      const objectPath = `${objectKey}.png`
-      // const imageMimeType = 'image/png';
-      // Upload the binary data to R2
-      // The put method takes the object key, the data, and optional options like contentType
-      const r2Object = await c.env.WORDBENTO_R2.put(objectPath, imageBinaryData, {
-        contentType: mimeType //|| 'application/octet-stream', // Set the MIME type
-        // Add other options here if needed, e.g., customMetadata, httpMetadata
-        // httpMetadata: {
-        //     cacheControl: 'max-age=31536000', // Example: Cache for 1 year
-        // },
-      });
-
-      let r2ObjectKey;
-      if (r2Object) {
-          console.log(`Image stored successfully in R2 with key: ${r2Object.key}`);
-          // Return the key of the stored object
-          r2ObjectKey = r2Object.key;
-      } else {
-           console.error("Failed to upload image to R2.");
-          //  return c.json({ message: `Failed to upload image for "${wordToGenerate}".` }, 500);
-          throw new Error("Failed to upload image to R2.");
-      }      
-        // Insert into words table
-        // Assuming associating with 'public' user (id=0) for simplicity
-        // In a real app, use the authenticated user's ID
-        const insertedImageResult = await db.insert(schema.images).values({
+    const allResultsPromises = allImageResults.map(async (imageBinaryData) => {
+      // Start a database transaction for inserting into multiple tables
+      try {
+        // 保存到本地失败了，直接存入url（其实没有意义，即梦这个URL会失效）
+        if (!imageBinaryData.data && imageBinaryData.url) {
+          const insertedImageResult = await db.insert(schema.images).values({
             word_id: existingWord.id, // Associate with public user ID 0
-            image_key: r2ObjectKey,
+            image_key: imageBinaryData.url,
             prompt: exampleToGenerate
-        })
-        // Use .returning() in Drizzle for D1 to get the inserted row
-        .returning()
-        .get(); // .get() for a single row
+            })
+            // Use .returning() in Drizzle for D1 to get the inserted row
+            .returning()
+            .get(); // .get() for a single row
 
-        // Check if insertion was successful and returned a row
-        if (!insertedImageResult) {
-          throw new Error("Failed to insert image into table or get inserted row.");
+          // Check if insertion was successful and returned a row
+          if (!insertedImageResult) {
+            throw new Error("Failed to insert image into table or get inserted row.");
+          }
+
+          return imageBinaryData.url;
         }
 
-      console.log(`Word "${wordToGenerate}" and image inserted successfully.`);
-      // return c.json({'key': r2ObjectKey}, 200);
-      return c.json({imageUrls: [`${c.env.VITE_BASE_URL}/api/word/image/${r2ObjectKey}`]}, 200);
-      // return c.json({inlines: [inlineData]}, 200);
+        const objectKey = nanoid(10);
+        const objectPath = `${objectKey}.jpeg`
+        // const imageMimeType = 'image/png';
+        // Upload the binary data to R2
+        // The put method takes the object key, the data, and optional options like contentType
+        const r2Object = await c.env.WORDBENTO_R2.put(objectPath, imageBinaryData.data, {
+          contentType: mimeType //|| 'application/octet-stream', // Set the MIME type
+          // Add other options here if needed, e.g., customMetadata, httpMetadata
+          // httpMetadata: {
+          //     cacheControl: 'max-age=31536000', // Example: Cache for 1 year
+          // },
+        });
 
-    } catch (dbError) { // Removed type annotation
-        console.error(`Database transaction failed for word "${wordToGenerate}":`, dbError);
-        // Rollback is automatic on error with db.transaction
-        return c.json({ message: `Failed to save generated image for "${wordToGenerate}".` }, 500);
-    }
+        let r2ObjectKey;
+        if (r2Object) {
+            console.log(`Image stored successfully in R2 with key: ${r2Object.key}`);
+            // Return the key of the stored object
+            r2ObjectKey = r2Object.key;
+        } else {
+            console.error("Failed to upload image to R2.");
+            //  return c.json({ message: `Failed to upload image for "${wordToGenerate}".` }, 500);
+            throw new Error("Failed to upload image to R2.");
+        }      
+          // Insert into words table
+          // Assuming associating with 'public' user (id=0) for simplicity
+          // In a real app, use the authenticated user's ID
+          const insertedImageResult = await db.insert(schema.images).values({
+              word_id: existingWord.id, // Associate with public user ID 0
+              image_key: r2ObjectKey,
+              prompt: exampleToGenerate
+          })
+          // Use .returning() in Drizzle for D1 to get the inserted row
+          .returning()
+          .get(); // .get() for a single row
+
+          // Check if insertion was successful and returned a row
+          if (!insertedImageResult) {
+            throw new Error("Failed to insert image into table or get inserted row.");
+          }
+
+        console.log(`Word "${wordToGenerate}" and image inserted successfully.`);
+        // return c.json({'key': r2ObjectKey}, 200);
+        // return c.json({imageUrls: [`${c.env.VITE_BASE_URL}/api/word/image/${r2ObjectKey}`]}, 200);
+        // return c.json({inlines: [inlineData]}, 200);
+        return `${c.env.VITE_BASE_URL}/api/word/image/${r2ObjectKey}`
+
+      } catch (dbError) { // Removed type annotation
+          console.error(`Database transaction failed for word "${wordToGenerate}":`, dbError);
+          // Rollback is automatic on error with db.transaction
+          // return c.json({ message: `Failed to save generated image for "${wordToGenerate}".` }, 500);
+          return null;
+      }
+    });
+
+  // Promise.all 会等待所有 Promise 完成，无论它们是成功还是解析为包含错误的对象
+  const results = await Promise.all(allResultsPromises);
+  const savedImageUrls = results.filter(data => data !== null);
+
+  if (savedImageUrls && savedImageUrls.length > 0) {
+    return c.json({imageUrls: savedImageUrls}, 200);
+  } else {
+    return c.json({ message: `Failed to save generated image for "${wordToGenerate}".` }, 500);
+  }
 });
 
 // 获取单词关联的图片

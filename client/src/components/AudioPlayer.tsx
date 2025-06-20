@@ -23,11 +23,13 @@ interface AudioPlayerProps {
   subtitleContent?: string;
   highlightWords?: string[];
   onClose: () => void;
-  // New prop: Callback when a highlighted word is clicked
-  onHighlightedWordClick?: (word: string, rect: DOMRect) => void; // Pass word and its bounding rect  
+  // New prop: Callback when a highlighted word is clicked (used for FloatingImageCarousel)
+  onHighlightedWordClick?: (word: string, rect: DOMRect) => void;
+  // NEW prop: Callback when the search button above a highlighted word is clicked
+  onSearchWord?: (word: string) => void;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, highlightWords = [], onClose, onHighlightedWordClick }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, highlightWords = [], onClose, onHighlightedWordClick, onSearchWord }) => {
   const isMobile = useIsMobile();
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -46,14 +48,20 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
 
   const lastCueIndex = useRef(-1); // Cache for last active cue index
 
+  // State for the search button that appears above a non-highlighted word
+  const [wordForSearch, setWordForSearch] = useState<string | null>(null);
+  const [searchButtonPosition, setSearchButtonPosition] = useState<{ x: number; y: number; width: number; } | null>(null);
+
+
   // Create a memoized instance of LocalStorageManager,
   // using audioUrl as the unique scope for this player's settings.
   const localStorageManager = useMemo(() => {
     return new LocalStorageManager(`ap_${audioUrl}`);
   }, [audioUrl]);
 
+  // Common storage for settings that persist across different audio files
   const commonStorageManager = useMemo(() => {
-    return new LocalStorageManager('ap_common');
+    return new LocalStorageManager('ap_common'); // Use a generic key for common settings
   }, []);
 
   // Use a function for useState initial value to read from localStorage immediately
@@ -67,31 +75,28 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     return storedOffset !== null ? storedOffset : 0;
   });
 
-  // NEW: State for subtitle font size
+  // State for subtitle font size (common setting)
   const [subtitleFontSize, setSubtitleFontSize] = useState<number>(() => {
     const storedFontSize = commonStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.SUBTITLE_FONT_SIZE);
     return storedFontSize !== null ? storedFontSize : 24; // Default font size
   });
 
-  // Load settings from local storage on component mount or audioUrl change
-  // (Ensures initial values are loaded correctly if memoization wasn't perfect or state reset)
+  // Load settings from local storage on component mount or audioUrl change (for audio-specific settings)
   useEffect(() => {
     const storedPlaybackRate = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.PLAYBACK_RATE);
     setPlaybackRate(storedPlaybackRate !== null ? storedPlaybackRate : 1.0);
 
     const storedSubtitleOffset = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.SUBTITLE_OFFSET);
     setSubtitleOffset(storedSubtitleOffset !== null ? storedSubtitleOffset : 0);
+  }, [audioUrl, localStorageManager]);
 
-    // const storedFontSize = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.SUBTITLE_FONT_SIZE);
-    // setSubtitleFontSize(storedFontSize !== null ? storedFontSize : 24); // Load font size
-  }, [audioUrl, localStorageManager]); 
-
+  // Load common settings from local storage on component mount (for app-wide settings)
   useEffect(() => {
     const storedFontSize = commonStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.SUBTITLE_FONT_SIZE);
-    setSubtitleFontSize(storedFontSize !== null ? storedFontSize : 24); // Load font size
-  }, [commonStorageManager]); 
+    setSubtitleFontSize(storedFontSize !== null ? storedFontSize : 24);
+  }, [commonStorageManager]);
 
-  // Save settings to local storage whenever they change
+  // Save audio-specific settings to local storage whenever they change
   useEffect(() => {
     localStorageManager.setItem(AUDIO_PLAYER_KEYS.PLAYBACK_RATE, playbackRate);
   }, [playbackRate, localStorageManager]);
@@ -100,8 +105,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     localStorageManager.setItem(AUDIO_PLAYER_KEYS.SUBTITLE_OFFSET, subtitleOffset);
   }, [subtitleOffset, localStorageManager]);
 
+  // Save common settings to local storage whenever they change
   useEffect(() => {
-    commonStorageManager.setItem(AUDIO_PLAYER_KEYS.SUBTITLE_FONT_SIZE, subtitleFontSize); // Save font size
+    commonStorageManager.setItem(AUDIO_PLAYER_KEYS.SUBTITLE_FONT_SIZE, subtitleFontSize);
   }, [subtitleFontSize, commonStorageManager]);
 
   // Effect 1: Handles audio loading and reset (only when audioUrl changes)
@@ -115,6 +121,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       setCurrentActiveCueIndex(null);
       setDuration(0); 
       setIsLoading(true); 
+      // Clear search button state when audio changes
+      setWordForSearch(null);
+      setSearchButtonPosition(null);
     }
   }, [audioUrl]); 
 
@@ -145,7 +154,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
         }
 
         // Check next few cues (forward movement is common)
-        for (let i = 1; i <= 2; i++) { // Check current + 1, current + 2
+        for (let i = 1; i <= 2; i++) {
           const nextIndex = lastCueIndex.current + i;
           if (nextIndex < parsedCues.length) {
             const nextCue = parsedCues[nextIndex];
@@ -157,7 +166,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
         }
 
         // Check previous few cues (backward movement or minor jumps)
-        for (let i = 1; i <= 2; i++) { // Check current - 1, current - 2
+        for (let i = 1; i <= 2; i++) {
           const prevIndex = lastCueIndex.current - i;
           if (prevIndex >= 0) {
             const prevCue = parsedCues[prevIndex];
@@ -198,22 +207,27 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       const audio = audioRef.current;
       if (!audio || isSliderDragging) return;
 
-      const currentAudioTime = audio.currentTime; // This is time at current playbackRate
+      const currentAudioTime = audio.currentTime;
       setCurrentTime(currentAudioTime);
       
       const contentTime = currentAudioTime + subtitleOffset;
 
       const activeCueIndex = findActiveCueOptimized(contentTime);
 
+      // Clear search button state if the active cue changes
+      if (activeCueIndex !== currentActiveCueIndex) {
+        setWordForSearch(null);
+        setSearchButtonPosition(null);
+      }
       setCurrentActiveCueIndex(activeCueIndex);
 
-    }, 33), // Changed throttle to 33ms
-    [isSliderDragging, findActiveCueOptimized, subtitleOffset] // playbackRate is used in audio.playbackRate, not directly in contentTime calc
+    }, 33),
+    [isSliderDragging, findActiveCueOptimized, subtitleOffset, currentActiveCueIndex]
   );
 
   const handlePlayPause = useCallback(() => {
     const audio = audioRef.current;
-    if (audio && !isLoading) { // Only allow play/pause if not loading
+    if (audio && !isLoading) {
       audio[isPlaying ? 'pause' : 'play']();
     }
   }, [isPlaying, isLoading]);
@@ -225,17 +239,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     const handleLoadedData = () => {
       setDuration(audio.duration);
       setIsLoading(false);
-      audio.playbackRate = playbackRate; // Ensure initial rate is set
+      audio.playbackRate = playbackRate;
     };
 
-    // Use a named function for play/pause to avoid re-creating it for event listener
     const handleAudioPlayPauseEvent = () => setIsPlaying(!audio.paused);
 
     const handleEnded = () => {
       setIsPlaying(false);
       setCurrentActiveCueIndex(null);
       setCurrentTime(0);
-      audio.playbackRate = 1.0; // Reset rate on end
+      audio.playbackRate = 1.0;
     };
 
     audio.addEventListener('loadeddata', handleLoadedData);
@@ -250,27 +263,23 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       audio.removeEventListener('play', handleAudioPlayPauseEvent);
       audio.removeEventListener('pause', handleAudioPlayPauseEvent);
       audio.removeEventListener('ended', handleEnded); 
-      handleTimeUpdate.cancel(); // Cancel any pending throttled calls
+      handleTimeUpdate.cancel();
     };
-  }, [handleTimeUpdate, playbackRate]); // Dependencies for useEffect
+  }, [handleTimeUpdate, playbackRate]);
 
-  // NEW: Effect to handle spacebar keydown for play/pause toggle
+  // Effect to handle spacebar keydown for play/pause toggle
   useEffect(() => {
     const handleSpacebarToggle = (event: KeyboardEvent) => {
-      // Check if the target of the event is an input or textarea
       const target = event.target as HTMLElement;
       const tagName = target.tagName;
 
-      // If the user is typing in an input or textarea, or if player is loading,
-      // prevent spacebar from toggling play/pause.
       if (tagName === 'INPUT' || tagName === 'TEXTAREA' || isLoading) {
         return; 
       }
 
-      // If spacebar is pressed
       if (event.key === ' ') {
-        event.preventDefault(); // Prevent default action (e.g., page scrolling)
-        handlePlayPause(); // Toggle play/pause
+        event.preventDefault();
+        handlePlayPause();
       }
     };
 
@@ -279,7 +288,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     return () => {
       window.removeEventListener('keydown', handleSpacebarToggle);
     };
-  }, [handlePlayPause, isLoading]); // Dependencies: handlePlayPause function and isLoading state
+  }, [handlePlayPause, isLoading]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -292,7 +301,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     if (audioRef.current) {
       audioRef.current.playbackRate = playbackRate;
 
-      // Force a time update to re-calculate subtitle position if playback rate changes
       const event = new Event('timeupdate');
       audioRef.current.dispatchEvent(event);      
     }
@@ -322,48 +330,75 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, []);
 
-  const highlightText = useCallback((text: string) => {
+  // OPTIMIZATION: Memoize escapedHighlightWords
+  const escapedHighlightWords = useMemo(() => {
+    // Ensure highlightWords is an array before mapping
     if (!highlightWords || highlightWords.length === 0) {
-      return <span>{text}</span>;
+      return [];
     }
+    return highlightWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  }, [highlightWords]); // Only re-calculate if highlightWords array changes
 
-    const escapedHighlightWords = highlightWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    const highlightRegex = new RegExp(`\\b(${escapedHighlightWords.join('|')})\\b`, 'gi');
+  const highlightText = useCallback((text: string) => {
+    // const escapedHighlightWords = highlightWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    // Use a regex that splits by spaces OR by highlight words, keeping highlight words as parts
+    const splitRegex = new RegExp(`(${escapedHighlightWords.join('|')}|\\s+)`, 'gi');
 
-    const parts = text.split(highlightRegex);
+    const parts = text.split(splitRegex).filter(Boolean); // Filter out empty strings
 
     return (
       <>
         {parts.map((part, index) => {
+          // If the part is just whitespace, render it as such
+          if (part.trim() === '' && /\s/.test(part)) {
+            return <span key={index}>{part}</span>;
+          }
+
           const isHighlight = highlightWords.some(word => word.toLowerCase() === part.toLowerCase());
-          if (isHighlight && onHighlightedWordClick) {
+          
+          if (isHighlight) {
             return (
               <span
                 key={index}
-                className={cn(
-                  isHighlight ? 'bg-yellow-300 text-black px-1 rounded cursor-pointer hover:bg-yellow-400 transition-colors' : '',
-                )}
+                className="bg-yellow-300 text-black rounded cursor-pointer hover:bg-yellow-400 transition-colors"
                 onClick={(e) => {
-                  e.stopPropagation();
-                  onHighlightedWordClick(part, e.currentTarget.getBoundingClientRect());
+                  e.stopPropagation(); // Prevent event bubbling
+                  // Only call onHighlightedWordClick for highlighted words
+                  if (onHighlightedWordClick) {
+                    onHighlightedWordClick(part, e.currentTarget.getBoundingClientRect());
+                  }
+                  // Do NOT show search button for highlighted words
+                  setWordForSearch(null);
+                  setSearchButtonPosition(null);
                 }}
               >
                 {part}
               </span>
             );
-          }          
-          return (
-            <span
-              key={index}
-              className={cn(isHighlight ? 'bg-yellow-300 text-black px-1 rounded' : '')}
-            >
-              {part}
-            </span>
-          );
+          } else {
+            // This is a non-highlighted word
+            return (
+              <span
+                key={index}
+                className="cursor-pointer hover:bg-gray-700/50 rounded"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent event bubbling
+                  // Set state for the search button for THIS clicked non-highlighted word
+                  // Clean the word for logic, but display the original part
+                  const cleanedWord = part.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
+                  setWordForSearch(cleanedWord);
+                  setSearchButtonPosition(e.currentTarget.getBoundingClientRect());
+                  // Do NOT call onHighlightedWordClick for non-highlighted words
+                }}
+              >
+                {part}
+              </span>
+            );
+          }
         })}
       </>
     );
-  }, [highlightWords, onHighlightedWordClick]);
+  }, [highlightWords, escapedHighlightWords, onHighlightedWordClick]);
 
   const getSubtitlesToDisplay = useMemo(() => {
     if (currentActiveCueIndex === null || !showSubtitles) {
@@ -521,7 +556,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
               disabled={isLoading}
             />
           </div>
-          {/* NEW: Subtitle Font Size Setting */}
+          {/* Subtitle Font Size Setting */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Label htmlFor="subtitle-font-size" className="text-sm shrink-0 w-24 text-right">字幕文字大小:</Label>
             <Slider
@@ -553,20 +588,45 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
 
       {showSubtitles && getSubtitlesToDisplay.length > 0 && (
         <div className={cn(
-          "absolute left-0 right-0 bg-black text-white p-4 rounded-t-lg text-center animate-fade-in", // bg-black for solid background
-          // Adjust bottom position to account for settings panel height
-          showSettingsPanel ? "bottom-[calc(100% + 220px)]" : "bottom-[calc(100%+0px)]" // Increased offset if settings panel is open
-        )}>
+          "absolute left-0 right-0 bg-black text-white p-4 rounded-t-lg text-center animate-fade-in",
+          showSettingsPanel ? "bottom-[calc(100% + 220px)]" : "bottom-[calc(100%+0px)]"
+        )} onClick={() => { setWordForSearch(null); setSearchButtonPosition(null); /* Clear search button on click outside word */ }}>
           {getSubtitlesToDisplay.map((cue) => (
             <p
               key={cue.id}
               className="leading-relaxed font-bold"
-              style={{ fontSize: `${subtitleFontSize}px` }} // Apply dynamic font size
+              style={{ fontSize: `${subtitleFontSize}px` }}
             >
               {highlightText(cue.text)}
             </p>
           ))}
         </div>
+      )}
+
+      {/* Search Button for non-highlighted word */}
+      {wordForSearch && searchButtonPosition && onSearchWord && (
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => {
+            if (onSearchWord && wordForSearch) {
+              onSearchWord(wordForSearch);
+              // Clear the search button state after clicking search
+              setWordForSearch(null);
+              setSearchButtonPosition(null);
+            }
+          }}
+          style={{
+            position: 'fixed', // Use fixed to position relative to viewport
+            left: searchButtonPosition.x + searchButtonPosition.width / 2, // Center above the word
+            top: searchButtonPosition.y - 40, // Adjust 40px above the word (button height + some margin)
+            transform: 'translateX(-50%)', // Center button horizontally
+            zIndex: 90 // Ensure it's above audio player controls, but below dialogs
+          }}
+          className="px-3 py-1 rounded-full text-sm bg-blue-500 hover:bg-blue-600 text-white shadow-lg animate-fade-in"
+        >
+          搜索 "{wordForSearch}"
+        </Button>
       )}
     </div>
   );

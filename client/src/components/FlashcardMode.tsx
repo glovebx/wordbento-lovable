@@ -249,7 +249,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     }
   };
 
-  const imageAspectRatio = isMobile ? (3 / 3) : (16 / 9);
+  const imageAspectRatio = isMobile ? (3 / 3) : (3 / 2);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">

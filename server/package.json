@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@andresaya/edge-tts": "^1.2.4",
-    "@libsql/client": "^0.15.8",
+    "@libsql/client": "^0.15.9",
     "@tsndr/cloudflare-worker-jwt": "^3.2.0",
     "better-sqlite3": "11.10.0",
     "cookie": "^1.0.2",
@@ -28,14 +28,14 @@
   },
   "devDependencies": {
     "@cloudflare/puppeteer": "^1.0.2",
-    "@playwright/test": "^1.52.0",
+    "@playwright/test": "^1.53.0",
     "@types/node": "^22.15.17",
     "concurrently": "^9.1.2",
     "drizzle-kit": "^0.31.1",
-    "drizzle-orm": "^0.44.1",
+    "drizzle-orm": "^0.44.2",
     "esbuild": "^0.25.5",
-    "tsx": "^4.19.4",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3",
-    "wrangler": "^4.18.0"
+    "wrangler": "^4.20.1"
   }
 }

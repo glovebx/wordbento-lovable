@@ -75,7 +75,7 @@ auth.post('/login', async (c) => {
   const sessionId = randomUUID();
   const sessionData = { username: user.username, role: user.role, uuid: user.uuid };
   const sessionDataKv = { id: user.id, ...sessionData }
-  await c.env.WORDBENTO_KV.put(sessionId, JSON.stringify(sessionDataKv), { expirationTtl: 3600 });
+  await c.env.WORDBENTO_KV.put(sessionId, JSON.stringify(sessionDataKv), { expirationTtl: 360000 });
 
   // Determine environment and cookie settings
   const isProduction = process.env.NODE_ENV === 'production';

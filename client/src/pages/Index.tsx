@@ -21,8 +21,9 @@ import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis';
 // Import the new FloatingImageCarousel component
 import FloatingImageCarousel from '@/components/FloatingImageCarousel';
 
-// Import html2canvas library
-import html2canvas from 'html2canvas';
+// // Import html2canvas library
+// import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image'; // Import all from html-to-image
 
 const Index = () => {
   const [currentWord, setCurrentWord] = useState('');
@@ -714,154 +715,319 @@ const handlePrevious = useCallback(async () => {
 //     }, [bentoGridRef, wordData, toast]); // Dependencies: bentoGridRef, wordData (for filename), toast
 //     // --- End: Handle Export Image 宽高最大 1080 x 1920 ---
 
-   // --- New: Handle Export Image 宽高固定 1080 x 1920 ---
-    const handleExportImage = useCallback(async () => {
-        const element = bentoGridRef.current;
-        if (!element) {
-            console.error("Bento grid element not found for capture.");
-             toast({
-                title: "导出失败",
-                description: "无法找到要导出的内容。",
-                variant: "destructive",
-             });
-            return;
-        }
+//    // --- New: Handle Export Image 宽高固定 1080 x 1920 ---
+//     const handleExportImage = useCallback(async () => {
+//         const element = bentoGridRef.current;
+//         if (!element) {
+//             console.error("Bento grid element not found for capture.");
+//              toast({
+//                 title: "导出失败",
+//                 description: "无法找到要导出的内容。",
+//                 variant: "destructive",
+//              });
+//             return;
+//         }
 
-        console.log("Attempting to capture bento grid element:", element);
+//         console.log("Attempting to capture bento grid element:", element);
 
-        // Define target output dimensions (9:16 aspect ratio for a typical card: 1080px wide, 1920px tall)
-        const TARGET_WIDTH = 1080;
-        const TARGET_HEIGHT = 1920; 
+//         // Define target output dimensions (9:16 aspect ratio for a typical card: 1080px wide, 1920px tall)
+//         const TARGET_WIDTH = 1080;
+//         const TARGET_HEIGHT = 1920; 
 
-        // Find the elements to hide during export (e.g., navigation buttons, export button itself)
-        const elementsToHide = element.querySelectorAll('.export-hide');
-        const originalDisplays: string[] = []; // Store original display styles
+//         // Find the elements to hide during export (e.g., navigation buttons, export button itself)
+//         const elementsToHide = element.querySelectorAll('.export-hide');
+//         const originalDisplays: string[] = []; // Store original display styles
 
-        // Temporarily hide the elements
-        elementsToHide.forEach((el: Element) => {
-            const htmlEl = el as HTMLElement; // Cast to HTMLElement to access style
-            originalDisplays.push(htmlEl.style.display); // Store original style
-            htmlEl.style.display = 'none'; // Hide the element
-        });
+//         // Temporarily hide the elements
+//         elementsToHide.forEach((el: Element) => {
+//             const htmlEl = el as HTMLElement; // Cast to HTMLElement to access style
+//             originalDisplays.push(htmlEl.style.display); // Store original style
+//             htmlEl.style.display = 'none'; // Hide the element
+//         });
 
-        // Find the image element(s) to adjust sizing for export
-        const imageElements = element.querySelectorAll('.export-image') as NodeListOf<HTMLImageElement>;
-        const originalImageStyles: {
-            className: string;
-            inlineStyle: string; // Store original inline style attribute value
-        }[] = [];
+//         // Find the image element(s) to adjust sizing for export
+//         const imageElements = element.querySelectorAll('.export-image') as NodeListOf<HTMLImageElement>;
+//         const originalImageStyles: {
+//             className: string;
+//             inlineStyle: string; // Store original inline style attribute value
+//         }[] = [];
 
-        imageElements.forEach(imageElement => {
-             // Store original className and inline style attribute value
-             originalImageStyles.push({
-                 className: imageElement.className,
-                 inlineStyle: imageElement.style.cssText, // Get the full inline style string
-             });
+//         imageElements.forEach(imageElement => {
+//              // Store original className and inline style attribute value
+//              originalImageStyles.push({
+//                  className: imageElement.className,
+//                  inlineStyle: imageElement.style.cssText, // Get the full inline style string
+//              });
 
-             // Temporarily remove existing classes and apply simple inline styles
-             // This helps html2canvas render images consistently without complex positioning/scaling from Tailwind
-            imageElement.style.cssText = 'display: block !important; position: static !important; left: auto !important; top: auto !important; transform: none !important; margin: 0 auto !important; width: auto !important; height: auto !important; max-width: 100% !important; max-height: none !important;';
+//              // Temporarily remove existing classes and apply simple inline styles
+//              // This helps html2canvas render images consistently without complex positioning/scaling from Tailwind
+//             imageElement.style.cssText = 'display: block !important; position: static !important; left: auto !important; top: auto !important; transform: none !important; margin: 0 auto !important; width: auto !important; height: auto !important; max-width: 100% !important; max-height: none !important;';
 
-             console.log(`Applied temporary styles to image for export.`);
-        });
+//              console.log(`Applied temporary styles to image for export.`);
+//         });
 
-        try {
-            // Step 1: Capture the element at a higher resolution (e.g., 2x) based on its current rendered size.
-            // This 'initialCanvas' will contain the high-quality rendering of the bento grid content.
-            const initialCanvas = await html2canvas(element, {
-                scale: 2, // Capture at 2x resolution for better quality
-                logging: true, // Enable logging for debugging
-                useCORS: true, // Set to true if images are from different origins
-            });
+//         try {
+//             // Step 1: Capture the element at a higher resolution (e.g., 2x) based on its current rendered size.
+//             // This 'initialCanvas' will contain the high-quality rendering of the bento grid content.
+//             const initialCanvas = await html2canvas(element, {
+//                 scale: 2, // Capture at 2x resolution for better quality
+//                 logging: true, // Enable logging for debugging
+//                 useCORS: true, // Set to true if images are from different origins
+//             });
 
-            // Step 2: Create a new canvas with the desired fixed output dimensions (1080x1920).
-            const finalCanvas = document.createElement('canvas');
-            finalCanvas.width = TARGET_WIDTH;
-            finalCanvas.height = TARGET_HEIGHT;
-            const ctx = finalCanvas.getContext('2d');
+//             // Step 2: Create a new canvas with the desired fixed output dimensions (1080x1920).
+//             const finalCanvas = document.createElement('canvas');
+//             finalCanvas.width = TARGET_WIDTH;
+//             finalCanvas.height = TARGET_HEIGHT;
+//             const ctx = finalCanvas.getContext('2d');
 
-            if (!ctx) {
-                throw new Error("Failed to get 2D rendering context for final canvas.");
-            }
+//             if (!ctx) {
+//                 throw new Error("Failed to get 2D rendering context for final canvas.");
+//             }
 
-            // Step 3: Draw the initial captured content onto the final canvas, maintaining aspect ratio.
-            // This logic ensures the image is "contained" within the target frame, adding letterboxing if needed.
-            const initialAspectRatio = initialCanvas.width / initialCanvas.height;
-            const targetAspectRatio = TARGET_WIDTH / TARGET_HEIGHT;
+//             // Step 3: Draw the initial captured content onto the final canvas, maintaining aspect ratio.
+//             // This logic ensures the image is "contained" within the target frame, adding letterboxing if needed.
+//             const initialAspectRatio = initialCanvas.width / initialCanvas.height;
+//             const targetAspectRatio = TARGET_WIDTH / TARGET_HEIGHT;
 
-            let drawWidth, drawHeight, offsetX, offsetY;
+//             let drawWidth, drawHeight, offsetX, offsetY;
 
-            if (initialAspectRatio > targetAspectRatio) {
-                // Initial captured image is wider than the target aspect ratio (9:16).
-                // Scale it to fit the target width, and calculate height.
-                drawWidth = TARGET_WIDTH;
-                drawHeight = TARGET_WIDTH / initialAspectRatio;
-                offsetX = 0; // Center horizontally
-                // offsetY = (TARGET_HEIGHT - drawHeight) / 2; // Center vertically for letterboxing
-                offsetY = 0; // Top vertically for letterboxing
-            } else {
-                // Initial captured image is taller or has the same aspect ratio as the target.
-                // Scale it to fit the target height, and calculate width.
-                drawHeight = TARGET_HEIGHT;
-                drawWidth = TARGET_HEIGHT * initialAspectRatio;
-                offsetX = (TARGET_WIDTH - drawWidth) / 2; // Center horizontally for letterboxing
-                offsetY = 0; // Center vertically
-            }
+//             if (initialAspectRatio > targetAspectRatio) {
+//                 // Initial captured image is wider than the target aspect ratio (9:16).
+//                 // Scale it to fit the target width, and calculate height.
+//                 drawWidth = TARGET_WIDTH;
+//                 drawHeight = TARGET_WIDTH / initialAspectRatio;
+//                 offsetX = 0; // Center horizontally
+//                 // offsetY = (TARGET_HEIGHT - drawHeight) / 2; // Center vertically for letterboxing
+//                 offsetY = 0; // Top vertically for letterboxing
+//             } else {
+//                 // Initial captured image is taller or has the same aspect ratio as the target.
+//                 // Scale it to fit the target height, and calculate width.
+//                 drawHeight = TARGET_HEIGHT;
+//                 drawWidth = TARGET_HEIGHT * initialAspectRatio;
+//                 offsetX = (TARGET_WIDTH - drawWidth) / 2; // Center horizontally for letterboxing
+//                 offsetY = 0; // Center vertically
+//             }
 
-            // Fill the background of the final canvas with white (for letterboxing area)
-            ctx.fillStyle = '#FFFFFF'; 
-            ctx.fillRect(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+//             // Fill the background of the final canvas with white (for letterboxing area)
+//             ctx.fillStyle = '#FFFFFF'; 
+//             ctx.fillRect(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
 
-            // Draw the high-quality captured image onto the new fixed-size canvas
-            ctx.drawImage(initialCanvas, offsetX, offsetY, drawWidth, drawHeight);
+//             // Draw the high-quality captured image onto the new fixed-size canvas
+//             ctx.drawImage(initialCanvas, offsetX, offsetY, drawWidth, drawHeight);
 
-            // Convert the final canvas to a data URL (PNG format)
-            const imageDataUrl = finalCanvas.toDataURL('image/png');
+//             // Convert the final canvas to a data URL (PNG format)
+//             const imageDataUrl = finalCanvas.toDataURL('image/png');
 
-            // Create a temporary link element to trigger the download
-            const link = document.createElement('a');
-            link.href = imageDataUrl;
-            // Set the download filename
-            const filename = `word-bento-${wordData?.word_text || 'export'}.png`;
-            link.download = filename;
+//             // Create a temporary link element to trigger the download
+//             const link = document.createElement('a');
+//             link.href = imageDataUrl;
+//             // Set the download filename
+//             const filename = `word-bento-${wordData?.word_text || 'export'}.png`;
+//             link.download = filename;
 
-            // Append, click, and remove the link to trigger download
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+//             // Append, click, and remove the link to trigger download
+//             document.body.appendChild(link);
+//             link.click();
+//             document.body.removeChild(link);
 
-            console.log(`Successfully exported image as ${filename}`);
-             toast({
-                title: "导出成功",
-                description: `已将内容导出为图片 "${filename}"。`,
-                variant: "default",
-             });
+//             console.log(`Successfully exported image as ${filename}`);
+//              toast({
+//                 title: "导出成功",
+//                 description: `已将内容导出为图片 "${filename}"。`,
+//                 variant: "default",
+//              });
 
-        } catch (error: any) { // Use 'any' for error to safely access 'message'
-            console.error("Error capturing or exporting image:", error);
-             toast({
-                title: "导出失败",
-                description: `导出图片时发生错误: ${error.message}`,
-                variant: "destructive",
-             });
-        } finally {
-            // Restore original display styles for hidden elements
-            elementsToHide.forEach((el: Element, index: number) => {
-                const htmlEl = el as HTMLElement;
-                htmlEl.style.display = originalDisplays[index]; // Restore original style
-            });
-             console.log("Restored display styles after export.");
+//         } catch (error: any) { // Use 'any' for error to safely access 'message'
+//             console.error("Error capturing or exporting image:", error);
+//              toast({
+//                 title: "导出失败",
+//                 description: `导出图片时发生错误: ${error.message}`,
+//                 variant: "destructive",
+//              });
+//         } finally {
+//             // Restore original display styles for hidden elements
+//             elementsToHide.forEach((el: Element, index: number) => {
+//                 const htmlEl = el as HTMLElement;
+//                 htmlEl.style.display = originalDisplays[index]; // Restore original style
+//             });
+//              console.log("Restored display styles after export.");
             
-            // Restore original image styles for adjusted images
-            imageElements.forEach((imageElement, index) => {
-                 const originalStyle = originalImageStyles[index];
-                 imageElement.className = originalStyle.className; // Restore original className
-                 imageElement.style.cssText = originalStyle.inlineStyle; // Restore original inline style
-            });
-            console.log("Restored original image styles.");
+//             // Restore original image styles for adjusted images
+//             imageElements.forEach((imageElement, index) => {
+//                  const originalStyle = originalImageStyles[index];
+//                  imageElement.className = originalStyle.className; // Restore original className
+//                  imageElement.style.cssText = originalStyle.inlineStyle; // Restore original inline style
+//             });
+//             console.log("Restored original image styles.");
+//         }
+//     }, [bentoGridRef, wordData, toast]); // Dependencies: bentoGridRef, wordData (for filename), toast
+//     // --- End: Handle Export Image ---
+
+const handleExportImage = useCallback(async () => {
+    const element = bentoGridRef.current;
+    if (!element) {
+        console.error("Bento grid element not found for capture.");
+        toast({
+            title: "导出失败",
+            description: "无法找到要导出的内容。",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    console.log("Attempting to capture bento grid element with html-to-image:", element);
+
+    // Define target output dimensions (9:16 aspect ratio for a typical card: 1080px wide, 1920px tall)
+    const TARGET_WIDTH = 1080;
+    const TARGET_HEIGHT = 1920; 
+
+    // 1. 保存原始样式
+    const originalStyles = {
+        width: element.style.width,
+        height: element.style.height,
+        padding: element.style.padding,
+        margin: element.style.margin,
+        transform: element.style.transform,
+        transformOrigin: element.style.transformOrigin,
+        overflow: element.style.overflow,
+    };
+
+    // 2. 设置临时样式
+    element.style.width = `${TARGET_WIDTH}px`;
+    element.style.height = `${TARGET_HEIGHT}px`;
+    element.style.padding = '24px';
+    element.style.margin = '0';
+    element.style.transform = 'scale(1)'; // 确保没有缩放
+    element.style.transformOrigin = 'top left';
+    element.style.overflow = 'hidden'; // 防止内容溢出
+    
+    // 3. 设置内部网格容器的样式 - 修复左右边距问题
+    const gridContainer = element.querySelector('.grid-container') as HTMLElement;
+    let gridOriginalStyles: Record<string, string> | null = null; // 初始化为null
+
+    if (gridContainer) {
+        gridOriginalStyles = {
+            width: gridContainer.style.width,
+            height: gridContainer.style.height,
+            padding: gridContainer.style.padding,
+            margin: gridContainer.style.margin,
+            gap: gridContainer.style.gap,
+            display: gridContainer.style.display,
+            justifyContent: gridContainer.style.justifyContent,
+            alignItems: gridContainer.style.alignItems,
+        };
+        
+        // 设置网格容器填满整个元素
+        gridContainer.style.width = '100%';
+        gridContainer.style.height = '100%';
+        
+        // 添加对称的内边距解决视觉不居中问题
+        gridContainer.style.padding = '0 60px'; // 左右各50px边距
+        
+        // 添加Flex布局确保内容居中
+        gridContainer.style.display = 'flex';
+        gridContainer.style.flexDirection = 'column'; // 垂直排列
+        gridContainer.style.justifyContent = 'center'; // 垂直居中
+        gridContainer.style.alignItems = 'center';     // 水平居中
+
+        // 设置网格内容宽度为90%，确保有足够空间
+        gridContainer.style.maxWidth = '100%';
+        
+        gridContainer.style.margin = '0';
+        gridContainer.style.gap = '8px'; // 减小间距避免内容溢出
+
+        // 确保内容盒子模型正确
+        gridContainer.style.boxSizing = 'border-box';        
+    }
+
+    // 4. 处理隐藏元素
+    const elementsToHide = element.querySelectorAll('.export-hide');
+    const originalDisplays: string[] = [];
+    elementsToHide.forEach((el: Element) => {
+        const htmlEl = el as HTMLElement;
+        originalDisplays.push(htmlEl.style.display);
+        htmlEl.style.display = 'none';
+    });
+
+    const carouselItemsToHide = element.querySelectorAll('.export-carousel-item');
+    const originalCarouselItemDisplays: string[] = [];
+    if (carouselItemsToHide.length > 1) {
+        carouselItemsToHide.forEach((el: Element, index: number) => {
+            if (index > 0) {
+                const htmlEl = el as HTMLElement;
+                originalCarouselItemDisplays.push(htmlEl.style.display);
+                htmlEl.style.display = 'none';
+            }
+        });
+    }
+
+    try {
+        // 添加延迟确保样式应用
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // 使用 html-to-image.toPng
+        const imageDataUrl = await htmlToImage.toPng(element, {
+            width: TARGET_WIDTH,
+            height: TARGET_HEIGHT,
+            pixelRatio: 2, // 提高分辨率避免模糊
+            cacheBust: true,
+            backgroundColor: '#FFFFFF',
+            style: {
+                backgroundColor: '#FFFFFF',
+            }
+        });
+
+        // 创建下载链接
+        const link = document.createElement('a');
+        link.href = imageDataUrl;
+        const filename = `word-bento-${wordData?.word_text || 'export'}.png`;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        console.log(`Successfully exported image as ${filename}`);
+        toast({
+            title: "导出成功",
+            description: `已将内容导出为图片 "${filename}"。`,
+            variant: "default",
+        });
+
+    } catch (error: any) {
+        console.error("Error capturing or exporting image:", error);
+        toast({
+            title: "导出失败",
+            description: `导出图片时发生错误: ${error.message}`,
+            variant: "destructive",
+        });
+    } finally {
+        // 5. 恢复所有样式
+        Object.assign(element.style, originalStyles);
+        
+        // 恢复网格容器样式
+        if (gridContainer) {
+            Object.assign(gridContainer.style, gridOriginalStyles);
         }
-    }, [bentoGridRef, wordData, toast]); // Dependencies: bentoGridRef, wordData (for filename), toast
-    // --- End: Handle Export Image ---
+        
+        // 恢复隐藏元素
+        elementsToHide.forEach((el: Element, index: number) => {
+            const htmlEl = el as HTMLElement;
+            htmlEl.style.display = originalDisplays[index];
+        });
+        
+        if (carouselItemsToHide.length > 1) {
+            carouselItemsToHide.forEach((el: Element, index: number) => {
+                if (index > 0) {
+                    const htmlEl = el as HTMLElement;
+                    htmlEl.style.display = originalCarouselItemDisplays[index - 1];
+                }
+            });
+        }
+        
+        console.log("Restored all styles after export.");
+    }
+}, [bentoGridRef, wordData, toast]);
 
     // --- New callback for highlighted word click ---
     const handleHighlightedWordClick = useCallback((word: string, rect: DOMRect) => {
@@ -973,7 +1139,8 @@ const handlePrevious = useCallback(async () => {
           subtitleContent={currentSubtitleContent}
           highlightWords={analysisResult?.words || []}
           onClose={handleCloseAudioPlayer}
-        onHighlightedWordClick={handleHighlightedWordClick} // <-- Pass the new callback
+          onHighlightedWordClick={handleHighlightedWordClick} // <-- Pass the new callback
+          onSearchWord={handleSearch} // 确保 handleSearch 在 Index.tsx 中可用
         />
       )}
       
