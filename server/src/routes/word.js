@@ -14,6 +14,7 @@ import * as schema from '../db/schema'; // Keep schema import for drizzle initia
 import { sql } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
 import { nanoid } from "nanoid";
 import { jsonrepair } from 'jsonrepair';
+import { fixUnescapedQuotesInJson } from '../utils/languageParser';
 
 // Type definitions are removed in JavaScript
 
@@ -256,7 +257,7 @@ const generateBentoByGeminiAi = async (c, word) => {
 6、发展历史和文化背景。json的键为"history"
 7、单词变形，json的键为"forms"
 8、记忆辅助，在两种思路种选择一种即可：a. 无厘头的笑话或者小故事，增强记忆；b.将单词拆解成字母，每个字母组合成新单词，最后组合成一句话，这句话要跟该单词有关联。json的键为"memory_aid"
-9、热点故事，结合当下热点，写一个针对该单词的小故事，中文+英文。json的键为"trending_story"。
+9、电影台词，请根据单词从影视剧中选择一句包含该单词的台词，并给出台词的中文翻译、台词的上下文和影视剧名称，中文+英文。json的键为"trending_story"。
 
 举例，单词是"hurl"时，返回内容如下：
 
@@ -407,12 +408,20 @@ const generateBentoByGeminiAi = async (c, word) => {
         const repairedStr = jsonrepair(jsonStr)
         console.log(`repairedStr: ${ repairedStr }`);
 
-        const jsonWord = JSON.parse(repairedStr);
+        let repairedJson;
+
+        try {
+          repairedJson = JSON.parse(repairedStr);
+        } catch(error) {
+          const repairedBadStr = fixUnescapedQuotesInJson(repairedStr)
+          console.log(`repairedBadStr: ${ repairedBadStr }`);
+          repairedJson = JSON.parse(repairedBadStr);
+        }
 
         // console.log(`jsonWord: ${ jsonWord }`);
 
         // Validate the structure of the received data if necessary
-        return jsonWord;
+        return repairedJson;
 
     } catch (error) {
         console.error('Network error calling Gemini AI API:', error);

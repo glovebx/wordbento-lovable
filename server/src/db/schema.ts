@@ -85,6 +85,14 @@ export const attachments = sqliteTable('attachments', {
   caption_srt: text('caption_srt'),
 });
 
+export const temp_attachments = sqliteTable('temp_attachments', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  resource_id: integer('resource_id'),
+  audio_key: text('audio_key'),
+  video_key: text('video_key'),
+  created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const archives = sqliteTable('archives', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
   user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),

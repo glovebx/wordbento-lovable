@@ -157,3 +157,12 @@ CREATE TABLE IF NOT EXISTS attachments (
     FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE CASCADE
 );
 
+-- temp_attachments 表：临时手动上传的音频和视频
+CREATE TABLE IF NOT EXISTS temp_attachments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    resource_id INTEGER,
+    audio_key TEXT,                     -- R2 中的音频文件的key
+    video_key TEXT,                     -- R2 中的视频文件的key
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP    
+);
+

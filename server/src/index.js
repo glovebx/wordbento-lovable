@@ -6,6 +6,7 @@ import test from './routes/test.js';
 import main from './routes/main.js';
 import word from './routes/word.js';
 import analyze from './routes/analyze.js';
+import upload from './routes/upload.js';
 // import rss from './routes/rss.js';
 import {
   getCookie
@@ -89,6 +90,7 @@ app.route('/api/auth', auth);
 app.route('/api/test', test);
 app.route('/api/main', main);
 app.route('/api/word', word);
+app.route('/api/upload', upload);
 app.route('/api/analyze', analyze);
 app.route('/ws/analyze', analyze);
 // app.route('/api/rss', rss);

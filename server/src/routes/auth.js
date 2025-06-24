@@ -71,11 +71,12 @@ auth.post('/login', async (c) => {
     return c.json({ message: 'Invalid credentials.' }, 401);
   }
 
+  const expirationTtl = 360000;
   // Generate a session ID and store session data in the KV store
   const sessionId = randomUUID();
   const sessionData = { username: user.username, role: user.role, uuid: user.uuid };
   const sessionDataKv = { id: user.id, ...sessionData }
-  await c.env.WORDBENTO_KV.put(sessionId, JSON.stringify(sessionDataKv), { expirationTtl: 360000 });
+  await c.env.WORDBENTO_KV.put(sessionId, JSON.stringify(sessionDataKv), { expirationTtl: expirationTtl });
 
   // Determine environment and cookie settings
   const isProduction = process.env.NODE_ENV === 'production';
@@ -90,7 +91,7 @@ auth.post('/login', async (c) => {
     sameSite: sameSite,
     path: '/',
     domain: cookieDomain,
-    maxAge: 3600, // Cookie expiration time in seconds (1 hour)
+    maxAge: expirationTtl, // Cookie expiration time in seconds (1 hour)
   });
 
   console.log('Set-Cookie header sent:', c.res.headers.get('Set-Cookie')); // Debug log

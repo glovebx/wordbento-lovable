@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,7 +32,7 @@ import {
 import { ResourceWithAttachments, Attachment } from "@/types/database";
 import { toast } from "@/hooks/use-toast";
 import { Upload, Trash2, FileAudio, FileVideo, RefreshCw } from "lucide-react";
-import { baseURL } from "@/lib/axios";
+import { baseURL, axiosPrivate } from "@/lib/axios";
 
 interface EditResourceDialogProps {
   open: boolean;
@@ -54,6 +54,17 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
   onReSync,
   onSave,
 }) => {
+
+  // Track original values to compare for changes
+  const originalValues = useRef({
+    content: resource?.content || "",
+    examType: resource?.examType || "",
+    sourceType: resource?.sourceType || "url",
+    audioKey: resource?.attachments[0]?.audioKey || null,
+    videoKey: resource?.attachments[0]?.videoKey || null,
+    captionSrt: resource?.attachments[0]?.captionSrt || "",
+  });
+
   const [formData, setFormData] = useState({
     content: "",
     examType: "",
@@ -202,82 +213,163 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
 
   const handleSave = async () => {
     if (!formData.content.trim() || !formData.examType.trim()) {
-        toast({
-            title: "输入错误",
-            description: "内容和考试类型不能为空。",
-            variant: "destructive",
-        });
-        return;
+      toast({
+        title: "输入错误",
+        description: "内容和考试类型不能为空。",
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsSaving(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      
-      let finalAttachment: Attachment | null = null;
-
-      // Start with a base attachment object, prioritizing existing one's ID/resourceId
-      if (resource && existingAttachment) {
-          finalAttachment = { ...existingAttachment };
-      } else {
-          // For a new resource, or if no existing attachment, create a placeholder
-          finalAttachment = {
-              id: 0, // Backend will assign real ID for new attachments
-              resourceId: resource?.id ?? 0, // Will be updated by backend for new attachments
-              audioKey: null,
-              videoKey: null,
-              captionSrt: null,
-              captionTxt: null,
-          };
-      }
-
-      // Determine the final audioKey
-      if (newAudioFile) {
-          finalAttachment.audioKey = `temp_audio_${Date.now()}.${newAudioFile.name.split('.').pop()}`;
-      } else {
-          // If no new audio, use existing audioKey from state (which might have been nullified by handleDeleteAudio)
-          finalAttachment.audioKey = existingAttachment?.audioKey || null;
-      }
-
-      // Determine the final videoKey
-      if (newVideoFile) {
-          finalAttachment.videoKey = `temp_video_${Date.now()}.${newVideoFile.name.split('.').pop()}`;
-      } else {
-          // If no new video, use existing videoKey from state (which might have been nullified by handleDeleteVideo)
-          finalAttachment.videoKey = existingAttachment?.videoKey || null;
-      }
-
-      // Always apply the current audio caption, regardless of audio file presence
-      finalAttachment.captionSrt = currentAudioCaptionSrt || null;
-      // captionTxt is not edited in UI, so set to null or keep original if exists
-      finalAttachment.captionTxt = null; // Assuming no modification, backend can handle this
-
-      // If after all updates, the attachment has no media keys and no caption, we don't send it.
-      const attachmentsArray: Attachment[] = [];
-      if (finalAttachment.audioKey || finalAttachment.videoKey || finalAttachment.captionSrt) {
-          attachmentsArray.push(finalAttachment);
-      }
-
+      // Initialize the data to save with only changed fields
       const dataToSave: Partial<ResourceWithAttachments> = {
         id: resource?.id,
-        content: formData.content,
-        examType: formData.examType,
-        sourceType: formData.sourceType,
         updatedAt: new Date().toISOString(),
-        attachments: attachmentsArray, // Pass the consolidated attachments array
       };
 
-      onSave(dataToSave);
-      toast({
-        title: "保存成功",
-        description: "资源信息已更新",
-      });
+      // Track changed fields
+      if (formData.content !== originalValues.current.content) {
+        dataToSave.content = formData.content;
+      }
+      if (formData.examType !== originalValues.current.examType) {
+        dataToSave.examType = formData.examType;
+      }
+      if (formData.sourceType !== originalValues.current.sourceType) {
+        dataToSave.sourceType = formData.sourceType;
+      }
+
+      // Handle file uploads first
+      let finalAudioKey: string | null = existingAttachment?.audioKey || null;
+      let finalVideoKey: string | null = existingAttachment?.videoKey || null;
+
+      // Upload new audio file if present
+      if (newAudioFile) {
+        try {
+          const formData = new FormData();
+          formData.append('audio', newAudioFile);
+          formData.append('resourceId', resource?.id?.toString() || '0');
+          
+          const response = await axiosPrivate.post<{ key: string }>(
+            '/api/upload/audio',
+            formData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            }
+          );
+          
+          finalAudioKey = response.data.key;
+        } catch (error) {
+          toast({
+            title: "音频上传失败",
+            description: "上传音频文件时发生错误",
+            variant: "destructive",
+          });
+          throw error; // Re-throw to stop further processing
+        }
+      }
+
+      // Upload new video file if present
+      if (newVideoFile) {
+        try {
+          const formData = new FormData();
+          formData.append('video', newVideoFile);
+          formData.append('resourceId', resource?.id?.toString() || '0');
+          
+          const response = await axiosPrivate.post<{ key: string }>(
+            '/api/upload/video',
+            formData,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            }
+          );
+          
+          finalVideoKey = response.data.key;
+        } catch (error) {
+          toast({
+            title: "视频上传失败",
+            description: "上传视频文件时发生错误",
+            variant: "destructive",
+          });
+          throw error; // Re-throw to stop further processing
+        }
+      }
+
+      // Handle attachment changes after successful uploads
+      const attachmentChanges: Partial<Attachment> = {};
+      let hasAttachmentChanges = false;
+
+      // Check for audio changes
+      if (finalAudioKey !== originalValues.current.audioKey) {
+        attachmentChanges.audioKey = finalAudioKey;
+        hasAttachmentChanges = true;
+      }
+
+      // Check for video changes
+      if (finalVideoKey !== originalValues.current.videoKey) {
+        attachmentChanges.videoKey = finalVideoKey;
+        hasAttachmentChanges = true;
+      }
+
+      // Check for caption changes
+      if (currentAudioCaptionSrt !== originalValues.current.captionSrt) {
+        attachmentChanges.captionSrt = currentAudioCaptionSrt || null;
+        hasAttachmentChanges = true;
+      }
+
+      // Include attachments if there are changes
+      if (hasAttachmentChanges) {
+        const finalAttachment: Attachment = {
+          id: existingAttachment?.id || 0,
+          resourceId: resource?.id || 0,
+          audioKey: finalAudioKey,
+          videoKey: finalVideoKey,
+          captionSrt: currentAudioCaptionSrt || null,
+          // captionTxt: null,
+        };
+
+        // Only include the attachment if it has meaningful content
+        if (finalAttachment.audioKey || finalAttachment.videoKey || finalAttachment.captionSrt) {
+          dataToSave.attachments = [finalAttachment];
+        } else if (existingAttachment) {
+          // If all media and captions are removed, we need to indicate deletion
+          dataToSave.attachments = [];
+        }
+      }
+
+      // Only proceed with save if there are actual changes
+      if (Object.keys(dataToSave).length > 3 || 
+          (dataToSave.attachments && dataToSave.attachments.length > 0)) {
+
+        onSave(dataToSave);
+        // console.log(dataToSave);
+
+        toast({
+          title: "保存成功",
+          description: "资源信息已更新",
+        });
+      } else {
+        toast({
+          title: "没有更改",
+          description: "没有检测到任何修改",
+        });
+      }
     } catch (error) {
-      toast({
-        title: "保存失败",
-        description: "更新资源信息时发生错误",
-        variant: "destructive",
-      });
+      console.error("保存过程中出错:", error);
+      // Error toasts are already shown for specific upload failures
+      if (!(error instanceof Error && 
+          (error.message.includes('音频上传失败') || error.message.includes('视频上传失败')))) {
+        toast({
+          title: "保存失败",
+          description: "更新资源信息时发生错误",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsSaving(false);
     }

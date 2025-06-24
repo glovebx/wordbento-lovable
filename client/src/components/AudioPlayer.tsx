@@ -16,6 +16,7 @@ const AUDIO_PLAYER_KEYS = {
   PLAYBACK_RATE: 'playbackRate',
   SUBTITLE_OFFSET: 'subtitleOffset',
   SUBTITLE_FONT_SIZE: 'subtitleFontSize', // New key for font size
+  LAST_PLAYBACK_POSITION: 'lastPlaybackPosition' // New key
 } as const;
 
 interface AudioPlayerProps {
@@ -116,8 +117,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     if (audio) {
       audio.pause();
       setIsPlaying(false);
-      audio.currentTime = 0;
-      setCurrentTime(0);
+
+      // audio.currentTime = 0;
+      // setCurrentTime(0);
+    // Get saved position from localStorage
+      const savedPosition = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.LAST_PLAYBACK_POSITION);
+      const initialTime = savedPosition !== null ? savedPosition : 0;
+      
+      audio.currentTime = initialTime;
+      setCurrentTime(initialTime);
+      
       setCurrentActiveCueIndex(null);
       setDuration(0); 
       setIsLoading(true); 
@@ -125,7 +134,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       setWordForSearch(null);
       setSearchButtonPosition(null);
     }
-  }, [audioUrl]); 
+  }, [audioUrl, localStorageManager]); 
 
   // Effect 2: Handles subtitle parsing (when subtitleContent or isMobile changes)
   useEffect(() => {
@@ -202,6 +211,27 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     [parsedCues]
   );
 
+  // Effect to save playback position periodically
+  useEffect(() => {
+    const savePosition = throttle(() => {
+      if (audioRef.current && !isSliderDragging) {
+        localStorageManager.setItem(AUDIO_PLAYER_KEYS.LAST_PLAYBACK_POSITION, audioRef.current.currentTime);
+      }
+    }, 1000); // Save every second
+
+    const audio = audioRef.current;
+    if (audio) {
+      audio.addEventListener('timeupdate', savePosition);
+    }
+
+    return () => {
+      if (audio) {
+        audio.removeEventListener('timeupdate', savePosition);
+      }
+      savePosition.cancel();
+    };
+  }, [isSliderDragging, localStorageManager]);
+
   const handleTimeUpdate = useCallback(
     throttle(() => {
       const audio = audioRef.current;
@@ -249,6 +279,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       setCurrentActiveCueIndex(null);
       setCurrentTime(0);
       audio.playbackRate = 1.0;
+      // Clear the saved position when audio ends
+      localStorageManager.removeItem(AUDIO_PLAYER_KEYS.LAST_PLAYBACK_POSITION);      
     };
 
     audio.addEventListener('loadeddata', handleLoadedData);
@@ -319,9 +351,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       
       const contentTime = value[0] + subtitleOffset;
       setCurrentActiveCueIndex(findActiveCueOptimized(contentTime));
+
+      // Save the new position
+      localStorageManager.setItem(AUDIO_PLAYER_KEYS.LAST_PLAYBACK_POSITION, value[0]);      
     }
     setIsSliderDragging(false);
-  }, [findActiveCueOptimized, subtitleOffset]);
+  }, [findActiveCueOptimized, subtitleOffset, localStorageManager]);
 
   const formatTime = useCallback((time: number) => {
     if (isNaN(time) || time < 0) return '0:00';

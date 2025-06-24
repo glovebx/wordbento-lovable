@@ -386,8 +386,8 @@ const WordGrid: React.FC<WordGridProps> = ({
         {(word.content.trending_story && <GridCard
           id="trendingStory"
           title={{
-            en: "Trending Story",
-            zh: "热点故事"
+            en: "Movie Story",
+            zh: "电影故事"
           }}
           content={{
             en: word.content.trending_story.en,
