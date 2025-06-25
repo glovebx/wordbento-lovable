@@ -361,7 +361,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
 
         {/* Input Section */}
-        <div className="w-full max-w-md space-y-4">
+        <div className="w-full max-w-sm space-y-4">
           <div className="text-center">
             <p className="text-lg font-medium mb-2">请输入该图片对应的单词</p>
             <p className="text-sm text-muted-foreground">

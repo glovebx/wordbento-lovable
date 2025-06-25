@@ -29,7 +29,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-import { ResourceWithAttachments, Attachment } from "@/types/database";
+import { UiResourceWithAttachment, ResourceWithAttachments, Attachment } from "@/types/database";
 import { toast } from "@/hooks/use-toast";
 import { Upload, Trash2, FileAudio, FileVideo, RefreshCw } from "lucide-react";
 import { baseURL, axiosPrivate } from "@/lib/axios";
@@ -55,15 +55,45 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
   onSave,
 }) => {
 
-  // Track original values to compare for changes
-  const originalValues = useRef({
-    content: resource?.content || "",
-    examType: resource?.examType || "",
-    sourceType: resource?.sourceType || "url",
-    audioKey: resource?.attachments[0]?.audioKey || null,
-    videoKey: resource?.attachments[0]?.videoKey || null,
-    captionSrt: resource?.attachments[0]?.captionSrt || "",
-  });
+  // // Track original values to compare for changes
+  // const originalValues = useRef({
+  //   content: resource?.content || "",
+  //   examType: resource?.examType || "",
+  //   sourceType: resource?.sourceType || "url",
+  //   audioKey: resource?.attachments[0]?.audioKey || null,
+  //   videoKey: resource?.attachments[0]?.videoKey || null,
+  //   captionSrt: resource?.attachments[0]?.captionSrt || "",
+  // });
+  // --- NEW: For capturing initial resource values ---
+  // State to hold the initial snapshot of resource data
+  const [initialResourceSnapshot, setInitialResourceSnapshot] = useState<UiResourceWithAttachment | null>(null);
+  // Ref to ensure the snapshot is only taken once
+  // const hasResourceSnapshotInitialized = useRef(false);
+
+  // Effect to capture the initial resource snapshot
+  useEffect(() => {
+    if (resource) {
+      // Deep copy if resource contains complex nested objects you don't want to mutate
+      // For simple properties, direct assignment is fine.
+      setInitialResourceSnapshot({
+        id: 0,
+        resourceId: resource.id || 0,
+
+        title: resource?.title || "",
+        content: resource?.content || "",
+        examType: resource?.examType || "TOFEL",
+        sourceType: resource?.sourceType || "url",
+
+        audioKey: resource.attachments?.[0]?.audioKey || null,
+        videoKey: resource.attachments?.[0]?.videoKey || null,
+        captionSrt: resource.attachments?.[0]?.captionSrt || "",
+        // Copy other relevant properties if needed
+      });
+      // hasResourceSnapshotInitialized.current = true;
+      console.log("Initial resource snapshot taken:", resource);
+    }
+  }, [resource]); // Dependency: resource prop
+
 
   const [formData, setFormData] = useState({
     content: "",
@@ -230,13 +260,15 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
       };
 
       // Track changed fields
-      if (formData.content !== originalValues.current.content) {
+      if (formData.content !== initialResourceSnapshot?.content) {
         dataToSave.content = formData.content;
       }
-      if (formData.examType !== originalValues.current.examType) {
+
+      console.log(`${initialResourceSnapshot?.examType} = ${formData.examType};`)
+      if (formData.examType !== initialResourceSnapshot?.examType) {
         dataToSave.examType = formData.examType;
       }
-      if (formData.sourceType !== originalValues.current.sourceType) {
+      if (formData.sourceType !== initialResourceSnapshot?.sourceType) {
         dataToSave.sourceType = formData.sourceType;
       }
 
@@ -305,19 +337,19 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
       let hasAttachmentChanges = false;
 
       // Check for audio changes
-      if (finalAudioKey !== originalValues.current.audioKey) {
+      if (finalAudioKey !== initialResourceSnapshot?.audioKey) {
         attachmentChanges.audioKey = finalAudioKey;
         hasAttachmentChanges = true;
       }
 
       // Check for video changes
-      if (finalVideoKey !== originalValues.current.videoKey) {
+      if (finalVideoKey !== initialResourceSnapshot?.videoKey) {
         attachmentChanges.videoKey = finalVideoKey;
         hasAttachmentChanges = true;
       }
 
       // Check for caption changes
-      if (currentAudioCaptionSrt !== originalValues.current.captionSrt) {
+      if (currentAudioCaptionSrt !== initialResourceSnapshot?.captionSrt) {
         attachmentChanges.captionSrt = currentAudioCaptionSrt || null;
         hasAttachmentChanges = true;
       }
@@ -346,8 +378,8 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
       if (Object.keys(dataToSave).length > 3 || 
           (dataToSave.attachments && dataToSave.attachments.length > 0)) {
 
-        onSave(dataToSave);
-        // console.log(dataToSave);
+        // onSave(dataToSave);
+        console.log(dataToSave);
 
         toast({
           title: "保存成功",

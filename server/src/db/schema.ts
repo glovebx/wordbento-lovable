@@ -79,6 +79,7 @@ export const resources = sqliteTable('resources', {
 export const attachments = sqliteTable('attachments', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   resource_id: integer('resource_id').notNull().references(() => resources.id, { onDelete: 'cascade' }), // 定义外键和级联删除
+  title: text('title'),
   audio_key: text('audio_key'),
   video_key: text('video_key'),
   caption_txt: text('caption_txt'),
@@ -87,6 +88,7 @@ export const attachments = sqliteTable('attachments', {
 
 export const temp_attachments = sqliteTable('temp_attachments', {
   id: integer('id').primaryKey({ autoIncrement: true }),
+  user_id: integer('user_id'),
   resource_id: integer('resource_id'),
   audio_key: text('audio_key'),
   video_key: text('video_key'),

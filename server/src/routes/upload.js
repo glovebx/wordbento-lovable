@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 // The schema object itself is usually defined in a separate file and imported for drizzle initialization
 import * as schema from '../db/schema'; // Keep schema import for drizzle initialization
-import { sql } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
+import { isNotNull, and, eq, lt } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
 import { nanoid } from "nanoid";
 import path from 'path';
 
@@ -88,13 +88,17 @@ async function handleFileUpload(c, fileType, fieldName) {
     // The schema object needs to be imported and passed here
     const db = drizzle(c.env.DB, { schema });
 
+    let deleteWhere = '';
     let values = {
-          resource_id: resourceId,
-      }
+      user_id: user.id,
+      resource_id: resourceId,
+    }
+
+    values.video_key = r2ObjectKey;
+    deleteWhere = isNotNull(schema.temp_attachments.video_key);    
     if (fileType === 'audio') {
       values.audio_key = r2ObjectKey;
-    } else {
-      values.video_key = r2ObjectKey;
+      deleteWhere = isNotNull(schema.temp_attachments.audio_key);
     }
     const insertedResult = await db.insert(schema.temp_attachments).values(values)
     // Use .returning() in Drizzle for D1 to get the inserted row
@@ -104,6 +108,56 @@ async function handleFileUpload(c, fileType, fieldName) {
     // Check if insertion was successful and returned a row
     if (!insertedResult) {
         throw new Error("Failed to insert resource into table or get inserted row.");
+    }
+
+    // 删除R2中的实际文件 
+    try {
+      const existingAttachments = await db.select({
+        id: schema.temp_attachments.id,
+        audio_key: schema.temp_attachments.audio_key,
+        video_key: schema.temp_attachments.video_key
+      })
+      .from(schema.temp_attachments)
+      .where(
+          and(
+              eq(schema.temp_attachments.user_id, user.id),
+              lt(schema.temp_attachments.id, insertedResult.id),
+              deleteWhere
+          )
+      );
+      // .limit(1); // We only need to find one match
+
+      if (existingAttachments.length > 0) {
+        for(const existingAttachment of existingAttachments) {
+          // console.log(`existingAttachment: ${existingAttachment}`)
+          let tempR2Objectkey = existingAttachment.video_key;
+          if (fileType === 'audio') {
+            tempR2Objectkey = existingAttachment.audio_key;
+          }
+          await c.env.WORDBENTO_R2.delete(tempR2Objectkey);
+
+          console.log(`R2 Object "${tempR2Objectkey}" has been deleted successfully.`);
+        }
+      }
+    } catch (r2Error) { // Removed type annotation
+      console.error(`Database transaction failed for task "${resourceId}":`, r2Error);
+    }  
+
+    // 删除表数据
+    try {
+      await db.delete(schema.temp_attachments)
+      .where(
+        and(
+          eq(schema.temp_attachments.user_id, user.id),
+          lt(schema.temp_attachments.id, insertedResult.id),
+          deleteWhere
+        )
+      )
+
+      console.log(`Record in temp_attachments has been deleted successfully.`);
+
+    } catch (dbError) { // Removed type annotation
+      console.error(`Database transaction failed for task "${resourceId}":`, dbError);
     }
 
     console.log(`Task "${resourceId}" resource inserted successfully.`);
@@ -126,6 +180,38 @@ async function handleFileUpload(c, fileType, fieldName) {
 //   // await ensureUploadDirs();
 //   await next();
 // });
+
+upload.post('/save', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json(401, { message: 'Unauthorized' });
+  }
+
+  try {
+    const data = await c.req.json();
+    const resourceId = parseInt(data.id || '0', 10);
+    const attachments =  data.attachments || [];
+
+    const db = drizzle(c.env.DB, { schema });
+
+    return c.json(newResource, 200);    
+  } catch (dbError) { // Removed type annotation
+    console.error(`Database transaction failed for task "${resourceId}":`, dbError);
+    return c.json({ message: `Failed to save resource for "${resourceId}".` }, 200);
+  }
+  // const newResource = {
+  //   id: data.id,
+  //   // content: data.content,
+  //   // examType: data.examType,
+  //   // sourceType: data.sourceType || 'url',
+  //   attachments: data.attachments || [],
+  //   // createdAt: new Date().toISOString(),
+  //   // updatedAt: new Date().toISOString()
+  // };
+
+  // resources.push(newResource);
+  // return c.json(newResource, 200);
+});
 
 // Audio upload endpoint
 upload.post('/audio', async (c) => {

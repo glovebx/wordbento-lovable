@@ -149,6 +149,7 @@ CREATE INDEX IF NOT EXISTS idx_resource_exam_type_content ON resources (exam_typ
 CREATE TABLE IF NOT EXISTS attachments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     resource_id INTEGER NOT NULL,       -- 外键，关联到 resources 表的 id
+    title TEXT,
     audio_key TEXT,                     -- R2 中的音频文件的key
     video_key TEXT,                     -- R2 中的视频文件的key
     caption_txt TEXT,                   -- 字幕文字稿，不带时间戳
@@ -160,6 +161,7 @@ CREATE TABLE IF NOT EXISTS attachments (
 -- temp_attachments 表：临时手动上传的音频和视频
 CREATE TABLE IF NOT EXISTS temp_attachments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
     resource_id INTEGER,
     audio_key TEXT,                     -- R2 中的音频文件的key
     video_key TEXT,                     -- R2 中的视频文件的key

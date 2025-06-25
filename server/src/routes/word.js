@@ -405,11 +405,16 @@ const generateBentoByGeminiAi = async (c, word) => {
         const jsonStr = cleanAiJsonResponse(messageContent)
         console.log(`jsonStr: ${ jsonStr }`);
 
-        const repairedStr = jsonrepair(jsonStr)
-        console.log(`repairedStr: ${ repairedStr }`);
+        let repairedStr;
+        try {
+          repairedStr = jsonrepair(jsonStr)
+          console.log(`repairedStr: ${ repairedStr }`);
+        } catch(error) {
+          repairedStr = jsonStr;
+          console.log('jsonrepair failed, fallback to jsonStr');
+        }
 
         let repairedJson;
-
         try {
           repairedJson = JSON.parse(repairedStr);
         } catch(error) {

@@ -67,8 +67,14 @@ export function fixUnescapedQuotesInJson(badJsonString) {
         // keyPart: 第1捕获组, e.g., `"en": "`
         // valueContent: 第2捕获组, e.g., `some "quoted" text`
 
-        // 在捕获到的内容中，将所有双引号替换为转义后的双引号。
-        const escapedValue = valueContent.replace(/"/g, '\\"');
+        // // 在捕获到的内容中，将所有双引号替换为转义后的双引号。
+        // const escapedValue = valueContent.replace(/"/g, '\\"');
+
+        // **错误修复**:
+        // 使用 JSON.stringify 来可靠地转义所有特殊字符 (", \, \n, etc.)。
+        // 这是最健壮的方法，可以避免手动替换时遗漏某些边缘情况。
+        // stringify 会在字符串两边加上它自己的双引号，所以我们需要用 slice(1, -1) 来移除它们。
+        const escapedValue = JSON.stringify(valueContent).slice(1, -1);        
 
         // 重新组合成一个有效的键值对。
         return `${keyPart}"${escapedValue}"`;

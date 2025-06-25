@@ -299,6 +299,55 @@ const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
           return null;
       }
 
+    let download_title; // 默认文件名
+
+    // 1. 尝试从 Content-Disposition 头获取文件名
+    const contentDisposition = response.headers.get('Content-Disposition');
+    if (contentDisposition) {
+        console.log("Content-Disposition header found:", contentDisposition);
+        // 正则表达式来匹配 filename 或 filename*
+        const filenameMatch = contentDisposition.match(/filename\*?=(?:['"](?:[\w%!-.]*)['"]|([^;]+))/i);
+        
+        if (filenameMatch && filenameMatch[1]) {
+            // 处理 RFC 5987 编码 (filename*=UTF-8''%E4%B8%AD%E6%96%87%E6%96%87%E4%BB%B6.txt)
+            try {
+                const encodedFilename = filenameMatch[1].trim();
+                if (encodedFilename.startsWith("UTF-8''")) {
+                    download_title = decodeURIComponent(encodedFilename.substring(7));
+                } else {
+                    // 处理常规 filename="example.txt"
+                    download_title = encodedFilename.replace(/^"|"$/g, ''); // 移除可能的引号
+                }
+                console.log("Filename extracted from Content-Disposition:", filename);
+            } catch (e) {
+                console.warn("Failed to decode filename from Content-Disposition, using fallback.", e);
+            }
+        } else {
+            // Fallback for older or less standard filename formats
+            const oldFilenameMatch = contentDisposition.match(/filename="([^"]+)"/i);
+            if (oldFilenameMatch && oldFilenameMatch[1]) {
+                download_title = oldFilenameMatch[1];
+                console.log("Filename extracted from old Content-Disposition format:", filename);
+            }
+        }
+    } else {
+        console.warn("Content-Disposition header not found. Using default filename.");
+    }
+
+    if (download_title) {
+      // 查找最后一个点 '.' 的索引
+      const lastDotIndex = download_title.lastIndexOf('.');
+
+      // 如果找到了点，并且它不是字符串的第一个字符（以处理 .gitignore 这样的情况），
+      // 则截取到该点之前的部分。
+      // 否则，如果文件名没有扩展名，或者以点开头，则返回原字符串。
+      if (lastDotIndex !== -1 && lastDotIndex > 0) {
+        download_title = download_title.substring(0, lastDotIndex);
+      }
+
+      download_title = download_title.replaceAll('-', ' ')
+    }
+
     // --- Add this line to convert the response body to a string ---
     const srtContent = await response.text();
     console.log("SRT Content Received:");
@@ -306,48 +355,48 @@ const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
     // -----------------------------------------------------------
     if (srtContent) {
       const txtContent = extractTextFromSrt(srtContent)
-    console.log("TXT Content Received:");
-    console.log(txtContent);      
-        try {
+      console.log("TXT Content Received:");
+      console.log(txtContent);    
 
-            const existingAttachments = await db.select({
-                id: schema.attachments.id
-            })
-            .from(schema.attachments)
-            .where(
-                and(
-                    eq(schema.attachments.resource_id, task.id),
-                )
-            )
-            .limit(1); // We only need to find one match
-            
-            if (existingAttachments.length > 0) {
-                await db.update(schema.attachments)
-                    .set({
-                        caption_srt: srtContent,
-                        caption_txt: txtContent
-                    })
-                    .where(eq(schema.attachments.id, existingAttachments[0].id));
-            } else {
-                const insertedResult = await db.insert(schema.attachments).values({
-                    resource_id: task.id, // Associate with public user ID 0
-                    caption_srt: srtContent,
-                    caption_txt: txtContent
-                })
-                // Use .returning() in Drizzle for D1 to get the inserted row
-                .returning()
-                .get(); // .get() for a single row
+      try {
 
-                // Check if insertion was successful and returned a row
-                if (!insertedResult) {
-                    throw new Error("Failed to insert srt into table or get inserted row.");
-                }
-            }
-        } catch (dbError) { // Removed type annotation
-            console.error(`Database transaction failed for task "${task.uuid}":`, dbError);
-        }
+          const existingAttachments = await db.select({
+              id: schema.attachments.id
+          })
+          .from(schema.attachments)
+          .where(eq(schema.attachments.resource_id, task.id))
+          .limit(1); // We only need to find one match
+          
+          if (existingAttachments.length > 0) {
+              await db.update(schema.attachments)
+                  .set({
+                      title: download_title,
+                      caption_srt: srtContent,
+                      caption_txt: txtContent
+                  })
+                  .where(eq(schema.attachments.id, existingAttachments[0].id));
+          } else {
+              const insertedResult = await db.insert(schema.attachments).values({
+                  resource_id: task.id, // Associate with public user ID 0
+                  title: download_title,
+                  caption_srt: srtContent,
+                  caption_txt: txtContent
+              })
+              // Use .returning() in Drizzle for D1 to get the inserted row
+              .returning()
+              .get(); // .get() for a single row
+
+              // Check if insertion was successful and returned a row
+              if (!insertedResult) {
+                  throw new Error("Failed to insert srt into table or get inserted row.");
+              }
+          }
+      } catch (dbError) { // Removed type annotation
+          console.error(`Database transaction failed for task "${task.uuid}":`, dbError);
+      }
         
       const analysisData = {
+          title: download_title,
           souceType: 'article',
           content: txtContent,
           examType: examType,
@@ -1247,13 +1296,17 @@ const simulateAnalysisTask = async (c, taskId, db, analysisData) => {
     const uniqueElements = new Set(candidates);
     candidates = Array.from(uniqueElements);
 
-  // 成功
-  await db.update(schema.resources)
-      .set({
+  let values = {
           status: 'completed',
           result: JSON.stringify(candidates), // Store result as JSON string
           updated_at: sql`CURRENT_TIMESTAMP`
-      })
+      };
+  if ('title' in analysisData) {
+    values.title = analysisData.title;
+  }
+  // 成功
+  await db.update(schema.resources)
+      .set(values)
       .where(eq(schema.resources.uuid, taskId));
 
   return candidates;
