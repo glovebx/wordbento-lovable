@@ -190,9 +190,64 @@ upload.post('/save', async (c) => {
   try {
     const data = await c.req.json();
     const resourceId = parseInt(data.id || '0', 10);
-    const attachments =  data.attachments || [];
+    const audioKey =  data.audioKey || null;
+    const videoKey = data.videoKey || null;
+    const captionSrt = data.captionSrt || null;
 
     const db = drizzle(c.env.DB, { schema });
+
+    if (resourceId > 0) {
+      // 更新
+      // await db.update(schema.attachments)
+      //     .set({
+      //         title: download_title,
+      //         caption_srt: srtContent,
+      //         caption_txt: txtContent
+      //     })
+      //     .where(eq(schema.attachments.id, existingAttachments[0].id));
+
+    } else {
+      // 新增
+      const insertedResult = await db.insert(schema.resources).values({
+        user_id: user.id,
+        title: data.title,
+        source_type: data.sourceType,
+        content: data.content,
+        exam_type: data.examType,
+        content_md5: '',
+        status: 'pending',
+        uuid: nanoid(10)
+      })
+      // Use .returning() in Drizzle for D1 to get the inserted row
+      .returning()
+      .get(); // .get() for a single row
+
+      // Check if insertion was successful and returned a row
+      if (!insertedResult) {
+          throw new Error("Failed to insert resource into table or get inserted row.");
+      } 
+
+      await db.insert(schema.attachments).values({
+        resource_id: insertedResult.id,
+        title: data.title,
+        audio_key: audioKey,
+        video_key: videoKey,
+        caption_srt: captionSrt
+      })
+    }
+
+    // 删除表数据
+    try {
+      await db.delete(schema.temp_attachments)
+      .where(
+          eq(schema.temp_attachments.user_id, user.id)
+      )
+
+      console.log(`Records in temp_attachments have been deleted successfully.`);
+
+    } catch (dbError) { // Removed type annotation
+      console.error(`Database transaction failed for user "${user.id}":`, dbError);
+    }
 
     return c.json(newResource, 200);    
   } catch (dbError) { // Removed type annotation

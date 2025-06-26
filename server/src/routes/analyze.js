@@ -318,7 +318,7 @@ const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
                     // 处理常规 filename="example.txt"
                     download_title = encodedFilename.replace(/^"|"$/g, ''); // 移除可能的引号
                 }
-                console.log("Filename extracted from Content-Disposition:", filename);
+                console.log("Filename extracted from Content-Disposition:", download_title);
             } catch (e) {
                 console.warn("Failed to decode filename from Content-Disposition, using fallback.", e);
             }
@@ -327,7 +327,7 @@ const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
             const oldFilenameMatch = contentDisposition.match(/filename="([^"]+)"/i);
             if (oldFilenameMatch && oldFilenameMatch[1]) {
                 download_title = oldFilenameMatch[1];
-                console.log("Filename extracted from old Content-Disposition format:", filename);
+                console.log("Filename extracted from old Content-Disposition format:", download_title);
             }
         }
     } else {
@@ -700,6 +700,9 @@ analyze.get('/history', async (c) => {
     return c.json([], 200); // Return 200 OK for existing
   }
 
+  const limit = parseInt(c.req.query('limit') || 4, 10);
+  const offset = parseInt(c.req.query('offset') || 0, 10);
+
   const db = drizzle(c.env.DB, { schema });
   
   try {
@@ -723,7 +726,8 @@ analyze.get('/history', async (c) => {
         eq(schema.resources.status, 'completed'))
         )
       .orderBy(desc(schema.resources.id))
-      .limit(4);
+      .offset(offset)
+      .limit(limit);
 
       if (existingResources.length > 0) {
         existingResources.forEach(r => {
@@ -892,6 +896,86 @@ analyze.get('/detail/:id', async (c) => {
   } catch (error) {
     console.error(`Failed to fetch resource ${resourceId}:`, error);
     return c.json({ message: 'Failed to fetch resource details.' }, 500);
+  }
+});
+
+
+// Delete upload (admin only)
+analyze.delete('/detail/:id', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  const resourceId = parseInt(c.req.param('id') || '0', 10);
+  if (!resourceId) {
+    return c.json({ message: 'Invalid resource ID.' }, 400);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+  try {
+      const existingResources = await db.select({
+        id: schema.resources.id,
+      })
+      .from(schema.resources)
+      .where(and(
+        eq(schema.resources.id, resourceId),
+        eq(schema.resources.user_id, user.id),
+      ));
+      // .limit(1); 
+
+    if (existingResources.length == 0) {
+        return c.json({ message: 'Bad Request: Invalid resource id' }, 400);
+    }
+
+    // const resourceId = existingResources[0].id;
+
+    try {
+      const existingAttachments = await db.select({
+          audio_key: schema.attachments.audio_key,
+          video_key: schema.attachments.video_key,
+      })
+      .from(schema.attachments)
+      .where(eq(schema.attachments.resource_id, resourceId));
+      // .limit(1);
+
+      // if (existingAttachments.length == 0) {
+      //     return new Response('Bad Request: Invalid uuid.', { status: 400 });
+      // }    
+
+      if (existingAttachments.length > 0) {
+        for (const existingAttachment of existingAttachments) {
+          let objectKey = existingAttachment.audio_key;
+          if (objectKey) {
+            await c.env.WORDBENTO_R2.delete(objectKey);
+
+            console.log(`R2 Object "${objectKey}" has been deleted successfully.`);
+          }
+
+          objectKey = existingAttachment.video_key;
+          if (objectKey) {
+            await c.env.WORDBENTO_R2.delete(objectKey);
+
+            console.log(`R2 Object "${objectKey}" has been deleted successfully.`);
+          }
+        }
+
+        await db.delete(schema.attachments)
+        .where(eq(schema.attachments.resource_id, resourceId));
+      }
+    } catch (error) {
+      console.error(`Error deleting resource "${resourceId}" from R2:`, error);
+    }
+
+    await db.delete(schema.resources)
+    .where(eq(schema.resources.id, resourceId));
+
+    console.log(`Deleting resource successfully: "${resourceId}"`);
+
+    return c.json({}, 200);
+  } catch (dbError) {
+    console.error(`Error deleting resource "${resourceId}":`, dbError);
+    return c.json({ message: 'Internal Server Error: Failed to deleting resource' }, 500);
   }
 });
 

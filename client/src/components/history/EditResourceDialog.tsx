@@ -76,8 +76,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
       // Deep copy if resource contains complex nested objects you don't want to mutate
       // For simple properties, direct assignment is fine.
       setInitialResourceSnapshot({
-        id: 0,
-        resourceId: resource.id || 0,
+        id: resource.id || 0,
 
         title: resource?.title || "",
         content: resource?.content || "",
@@ -119,7 +118,6 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
   const [existingAudioPreviewUrl, setExistingAudioPreviewUrl] = useState<string | null>(null);
   const [existingVideoPreviewUrl, setExistingVideoPreviewUrl] = useState<string | null>(null);
 
-
   const isNewRecord = resource === null;
 
   // Effect to initialize form data and attachment states when resource prop changes
@@ -136,11 +134,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
       setExistingAttachment(currentAttachment); // Store the entire attachment object
 
       // Initialize currentAudioCaptionSrt ONLY if an audioKey exists in the attachment
-      setCurrentAudioCaptionSrt(
-        currentAttachment?.audioKey && currentAttachment.captionSrt
-          ? currentAttachment.captionSrt
-          : ''
-      );
+      setCurrentAudioCaptionSrt(currentAttachment?.captionSrt || '');
 
       // Generate preview URLs for existing media
       if (currentAttachment?.audioKey) {
@@ -254,9 +248,9 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
     setIsSaving(true);
     try {
       // Initialize the data to save with only changed fields
-      const dataToSave: Partial<ResourceWithAttachments> = {
+      const dataToSave: Partial<UiResourceWithAttachment> = {
         id: resource?.id,
-        updatedAt: new Date().toISOString(),
+        // updatedAt: new Date().toISOString(),
       };
 
       // Track changed fields
@@ -332,51 +326,53 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
         }
       }
 
-      // Handle attachment changes after successful uploads
-      const attachmentChanges: Partial<Attachment> = {};
-      let hasAttachmentChanges = false;
+      // // Handle attachment changes after successful uploads
+      // const attachmentChanges: Partial<Attachment> = {};
+      // let hasAttachmentChanges = false;
 
       // Check for audio changes
       if (finalAudioKey !== initialResourceSnapshot?.audioKey) {
-        attachmentChanges.audioKey = finalAudioKey;
-        hasAttachmentChanges = true;
+        // attachmentChanges.audioKey = finalAudioKey;
+        // hasAttachmentChanges = true;
+        dataToSave.audioKey = finalAudioKey;
       }
 
       // Check for video changes
       if (finalVideoKey !== initialResourceSnapshot?.videoKey) {
-        attachmentChanges.videoKey = finalVideoKey;
-        hasAttachmentChanges = true;
+        // attachmentChanges.videoKey = finalVideoKey;
+        // hasAttachmentChanges = true;
+        dataToSave.videoKey = finalVideoKey;
       }
 
       // Check for caption changes
       if (currentAudioCaptionSrt !== initialResourceSnapshot?.captionSrt) {
-        attachmentChanges.captionSrt = currentAudioCaptionSrt || null;
-        hasAttachmentChanges = true;
+        // attachmentChanges.captionSrt = currentAudioCaptionSrt || null;
+        // hasAttachmentChanges = true;
+        dataToSave.captionSrt = currentAudioCaptionSrt || null;
       }
 
-      // Include attachments if there are changes
-      if (hasAttachmentChanges) {
-        const finalAttachment: Attachment = {
-          id: existingAttachment?.id || 0,
-          resourceId: resource?.id || 0,
-          audioKey: finalAudioKey,
-          videoKey: finalVideoKey,
-          captionSrt: currentAudioCaptionSrt || null,
-          // captionTxt: null,
-        };
+      // // Include attachments if there are changes
+      // if (hasAttachmentChanges) {
+      //   const finalAttachment: Attachment = {
+      //     id: existingAttachment?.id || 0,
+      //     resourceId: resource?.id || 0,
+      //     audioKey: finalAudioKey,
+      //     videoKey: finalVideoKey,
+      //     captionSrt: currentAudioCaptionSrt || null,
+      //     // captionTxt: null,
+      //   };
 
-        // Only include the attachment if it has meaningful content
-        if (finalAttachment.audioKey || finalAttachment.videoKey || finalAttachment.captionSrt) {
-          dataToSave.attachments = [finalAttachment];
-        } else if (existingAttachment) {
-          // If all media and captions are removed, we need to indicate deletion
-          dataToSave.attachments = [];
-        }
-      }
+      //   // Only include the attachment if it has meaningful content
+      //   if (finalAttachment.audioKey || finalAttachment.videoKey || finalAttachment.captionSrt) {
+      //     dataToSave.attachments = [finalAttachment];
+      //   } else if (existingAttachment) {
+      //     // If all media and captions are removed, we need to indicate deletion
+      //     dataToSave.attachments = [];
+      //   }
+      // }
 
       // Only proceed with save if there are actual changes
-      if (Object.keys(dataToSave).length > 3 || 
-          (dataToSave.attachments && dataToSave.attachments.length > 0)) {
+      if (Object.keys(dataToSave).length > 2) {
 
         // onSave(dataToSave);
         console.log(dataToSave);
@@ -545,7 +541,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
                 )}
 
                 {/* Sync button for URL type only and when editing existing record */}
-                {!isNewRecord && formData.sourceType === 'url' && (
+                {/* {!isNewRecord && formData.sourceType === 'url' && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button 
@@ -574,7 +570,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                )}
+                )} */}
               </div>
             </div>
 
@@ -728,12 +724,12 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
           >
             取消
           </Button>
-          <Button
+          {/* <Button
             onClick={handleSave}
             disabled={isSaving}
           >
             {isSaving ? "保存中..." : "保存"}
-          </Button>
+          </Button> */}
         </DialogFooter>
       </DialogContent>
     </Dialog>

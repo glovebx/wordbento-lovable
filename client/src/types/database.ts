@@ -26,9 +26,15 @@ export interface ResourceWithAttachments extends Resource {
   attachments: Attachment[];
 }
 
-export interface UiResourceWithAttachment extends Attachment {  
+export interface UiResourceWithAttachment {  
+  id: number;
   title: string;
   sourceType: 'url' | 'article' | 'pdf' | 'image';
   content: string;
   examType: string;
+
+  audioKey?: string | null;
+  videoKey?: string | null;
+  captionTxt?: string | null;
+  captionSrt?: string | null;  
 }

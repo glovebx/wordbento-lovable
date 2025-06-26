@@ -137,8 +137,8 @@ const AnalysisHistory = () => {
     console.log('Deleting resource:', resourceId);
     try {
       // TODO: 调用后端 API 删除资源
-      // await axiosPrivate.delete(`/api/analyze/resource/${resourceId}`);
-      await new Promise(resolve => setTimeout(resolve, 500)); // 模拟 API 延迟
+      await axiosPrivate.delete(`/api/analyze/detail/${resourceId}`);
+      // await new Promise(resolve => setTimeout(resolve, 500)); // 模拟 API 延迟
       toast({
         title: "删除成功",
         description: `记录 ID: ${resourceId} 已删除。`,

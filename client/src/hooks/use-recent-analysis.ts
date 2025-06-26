@@ -14,7 +14,7 @@ export type Submission = {
   timestamp: number; // Ensure timestamp exists for ordering
 };
 
-const BATCH_SIZE = 10; // Number of submissions to load per request
+const BATCH_SIZE = 4; // Number of submissions to load per request
 
 export const useRecentAnalysis = (isAuthenticated: boolean) => {
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
