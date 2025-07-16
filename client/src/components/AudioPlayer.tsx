@@ -365,21 +365,39 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, []);
 
+  // // OPTIMIZATION: Memoize escapedHighlightWords
+  // const escapedHighlightWords = useMemo(() => {
+  //   // Ensure highlightWords is an array before mapping
+  //   if (!highlightWords || highlightWords.length === 0) {
+  //     return [];
+  //   }
+  //   return highlightWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  // }, [highlightWords]); // Only re-calculate if highlightWords array changes
+
   // OPTIMIZATION: Memoize escapedHighlightWords
-  const escapedHighlightWords = useMemo(() => {
+  const escapedSplitRegex = useMemo(() => {
     // Ensure highlightWords is an array before mapping
     if (!highlightWords || highlightWords.length === 0) {
-      return [];
+      // // 如果没有高亮词，返回一个不匹配任何内容的正则表达式
+      return /(?!)/;
     }
-    return highlightWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const escapedHighlightWords = highlightWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    // // return new RegExp(`(${escapedHighlightWords.join('|')}|\\s+)`, 'gi');
+    // return new RegExp(`(\\b(?:${escapedHighlightWords.join('|')}\\b)|(\\s+)`, 'gi');
+    // 关键改动：为每个单词前后添加 \b 来确保整词匹配
+    const wordsRegexPart = escapedHighlightWords.map(w => `\\b${w}\\b`).join('|');
+
+    // 将高亮词和空格组合成一个带捕获组的正则表达式
+    // 捕获组 `()` 能确保分隔符（高亮词和空格）本身也被包含在 split 的结果数组中
+    return new RegExp(`(${wordsRegexPart}|\\s+)`, 'gi');    
   }, [highlightWords]); // Only re-calculate if highlightWords array changes
 
   const highlightText = useCallback((text: string) => {
     // const escapedHighlightWords = highlightWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     // Use a regex that splits by spaces OR by highlight words, keeping highlight words as parts
-    const splitRegex = new RegExp(`(${escapedHighlightWords.join('|')}|\\s+)`, 'gi');
+    // const splitRegex = new RegExp(`(${escapedHighlightWords.join('|')}|\\s+)`, 'gi');
 
-    const parts = text.split(splitRegex).filter(Boolean); // Filter out empty strings
+    const parts = text.split(escapedSplitRegex).filter(Boolean); // Filter out empty strings
 
     return (
       <>
@@ -433,7 +451,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
         })}
       </>
     );
-  }, [highlightWords, escapedHighlightWords, onHighlightedWordClick]);
+  }, [highlightWords, escapedSplitRegex, onHighlightedWordClick]);
 
   const getSubtitlesToDisplay = useMemo(() => {
     if (currentActiveCueIndex === null || !showSubtitles) {

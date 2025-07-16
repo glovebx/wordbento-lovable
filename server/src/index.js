@@ -17,7 +17,7 @@ const app = new Hono();
 // Global Logging Middleware
 app.use('*', async (c, next) => {
   console.log(`Received request: ${c.req.method} ${c.req.url}`);
-  console.log('ENV at Global Middleware:', c.env);
+  // console.log('ENV at Global Middleware:', c.env);
   await next();
 });
 
@@ -41,15 +41,15 @@ const publicButPrivateRoutes = ['/api/word/search', '/api/analyze/history'];
 
 // Authentication Middleware
 app.use('/api/*', async (c, next) => {
-  console.log('WORDBENTO_KV in Middleware:', c.env.WORDBENTO_KV); // Debugging Line
+  // console.log('WORDBENTO_KV in Middleware:', c.env.WORDBENTO_KV); // Debugging Line
 
   // Check if WORDBENTO_KV is properly bound
   if (!c.env.WORDBENTO_KV) {
-    console.error('WORDBENTO_KV binding is missing.');
+    // console.error('WORDBENTO_KV binding is missing.');
     return c.json({ message: 'Internal Server Error: KV Namespace not bound.' }, 500);
   }
 
-  console.log('c.req.path:', c.req.path);
+  // console.log('c.req.path:', c.req.path);
 
   // Check if the route is public
   if (publicRoutes.some(route => c.req.path.startsWith(route))) {
@@ -59,26 +59,26 @@ app.use('/api/*', async (c, next) => {
   // Manually parse the Cookie header
   const sessionId = getCookie(c, 'session_id')
 
-  console.log('Session ID from Cookie:', sessionId);
+  // console.log('Session ID from Cookie:', sessionId);
 
   if (!sessionId) {
     if (!publicButPrivateRoutes.some(route => c.req.path.startsWith(route))) {
-      console.warn('No session ID found in cookies.');
+      // console.warn('No session ID found in cookies.');
       return c.json({ message: 'Unauthorized: Missing session ID' }, 401);  
     }
     await next();
   } else {
     try {
       const userData = await c.env.WORDBENTO_KV.get(sessionId, { type: 'json' });
-      console.log('User Data Retrieved from KV:', userData);
+      // console.log('User Data Retrieved from KV:', userData);
       if (!userData) {
-        console.warn('Invalid session ID.');
+        // console.warn('Invalid session ID.');
         return c.json({ message: 'Unauthorized: Invalid session ID' }, 401);
       }
       c.set('user', userData);
       await next();
     } catch (err) {
-      console.error('Error verifying session:', err.message);
+      // console.error('Error verifying session:', err.message);
       return c.json({ message: 'Internal Server Error', error: err.message }, 500);
     }
   }
@@ -116,8 +116,8 @@ app.get('/api/test-kv-direct', async (c) => {
 // Export the fetch handler with additional logging
 export default {
   async fetch(request, env, ctx) {
-    console.log('Fetch handler invoked');
-    console.log('ENV in fetch:', env);
+    // console.log('Fetch handler invoked');
+    // console.log('ENV in fetch:', env);
     return app.fetch(request, env, ctx);
   }
 };

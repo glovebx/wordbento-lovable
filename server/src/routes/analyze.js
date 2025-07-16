@@ -108,7 +108,7 @@ const analyze = new Hono();
 // };
 
 const extractWordsByAi = async (c, analysisData) => {
-  console.log(`Calling Gemini AI for source: ${analysisData.sourceType}`);
+  console.log(`Calling Gemini AI for source2: ${analysisData.sourceType}`);
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
 
@@ -127,7 +127,7 @@ const extractWordsByAi = async (c, analysisData) => {
     const prompt = analysisData.sourceType === 'article' ? `
 我给你一篇文章，请从中将${analysisData.examType}等级的单词筛选出来，请仅以json格式的数组返回，不要包含任何其他文本或解释。
 文章如下：${analysisData.content}
-              ` : `我给你一个url，请访问阅读其中的正文，从中将${analysisData.examType}等级的单词筛选出来，请仅以json格式的数组返回，不要包含任何其他文本或解释。。
+              ` : `我给你一个url，请访问阅读其中的正文，从中将${analysisData.examType}等级的单词筛选出来，请仅以json格式的数组返回，不要包含任何其他文本或解释。
 URL如下：${analysisData.content}`;
 
 
@@ -137,6 +137,8 @@ URL如下：${analysisData.content}`;
           {role: 'system', content: 'You are a helpful assistant.'},
           {role: 'user', content: prompt},
         ]};
+
+      console.log(jsonData);  
 
       const response = await fetch(GEMINI_API_ENDPOINT, {
           method: 'POST',
@@ -397,7 +399,7 @@ const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
         
       const analysisData = {
           title: download_title,
-          souceType: 'article',
+          sourceType: 'article',
           content: txtContent,
           examType: examType,
       }
@@ -602,6 +604,8 @@ analyze.post('/', async (c) => {
 
   // youtube链接需要额外处理
     const isYoutube = isYouTubeLinkRegex(cleanedContent);
+
+console.log(`Content is Youtube??: ${isYoutube}`);
 
   // 3. Check if a record with the same exam_type and content_md5 already exists
   try {

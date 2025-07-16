@@ -402,25 +402,36 @@ const generateBentoByGeminiAi = async (c, word) => {
         console.log("API call successful. Received message:");
         console.log(`messageContent: ${ messageContent }`);
   
+        let repairedJson = null;
+
         const jsonStr = cleanAiJsonResponse(messageContent)
         console.log(`jsonStr: ${ jsonStr }`);
 
-        let repairedStr;
         try {
-          repairedStr = jsonrepair(jsonStr)
-          console.log(`repairedStr: ${ repairedStr }`);
+          repairedJson = JSON.parse(jsonStr);
+          console.log(`repairedJson: ${ repairedJson }`);
         } catch(error) {
-          repairedStr = jsonStr;
-          console.log('jsonrepair failed, fallback to jsonStr');
+          repairedJson = null;
         }
 
-        let repairedJson;
-        try {
-          repairedJson = JSON.parse(repairedStr);
-        } catch(error) {
-          const repairedBadStr = fixUnescapedQuotesInJson(repairedStr)
-          console.log(`repairedBadStr: ${ repairedBadStr }`);
-          repairedJson = JSON.parse(repairedBadStr);
+        if (!repairedJson) {
+          let repairedStr;
+          try {
+            repairedStr = jsonrepair(jsonStr)
+            console.log(`repairedStr: ${ repairedStr }`);
+          } catch(error) {
+            repairedStr = jsonStr;
+            console.log('jsonrepair failed, fallback to jsonStr');
+          }
+
+          try {
+            repairedJson = JSON.parse(repairedStr);
+            console.log(`repairedJson: ${ repairedJson }`);
+          } catch(error) {
+            const repairedBadStr = fixUnescapedQuotesInJson(repairedStr)
+            console.log(`repairedBadStr: ${ repairedBadStr }`);
+            repairedJson = JSON.parse(repairedBadStr);
+          }
         }
 
         // console.log(`jsonWord: ${ jsonWord }`);
