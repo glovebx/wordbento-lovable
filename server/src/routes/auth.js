@@ -71,7 +71,7 @@ auth.post('/login', async (c) => {
     return c.json({ message: 'Invalid credentials.' }, 401);
   }
 
-  const expirationTtl = 360000;
+  const expirationTtl = 3600000;
   // Generate a session ID and store session data in the KV store
   const sessionId = randomUUID();
   const sessionData = { username: user.username, role: user.role, uuid: user.uuid };

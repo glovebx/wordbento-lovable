@@ -378,7 +378,7 @@ const generateBentoByGeminiAi = async (c, word) => {
         }
   
         const data = await response.json(); // No type assertion needed in JS
-        // console.log(data);
+        console.log(data);
   
         // 2. Check if the 'choices' array exists and is not empty
         if (!data.choices || data.choices.length === 0) {

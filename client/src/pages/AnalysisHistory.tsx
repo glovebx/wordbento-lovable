@@ -38,9 +38,9 @@ const AnalysisHistory = () => {
     }
   }, [currentPage, isAuthenticated]);
 
-  useEffect(() => {
-    refreshSession();
-  }, [refreshSession]);
+  // useEffect(() => {
+  //   refreshSession();
+  // }, [refreshSession]);
 
   // handleEditResource 现在需要获取单个资源的完整详情
   const handleEditResource = useCallback(async (resourceId: number) => {

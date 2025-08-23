@@ -454,7 +454,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   }, [highlightWords, escapedSplitRegex, onHighlightedWordClick]);
 
   const getSubtitlesToDisplay = useMemo(() => {
-    if (currentActiveCueIndex === null || !showSubtitles) {
+    if (currentActiveCueIndex === null || !showSubtitles || parsedCues.length == 0) {
       return [];
     }
     return [parsedCues[currentActiveCueIndex]];

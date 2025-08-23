@@ -52,9 +52,9 @@ axiosPrivate.interceptors.response.use(
       // SameSite=None requires Secure=true, which is appropriate for cross-site requests over HTTPS
       document.cookie = "session_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.toopost.us; secure; SameSite=None";
 
-      // Redirect the user to the login page
-      // Using window.location.href will cause a full page reload
-      window.location.href = "/";
+      // // Redirect the user to the login page
+      // // Using window.location.href will cause a full page reload
+      // window.location.href = "/";
 
       // Reject the promise immediately after initiating logout/redirect
       return Promise.reject(error);
