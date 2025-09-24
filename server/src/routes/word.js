@@ -1166,8 +1166,10 @@ word.post('/imagize', async (c) => {
            .from(schema.images)
            .where(eq(schema.images.word_id, existingWord.id));
           //  .limit(1);
-          if (images && images.length > 0) {
-            const imageUrls = images.map(img => img.image_key.startsWith('http') && img.image_key || `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
+          // 如果图片是http开头，默认已经失效（即梦的图片），客户端会出现生成图片的按钮
+          if (images && images.length > 0 && images.filter(img => img.image_key.startsWith('http')).length == 0) {
+            // const imageUrls = images.map(img => img.image_key.startsWith('http') && img.image_key || `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
+            const imageUrls = images.map(img => `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
 
             return c.json({imageUrls: imageUrls}, 200);
           }
@@ -1255,6 +1257,13 @@ word.post('/imagize', async (c) => {
   // }
 
     console.log(`AI image received, inserting into R2. ${mimeType}`);
+
+    // 删除所有图片
+    try {
+      await db.delete(schema.images).where(eq(schema.images.word_id, existingWord.id));
+    } catch (dbError) {
+      console.error(`Database transaction failed for delete images "${existingWord.word_text}":`, dbError);
+    }
 
     const allResultsPromises = allImageResults.map(async (imageBinaryData) => {
       // Start a database transaction for inserting into multiple tables

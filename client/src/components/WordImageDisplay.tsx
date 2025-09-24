@@ -144,7 +144,11 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
 
 
   // Determine if we should show the "Generate Images" button
-  const showGenerateButton = (!imageUrls || imageUrls.length === 0) && !isGeneratingImages;
+  // const showGenerateButton = (!imageUrls || imageUrls.length === 0) && !isGeneratingImages;
+  // 即梦失效的图片格式：https://p23..., https://p26..., https://p9...
+  const hasHttpsJimengImages = (imageUrls && imageUrls.length > 0 && imageUrls.filter(img => img.startsWith('https://p')).length > 0);
+  // 部分图片出错了，需要重新生成，暂时放开
+  const showGenerateButton = ((!imageUrls || imageUrls.length === 0) || hasHttpsJimengImages) && !isGeneratingImages;
   // Determine if we should show the small Carousel
   const showSmallCarousel = imageUrls && imageUrls.length > 0;
 

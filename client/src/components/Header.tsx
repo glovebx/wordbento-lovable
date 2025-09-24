@@ -33,13 +33,13 @@ const Header: React.FC<HeaderProps> = ({
   // Get the navigate function from react-router-dom
   const navigate = useNavigate();
   // Handler for clicking "我的收藏"
-  const handleNavigateToProfile = () => {
-    navigate('/profile'); // Navigate to the /profile route
+  const handleNavigateToDashboard = () => {
+    navigate('/dashboard'); // Navigate to the /profile route
   };
-  // Handler for clicking "我的收藏"
-  const handleNavigateToAnalysisHistory = () => {
-    navigate('/history'); // Navigate to the /profile route
-  };  
+  // // Handler for clicking "我的收藏"
+  // const handleNavigateToAnalysisHistory = () => {
+  //   navigate('/history'); // Navigate to the /profile route
+  // };  
 
   const handleToggle = (checked: boolean) => {
     onViewModeChange(checked ? 'flashcard' : 'grid');
@@ -75,8 +75,8 @@ const Header: React.FC<HeaderProps> = ({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleNavigateToProfile}>个人中心</DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleNavigateToAnalysisHistory}>解析历史</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleNavigateToDashboard}>个人中心</DropdownMenuItem>
+                  {/* <DropdownMenuItem onClick={handleNavigateToAnalysisHistory}>解析历史</DropdownMenuItem> */}
                   {/* <DropdownMenuItem>学习记录</DropdownMenuItem> */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout}>退出登录</DropdownMenuItem>

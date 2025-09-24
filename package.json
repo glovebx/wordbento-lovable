@@ -13,15 +13,15 @@
     "lint": "pnpm -r run lint"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.5.2",
-    "eslint": "^9.28.0",
+    "@vitejs/plugin-react": "^5.0.3",
+    "eslint": "^9.36.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.20",
-    "vite": "^4.5.14"
+    "eslint-plugin-react-refresh": "^0.4.21",
+    "vite": "^7.1.7"
   },
   "dependencies": {
-    "wrangler": "^4.19.1"
+    "wrangler": "^4.39.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
