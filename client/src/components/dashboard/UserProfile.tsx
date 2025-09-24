@@ -268,6 +268,8 @@ const UserProfile = () => {
   const languageSectionRef = useRef<HTMLDivElement>(null);
   const geminiSectionRef = useRef<HTMLDivElement>(null);
   const deepseekSectionRef = useRef<HTMLDivElement>(null);
+  const jimengSectionRef = useRef<HTMLDivElement>(null);
+  const scraperSectionRef = useRef<HTMLDivElement>(null);
 
   // Language settings
   const [nativeLanguage, setNativeLanguage] = useState("chinese");
@@ -280,10 +282,18 @@ const UserProfile = () => {
   const [deepseekEndpoint, setDeepseekEndpoint] = useState("");
   const [deepseekApiKey, setDeepseekApiKey] = useState("");
   const [deepseekModel, setDeepseekModel] = useState("");
+  const [jimengEndpoint, setJimengEndpoint] = useState("");
+  const [jimengApiKey, setJimengApiKey] = useState("");
+  const [jimengModel, setJimengModel] = useState("");  
+  const [scraperEndpoint, setScraperEndpoint] = useState("");
+  const [scraperApiKey, setScraperApiKey] = useState("");
+  const [scraperModel, setScraperModel] = useState("");
 
   const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [isSavingGemini, setIsSavingGemini] = useState(false);
   const [isSavingDeepseek, setIsSavingDeepseek] = useState(false);
+  const [isSavingJimeng, setIsSavingJimeng] = useState(false);
+  const [isSavingScraper, setIsSavingScraper] = useState(false);
 
   // 移除了所有与头像编辑相关的状态和函数
   // 例如：avatarSrc, isEditing, handleAvatarUpload, handleSaveAvatar, handleCancelEdit
@@ -320,6 +330,28 @@ const UserProfile = () => {
         description: "Your DeepSeek API settings have been updated.",
     });
   };
+
+  const handleSaveJimengSettings = async (endpoint: string, apiKey: string, model: string) => {
+    setIsSavingJimeng(true);
+    console.log("Saving Jimeng Settings:", { endpoint, apiKey, model });
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsSavingJimeng(false);
+    toast({
+        title: "Jimeng Settings Saved",
+        description: "Your Jimeng API settings have been updated.",
+    });
+  };  
+
+  const handleSaveScraperSettings = async (endpoint: string, apiKey: string, model: string) => {
+    setIsSavingScraper(true);
+    console.log("Saving Jimeng Settings:", { endpoint, apiKey, model });
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsSavingScraper(false);
+    toast({
+        title: "Scraper Settings Saved",
+        description: "Your Scraper API settings have been updated.",
+    });
+  };  
 
   return (
     <div className="p-6 relative">
@@ -380,6 +412,43 @@ const UserProfile = () => {
             isSaving={isSavingDeepseek}
           />
         </div>
+
+        {/* Jimeng API Settings Section */}
+        <div ref={jimengSectionRef} id="jimeng-section" className="scroll-mt-12">
+          <ApiSettings 
+            title="Jimeng"
+            endpoint={jimengEndpoint}
+            setEndpoint={setJimengEndpoint}
+            apiKey={jimengApiKey}
+            setApiKey={setJimengApiKey}
+            model={jimengModel}
+            setModel={setJimengModel}
+            endpointId="jimeng-endpoint"
+            apiKeyId="jimeng-api-key"
+            modelId="jimeng-model"
+            onSave={handleSaveJimengSettings}
+            isSaving={isSavingJimeng}
+          />
+        </div>  
+
+        {/* Scraper API Settings Section */}
+        <div ref={scraperSectionRef} id="scraper-section" className="scroll-mt-12">
+          <ApiSettings 
+            title="Scraper"
+            endpoint={scraperEndpoint}
+            setEndpoint={setScraperEndpoint}
+            apiKey={scraperApiKey}
+            setApiKey={setScraperApiKey}
+            model={scraperModel}
+            setModel={setScraperModel}
+            endpointId="scraper-endpoint"
+            apiKeyId="scraper-api-key"
+            modelId="scraper-model"
+            onSave={handleSaveScraperSettings}
+            isSaving={isSavingScraper}
+          />
+        </div>
+
       </div>
     </div>
   );
