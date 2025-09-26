@@ -21,13 +21,13 @@ import AuthModal from './AuthModal';
 
 const analysisFormSchema = z.object({
   sourceType: z.enum(['url', 'article'], {
-    required_error: "请选择资源类型。",
+    error: "请选择资源类型。", // 当 sourceType 字段缺失时显示
   }),
   content: z.string().min(1, {
-    message: "内容不能为空。",
+    error: "内容不能为空。",
   }),
   examType: z.string().min(1, {
-    message: "请选择考试类型。",
+    error: "请选择考试类型。",
   })  
 });
 
@@ -239,7 +239,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
               <FormField
                   control={form.control}
                   name="examType"
-                  render={({ field }) => (
+                  render={() => (
                       <FormItem>
                           <FormMessage />
                       </FormItem>
@@ -282,7 +282,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                   </div>
                 ) : recentSubmissions.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {recentSubmissions.map((submission, index) => (
+                    {recentSubmissions.map((submission, _) => (
                       <div 
                         key={submission.uuid} // Use uuid as key for stability
                         className="py-1.5 px-2.5 text-xs bg-muted/50 rounded-md flex items-center cursor-pointer hover:bg-muted/80 transition-colors max-w-full"

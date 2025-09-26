@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import {
   Carousel,
   CarouselContent,
@@ -276,9 +276,9 @@ const EnlargedImageCarousel: React.FC<EnlargedImageCarouselProps> = ({
     };
   }, [api, onCloseDialog]); // 依赖 api 和 onCloseDialog
 
-  // 禁用按钮的逻辑
-  const isPreviousEnlargedDisabled = !api || api.selectedScrollSnap() === 0;
-  const isNextEnlargedDisabled = !api || api.selectedScrollSnap() === api.scrollSnapList().length - 1;
+  // // 禁用按钮的逻辑
+  // const isPreviousEnlargedDisabled = !api || api.selectedScrollSnap() === 0;
+  // const isNextEnlargedDisabled = !api || api.selectedScrollSnap() === api.scrollSnapList().length - 1;
 
   if (imageUrls.length === 0) {
     return (

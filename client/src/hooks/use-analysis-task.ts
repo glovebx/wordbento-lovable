@@ -117,7 +117,11 @@ export const useAnalysisTask = () => {
             console.log(`WebSocket message received for task ID ${newTaskId}:`, event.data);
             try {
               const update: AnalysisStatusUpdate = JSON.parse(event.data); // Parse the status update
-              setTaskStatus(update.status); // Update task status
+              if (update.status === 'pending' || update.status === 'processing') {
+                setTaskStatus('polling')
+              } else {
+                setTaskStatus(update.status); // Update task status
+              }
               if (update.progress !== undefined) setProgress(update.progress); // Update progress
               if (update.message !== undefined) setStatusMessage(update.message); // Update message
 

@@ -204,7 +204,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                         {definitionContent.en.map((item, index) => (
                             <React.Fragment key={index}>
                                 {item}
-                                {index < definitionContent.en.length - 1 && <br />}
+                                {index < definitionContent.en!.length - 1 && <br />}
                             </React.Fragment>
                         ))}
                      </div>
@@ -228,7 +228,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                         {definitionContent.zh.map((item, index) => (
                             <React.Fragment key={index}>
                                 {item}
-                                {index < definitionContent.zh.length - 1 && <br />}
+                                {index < definitionContent.zh!.length - 1 && <br />}
                             </React.Fragment>
                         ))}
                      </div>

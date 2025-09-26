@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,22 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
-import { UiResourceWithAttachment, ResourceWithAttachments, Attachment } from "@/types/database";
+// import { UiResourceWithAttachment, ResourceWithAttachments, Attachment } from "@/types/database";
+import { ResourceWithAttachments, Attachment } from "@/types/database";
 import { toast } from "@/hooks/use-toast";
-import { Upload, Trash2, FileAudio, FileVideo, RefreshCw } from "lucide-react";
-import { baseURL, axiosPrivate } from "@/lib/axios";
+import { Upload, Trash2, FileAudio, FileVideo } from "lucide-react";
+import { baseURL } from "@/lib/axios";
 
 interface EditResourceDialogProps {
   open: boolean;
@@ -50,9 +40,6 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
   open,
   onOpenChange,
   resource,
-  isSyncing,
-  onReSync,
-  onSave,
 }) => {
 
   // // Track original values to compare for changes
@@ -66,32 +53,32 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
   // });
   // --- NEW: For capturing initial resource values ---
   // State to hold the initial snapshot of resource data
-  const [initialResourceSnapshot, setInitialResourceSnapshot] = useState<UiResourceWithAttachment | null>(null);
+  // const [initialResourceSnapshot, setInitialResourceSnapshot] = useState<UiResourceWithAttachment | null>(null);
   // Ref to ensure the snapshot is only taken once
   // const hasResourceSnapshotInitialized = useRef(false);
 
-  // Effect to capture the initial resource snapshot
-  useEffect(() => {
-    if (resource) {
-      // Deep copy if resource contains complex nested objects you don't want to mutate
-      // For simple properties, direct assignment is fine.
-      setInitialResourceSnapshot({
-        id: resource.id || 0,
+  // // Effect to capture the initial resource snapshot
+  // useEffect(() => {
+  //   if (resource) {
+  //     // Deep copy if resource contains complex nested objects you don't want to mutate
+  //     // For simple properties, direct assignment is fine.
+  //     setInitialResourceSnapshot({
+  //       id: resource.id || 0,
 
-        title: resource?.title || "",
-        content: resource?.content || "",
-        examType: resource?.examType || "TOFEL",
-        sourceType: resource?.sourceType || "url",
+  //       title: resource?.title || "",
+  //       content: resource?.content || "",
+  //       examType: resource?.examType || "TOFEL",
+  //       sourceType: resource?.sourceType || "url",
 
-        audioKey: resource.attachments?.[0]?.audioKey || null,
-        videoKey: resource.attachments?.[0]?.videoKey || null,
-        captionSrt: resource.attachments?.[0]?.captionSrt || "",
-        // Copy other relevant properties if needed
-      });
-      // hasResourceSnapshotInitialized.current = true;
-      console.log("Initial resource snapshot taken:", resource);
-    }
-  }, [resource]); // Dependency: resource prop
+  //       audioKey: resource.attachments?.[0]?.audioKey || null,
+  //       videoKey: resource.attachments?.[0]?.videoKey || null,
+  //       captionSrt: resource.attachments?.[0]?.captionSrt || "",
+  //       // Copy other relevant properties if needed
+  //     });
+  //     // hasResourceSnapshotInitialized.current = true;
+  //     console.log("Initial resource snapshot taken:", resource);
+  //   }
+  // }, [resource]); // Dependency: resource prop
 
 
   const [formData, setFormData] = useState({
@@ -99,7 +86,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
     examType: "",
     sourceType: "url" as "url" | "article" | "pdf" | "image",
   });
-  const [isSaving, setIsSaving] = useState(false);
+  // const [isSaving, setIsSaving] = useState(false);
 //   const [isSyncing, setIsSyncing] = useState(false);
 
   // States for NEW file uploads
@@ -235,212 +222,212 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
     setCurrentAudioCaptionSrt(e.target.value);
   };
 
-  const handleSave = async () => {
-    if (!formData.content.trim() || !formData.examType.trim()) {
-      toast({
-        title: "输入错误",
-        description: "内容和考试类型不能为空。",
-        variant: "destructive",
-      });
-      return;
-    }
+  // const handleSave = async () => {
+  //   if (!formData.content.trim() || !formData.examType.trim()) {
+  //     toast({
+  //       title: "输入错误",
+  //       description: "内容和考试类型不能为空。",
+  //       variant: "destructive",
+  //     });
+  //     return;
+  //   }
 
-    setIsSaving(true);
-    try {
-      // Initialize the data to save with only changed fields
-      const dataToSave: Partial<UiResourceWithAttachment> = {
-        id: resource?.id,
-        // updatedAt: new Date().toISOString(),
-      };
+  //   setIsSaving(true);
+  //   try {
+  //     // Initialize the data to save with only changed fields
+  //     const dataToSave: Partial<UiResourceWithAttachment> = {
+  //       id: resource?.id,
+  //       // updatedAt: new Date().toISOString(),
+  //     };
 
-      // Track changed fields
-      if (formData.content !== initialResourceSnapshot?.content) {
-        dataToSave.content = formData.content;
-      }
+  //     // Track changed fields
+  //     if (formData.content !== initialResourceSnapshot?.content) {
+  //       dataToSave.content = formData.content;
+  //     }
 
-      console.log(`${initialResourceSnapshot?.examType} = ${formData.examType};`)
-      if (formData.examType !== initialResourceSnapshot?.examType) {
-        dataToSave.examType = formData.examType;
-      }
-      if (formData.sourceType !== initialResourceSnapshot?.sourceType) {
-        dataToSave.sourceType = formData.sourceType;
-      }
+  //     console.log(`${initialResourceSnapshot?.examType} = ${formData.examType};`)
+  //     if (formData.examType !== initialResourceSnapshot?.examType) {
+  //       dataToSave.examType = formData.examType;
+  //     }
+  //     if (formData.sourceType !== initialResourceSnapshot?.sourceType) {
+  //       dataToSave.sourceType = formData.sourceType;
+  //     }
 
-      // Handle file uploads first
-      let finalAudioKey: string | null = existingAttachment?.audioKey || null;
-      let finalVideoKey: string | null = existingAttachment?.videoKey || null;
+  //     // Handle file uploads first
+  //     let finalAudioKey: string | null = existingAttachment?.audioKey || null;
+  //     let finalVideoKey: string | null = existingAttachment?.videoKey || null;
 
-      // Upload new audio file if present
-      if (newAudioFile) {
-        try {
-          const formData = new FormData();
-          formData.append('audio', newAudioFile);
-          formData.append('resourceId', resource?.id?.toString() || '0');
+  //     // Upload new audio file if present
+  //     if (newAudioFile) {
+  //       try {
+  //         const formData = new FormData();
+  //         formData.append('audio', newAudioFile);
+  //         formData.append('resourceId', resource?.id?.toString() || '0');
           
-          const response = await axiosPrivate.post<{ key: string }>(
-            '/api/upload/audio',
-            formData,
-            {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-              },
-            }
-          );
+  //         const response = await axiosPrivate.post<{ key: string }>(
+  //           '/api/upload/audio',
+  //           formData,
+  //           {
+  //             headers: {
+  //               'Content-Type': 'multipart/form-data',
+  //             },
+  //           }
+  //         );
           
-          finalAudioKey = response.data.key;
-        } catch (error) {
-          toast({
-            title: "音频上传失败",
-            description: "上传音频文件时发生错误",
-            variant: "destructive",
-          });
-          throw error; // Re-throw to stop further processing
-        }
-      }
+  //         finalAudioKey = response.data.key;
+  //       } catch (error) {
+  //         toast({
+  //           title: "音频上传失败",
+  //           description: "上传音频文件时发生错误",
+  //           variant: "destructive",
+  //         });
+  //         throw error; // Re-throw to stop further processing
+  //       }
+  //     }
 
-      // Upload new video file if present
-      if (newVideoFile) {
-        try {
-          const formData = new FormData();
-          formData.append('video', newVideoFile);
-          formData.append('resourceId', resource?.id?.toString() || '0');
+  //     // Upload new video file if present
+  //     if (newVideoFile) {
+  //       try {
+  //         const formData = new FormData();
+  //         formData.append('video', newVideoFile);
+  //         formData.append('resourceId', resource?.id?.toString() || '0');
           
-          const response = await axiosPrivate.post<{ key: string }>(
-            '/api/upload/video',
-            formData,
-            {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-              },
-            }
-          );
+  //         const response = await axiosPrivate.post<{ key: string }>(
+  //           '/api/upload/video',
+  //           formData,
+  //           {
+  //             headers: {
+  //               'Content-Type': 'multipart/form-data',
+  //             },
+  //           }
+  //         );
           
-          finalVideoKey = response.data.key;
-        } catch (error) {
-          toast({
-            title: "视频上传失败",
-            description: "上传视频文件时发生错误",
-            variant: "destructive",
-          });
-          throw error; // Re-throw to stop further processing
-        }
-      }
+  //         finalVideoKey = response.data.key;
+  //       } catch (error) {
+  //         toast({
+  //           title: "视频上传失败",
+  //           description: "上传视频文件时发生错误",
+  //           variant: "destructive",
+  //         });
+  //         throw error; // Re-throw to stop further processing
+  //       }
+  //     }
 
-      // // Handle attachment changes after successful uploads
-      // const attachmentChanges: Partial<Attachment> = {};
-      // let hasAttachmentChanges = false;
+  //     // // Handle attachment changes after successful uploads
+  //     // const attachmentChanges: Partial<Attachment> = {};
+  //     // let hasAttachmentChanges = false;
 
-      // Check for audio changes
-      if (finalAudioKey !== initialResourceSnapshot?.audioKey) {
-        // attachmentChanges.audioKey = finalAudioKey;
-        // hasAttachmentChanges = true;
-        dataToSave.audioKey = finalAudioKey;
-      }
+  //     // Check for audio changes
+  //     if (finalAudioKey !== initialResourceSnapshot?.audioKey) {
+  //       // attachmentChanges.audioKey = finalAudioKey;
+  //       // hasAttachmentChanges = true;
+  //       dataToSave.audioKey = finalAudioKey;
+  //     }
 
-      // Check for video changes
-      if (finalVideoKey !== initialResourceSnapshot?.videoKey) {
-        // attachmentChanges.videoKey = finalVideoKey;
-        // hasAttachmentChanges = true;
-        dataToSave.videoKey = finalVideoKey;
-      }
+  //     // Check for video changes
+  //     if (finalVideoKey !== initialResourceSnapshot?.videoKey) {
+  //       // attachmentChanges.videoKey = finalVideoKey;
+  //       // hasAttachmentChanges = true;
+  //       dataToSave.videoKey = finalVideoKey;
+  //     }
 
-      // Check for caption changes
-      if (currentAudioCaptionSrt !== initialResourceSnapshot?.captionSrt) {
-        // attachmentChanges.captionSrt = currentAudioCaptionSrt || null;
-        // hasAttachmentChanges = true;
-        dataToSave.captionSrt = currentAudioCaptionSrt || null;
-      }
+  //     // Check for caption changes
+  //     if (currentAudioCaptionSrt !== initialResourceSnapshot?.captionSrt) {
+  //       // attachmentChanges.captionSrt = currentAudioCaptionSrt || null;
+  //       // hasAttachmentChanges = true;
+  //       dataToSave.captionSrt = currentAudioCaptionSrt || null;
+  //     }
 
-      // // Include attachments if there are changes
-      // if (hasAttachmentChanges) {
-      //   const finalAttachment: Attachment = {
-      //     id: existingAttachment?.id || 0,
-      //     resourceId: resource?.id || 0,
-      //     audioKey: finalAudioKey,
-      //     videoKey: finalVideoKey,
-      //     captionSrt: currentAudioCaptionSrt || null,
-      //     // captionTxt: null,
-      //   };
+  //     // // Include attachments if there are changes
+  //     // if (hasAttachmentChanges) {
+  //     //   const finalAttachment: Attachment = {
+  //     //     id: existingAttachment?.id || 0,
+  //     //     resourceId: resource?.id || 0,
+  //     //     audioKey: finalAudioKey,
+  //     //     videoKey: finalVideoKey,
+  //     //     captionSrt: currentAudioCaptionSrt || null,
+  //     //     // captionTxt: null,
+  //     //   };
 
-      //   // Only include the attachment if it has meaningful content
-      //   if (finalAttachment.audioKey || finalAttachment.videoKey || finalAttachment.captionSrt) {
-      //     dataToSave.attachments = [finalAttachment];
-      //   } else if (existingAttachment) {
-      //     // If all media and captions are removed, we need to indicate deletion
-      //     dataToSave.attachments = [];
-      //   }
-      // }
+  //     //   // Only include the attachment if it has meaningful content
+  //     //   if (finalAttachment.audioKey || finalAttachment.videoKey || finalAttachment.captionSrt) {
+  //     //     dataToSave.attachments = [finalAttachment];
+  //     //   } else if (existingAttachment) {
+  //     //     // If all media and captions are removed, we need to indicate deletion
+  //     //     dataToSave.attachments = [];
+  //     //   }
+  //     // }
 
-      // Only proceed with save if there are actual changes
-      if (Object.keys(dataToSave).length > 2) {
+  //     // Only proceed with save if there are actual changes
+  //     if (Object.keys(dataToSave).length > 2) {
 
-        // onSave(dataToSave);
-        console.log(dataToSave);
+  //       // onSave(dataToSave);
+  //       console.log(dataToSave);
 
-        toast({
-          title: "保存成功",
-          description: "资源信息已更新",
-        });
-      } else {
-        toast({
-          title: "没有更改",
-          description: "没有检测到任何修改",
-        });
-      }
-    } catch (error) {
-      console.error("保存过程中出错:", error);
-      // Error toasts are already shown for specific upload failures
-      if (!(error instanceof Error && 
-          (error.message.includes('音频上传失败') || error.message.includes('视频上传失败')))) {
-        toast({
-          title: "保存失败",
-          description: "更新资源信息时发生错误",
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  //       toast({
+  //         title: "保存成功",
+  //         description: "资源信息已更新",
+  //       });
+  //     } else {
+  //       toast({
+  //         title: "没有更改",
+  //         description: "没有检测到任何修改",
+  //       });
+  //     }
+  //   } catch (error) {
+  //     console.error("保存过程中出错:", error);
+  //     // Error toasts are already shown for specific upload failures
+  //     if (!(error instanceof Error && 
+  //         (error.message.includes('音频上传失败') || error.message.includes('视频上传失败')))) {
+  //       toast({
+  //         title: "保存失败",
+  //         description: "更新资源信息时发生错误",
+  //         variant: "destructive",
+  //       });
+  //     }
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
 
-  // New handler for sync button click
-  const handleSync = async () => {
-    if (!resource || !resource.uuid || formData.sourceType !== 'url' || !formData.content.trim()) {
-      toast({
-        title: "同步失败",
-        description: "只有现有URL资源才能同步，且内容不能为空。",
-        variant: "destructive",
-      });
-      return;
-    }
+  // // New handler for sync button click
+  // const handleSync = async () => {
+  //   if (!resource || !resource.uuid || formData.sourceType !== 'url' || !formData.content.trim()) {
+  //     toast({
+  //       title: "同步失败",
+  //       description: "只有现有URL资源才能同步，且内容不能为空。",
+  //       variant: "destructive",
+  //     });
+  //     return;
+  //   }
 
-    // setIsSyncing(true);
-    try {
-      // Simulate backend API call for syncing a URL resource
-      // In a real application, you would make an axiosPrivate.post/put call here
-      // For example: await axiosPrivate.post(`/api/analyze/sync-url/${resource.uuid}`, { url: formData.content });
-    //   console.log(`Simulating sync for resource ID: ${resource.id}, UUID: ${resource.uuid}, URL: ${formData.content}`);
-    //   await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
+  //   // setIsSyncing(true);
+  //   try {
+  //     // Simulate backend API call for syncing a URL resource
+  //     // In a real application, you would make an axiosPrivate.post/put call here
+  //     // For example: await axiosPrivate.post(`/api/analyze/sync-url/${resource.uuid}`, { url: formData.content });
+  //   //   console.log(`Simulating sync for resource ID: ${resource.id}, UUID: ${resource.uuid}, URL: ${formData.content}`);
+  //   //   await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
 
-      onReSync(resource.id);
+  //     onReSync(resource.id);
 
-      toast({
-        title: "同步请求已发送",
-        description: "资源已提交重新分析。",
-      });
-      // Optionally, you might want to refresh the history data after sync
-      // onSyncSuccess?.(); // If a callback is passed from parent
-    } catch (error) {
-      console.error("Error during sync:", error);
-      toast({
-        title: "同步失败",
-        description: "同步资源时发生错误。",
-        variant: "destructive",
-      });
-    // } finally {
-    //   setIsSyncing(false);
-    }
-  };
+  //     toast({
+  //       title: "同步请求已发送",
+  //       description: "资源已提交重新分析。",
+  //     });
+  //     // Optionally, you might want to refresh the history data after sync
+  //     // onSyncSuccess?.(); // If a callback is passed from parent
+  //   } catch (error) {
+  //     console.error("Error during sync:", error);
+  //     toast({
+  //       title: "同步失败",
+  //       description: "同步资源时发生错误。",
+  //       variant: "destructive",
+  //     });
+  //   // } finally {
+  //   //   setIsSyncing(false);
+  //   }
+  // };
 
 
   const handleClose = useCallback(() => {
@@ -720,7 +707,6 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
           <Button
             variant="outline"
             onClick={handleClose}
-            disabled={isSaving}
           >
             取消
           </Button>

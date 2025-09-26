@@ -21,7 +21,6 @@ interface GridCardProps {
 }
 
 const GridCard: React.FC<GridCardProps> = ({
-  id,
   title,
   content,
   icon,
@@ -142,34 +141,34 @@ const GridCard: React.FC<GridCardProps> = ({
               <>
                 {/* Assuming if content.en is not a string, it might be an array of strings */}
                 {/* If it's an array, you might want to map over it */}
-                {Array.isArray(content.en) ? (
+                {/* {Array.isArray(content.en) ? (
                    <div className="text-sm text-foreground">
                       {content.en.map((item, index) => (
                           <React.Fragment key={index}>
                               {item}
-                              {index < content.en.length - 1 && <br />} {/* Add break between array items */}
+                              {index < content.en!.length - 1 && <br />}
                           </React.Fragment>
                       ))}
                    </div>
-                ) : (
-                   // If content.en is null or something unexpected, render as is or fallback
+                ) : ( */}
+                   {/* If content.en is null or something unexpected, render as is or fallback */}
                    <div className="text-sm text-foreground">{content.en}</div>
-                )}
+                {/*  )}*/}
 
                 {/* Apply similar logic for content.zh if it's not a string */}
-                 {Array.isArray(content.zh) ? (
+                 {/* {Array.isArray(content.zh) ? (
                    <div className="text-sm text-muted-foreground">
                       {content.zh.map((item, index) => (
                           <React.Fragment key={index}>
                               {item}
-                              {index < content.zh.length - 1 && <br />} {/* Add break between array items */}
+                              {index < content.zh!.length - 1 && <br />}
                           </React.Fragment>
                       ))}
                    </div>
-                ) : (
-                   // If content.zh is null or something unexpected, render as is or fallback
+                ) : ( */}
+                   {/*  If content.zh is null or something unexpected, render as is or fallback*/}
                    <div className="text-sm text-muted-foreground">{content.zh}</div>
-                )}
+                {/* )}*/}
               </>
             )}
           </div>          

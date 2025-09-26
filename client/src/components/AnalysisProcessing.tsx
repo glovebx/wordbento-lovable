@@ -58,7 +58,7 @@ const AnalysisProcessing: React.FC<AnalysisProcessingProps> = ({
       )}
 
       {/* Display progress if available and not completed/failed */}
-      {(progress !== null && (taskStatus === 'polling' || taskStatus === 'processing')) && (
+      {(progress !== null && (taskStatus === 'polling')) && (
           <p className="text-sm text-gray-600 mb-2">进度: {progress}%</p>
       )}
 

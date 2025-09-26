@@ -10,6 +10,7 @@ import { NavigationMode, useWordCache } from '@/hooks/use-word-cache';
 import { WordDataType } from '@/types/wordTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+
 // Explicitly declare global interfaces for Web Speech API
 declare global {
   interface Window {
