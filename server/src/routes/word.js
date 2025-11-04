@@ -611,6 +611,61 @@ function extractHttpLinks(text) {
   return links;
 }
 
+const generateImageByDreamina = async (c, word, example) => {
+  console.log(`Calling Dreamina AI for word: ${word} ${example}`);
+
+  const GEMINI_API_KEY = c.env.DREAMINA_API_KEY;
+  const GEMINI_API_ENDPOINT = c.env.DREAMINA_API_ENDPOINT;
+  const GEMINI_API_MODEL = c.env.DREAMINA_API_MODEL;
+
+  try {
+    const prompt = example && `"${example}"，根据这句话创作一张图片，要足够吸引眼球，加深对该单词的记忆。图片标题："${word}"，副标题"${example}"` || `你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。`
+
+      const jsonData = {
+        model: GEMINI_API_MODEL || '',
+        prompt: prompt,          
+        ratio: "9:16",
+        resolution: "1k",
+      };        
+
+      const response = await fetch(GEMINI_API_ENDPOINT, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${GEMINI_API_KEY}`
+          },
+          body: JSON.stringify(jsonData),
+      });
+
+      if (!response.ok) {
+          console.error(`Dreamina AI API call failed: ${response.status} ${response.statusText}`);
+          return null;
+      }
+
+      // console.log(jsonData);
+
+      const data = await response.json(); // No type assertion needed in JS
+      console.log(data);
+
+      // 2. Check if the 'choices' array exists and is not empty
+      if (!data.data || data.data.length === 0) {
+        console.error("API call failed: Response does not contain any choices.");
+        console.log("Full response:", data);
+        return null; // Or throw an error
+      }
+
+      const imageUrls = data.data.map(d => d.url)
+      
+      console.log("Contents imageUrls:", imageUrls);  
+
+      return imageUrls;
+
+  } catch (error) {
+      console.error('Network error calling Dreamina Image AI API:', error);
+      return null;
+  }
+};
+
 const generateImageByJiMengAi = async (c, word, example) => {
   console.log(`Calling JiMeng AI for word: ${word} ${example}`);
   // This is a placeholder. You need to replace this with your actual API call.
@@ -624,7 +679,7 @@ const generateImageByJiMengAi = async (c, word, example) => {
 // 你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。
 //               `;
 
-const prompt = example && `"${example}"，根据这句话创作一张图片，要足够吸引眼球，加深对该单词的记忆。图片标题："${word}"，副标题"${example}"` || `你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。`
+    const prompt = example && `"${example}"，根据这句话创作一张图片，要足够吸引眼球，加深对该单词的记忆。图片标题："${word}"，副标题"${example}"` || `你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。`
 
         const jsonData = {
           model: '',
@@ -632,7 +687,7 @@ const prompt = example && `"${example}"，根据这句话创作一张图片，�
           messages:[
             {role: 'user', content: prompt}
           ]
-        };
+        };    
 
         const response = await fetch(GEMINI_API_ENDPOINT, {
             method: 'POST',
@@ -693,7 +748,6 @@ const prompt = example && `"${example}"，根据这句话创作一张图片，�
       console.error('Network error calling JiMeng Image AI API:', error);
       return null;
   }
-  
 };
 
 // Define navigation modes using a plain object
@@ -1197,7 +1251,11 @@ word.post('/imagize', async (c) => {
   const wordToGenerate = slug.trim().toLowerCase();
   const exampleToGenerate = example.trim();
 
-  const imageUrls = await generateImageByJiMengAi(c, wordToGenerate, exampleToGenerate);
+  let imageUrls = await generateImageByDreamina(c, wordToGenerate, exampleToGenerate);
+
+  if (!imageUrls || imageUrls.length == 0) {
+    imageUrls = await generateImageByJiMengAi(c, wordToGenerate, exampleToGenerate);
+  }
   // const imageUrls = ['https://p3-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/c0efd5fd4a414fbaab1232df5e876d6b~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=sGXKNhKHkj%2F2msIbhAQtcLlGNXk%3D&format=.jpeg', 
   //   'https://p9-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3bc050392177442ebed27dc883891b7a~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=uipvjRhc40XXAMDhIBEeO%2BEuit4%3D&format=.jpeg', 
   //   'https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/76b4331521494f5780d04c7682615124~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=Gnv%2Fp1XoAo5WqBYUWjIc%2BzoWHTQ%3D&format=.jpeg', 
@@ -1211,50 +1269,32 @@ word.post('/imagize', async (c) => {
     console.log('所有图片加载结果:', allImageResults);
   }
 
-  if (!allImageResults || allImageResults.length == 0) {
-    const inlineData = await generateImageByGeminiAi(c, wordToGenerate);
+  // 去掉gemini生图，质量不好
+  // if (!allImageResults || allImageResults.length == 0) {
+  //   const inlineData = await generateImageByGeminiAi(c, wordToGenerate);
 
-    if (!inlineData) {
-      console.error(`AI failed to generate image for "${wordToGenerate}" or returned unexpected format.`);
-      return c.json({ message: `Failed to generate image for "${wordToGenerate}".` }, 500);
-    }
-
-    mimeType = inlineData.mimeType || 'application/octet-stream';
-    // Convert the base64 string to a Uint8Array
-    // Buffer.from() works in Cloudflare Workers and returns a Uint8Array
-    let imageBinaryData;
-    try {
-        imageBinaryData = Buffer.from(inlineData.data, "base64");
-        console.log(`Converted base64 image data to Uint8Array of size: ${imageBinaryData.byteLength} bytes`);
-        allImageResults.push({ url: '', data: imageBinaryData }); // 成功时返回数据
-    } catch (e) {
-        console.error("Failed to convert base64 string to binary data:", e);
-        // return null; // Or throw an error
-        return c.json({ message: `Failed to generate binary image for "${wordToGenerate}".` }, 500);
-    }
-  }
-
-  // if (imageUrls && imageUrls.length > 0) {
-  //   for (const imageKey of imageUrls) {
-  //     const insertedImageResult = await db.insert(schema.images).values({
-  //       word_id: existingWord.id, // Associate with public user ID 0
-  //       image_key: imageKey,
-  //       prompt: exampleToGenerate
-  //       })
-  //       // Use .returning() in Drizzle for D1 to get the inserted row
-  //       .returning()
-  //       .get(); // .get() for a single row
-
-  //     // Check if insertion was successful and returned a row
-  //     if (!insertedImageResult) {
-  //       throw new Error("Failed to insert image into table or get inserted row.");
-  //     }
+  //   if (!inlineData) {
+  //     console.error(`AI failed to generate image for "${wordToGenerate}" or returned unexpected format.`);
+  //     return c.json({ message: `Failed to generate image for "${wordToGenerate}".` }, 500);
   //   }
 
-  //   console.log(`Word "${wordToGenerate}" and image inserted successfully.`);
-  //   // return c.json({'key': r2ObjectKey}, 200);
-  //   return c.json({imageUrls: imageUrls}, 200);    
+  //   mimeType = inlineData.mimeType || 'application/octet-stream';
+  //   // Convert the base64 string to a Uint8Array
+  //   // Buffer.from() works in Cloudflare Workers and returns a Uint8Array
+  //   let imageBinaryData;
+  //   try {
+  //       imageBinaryData = Buffer.from(inlineData.data, "base64");
+  //       console.log(`Converted base64 image data to Uint8Array of size: ${imageBinaryData.byteLength} bytes`);
+  //       allImageResults.push({ url: '', data: imageBinaryData }); // 成功时返回数据
+  //   } catch (e) {
+  //       console.error("Failed to convert base64 string to binary data:", e);
+  //       // return null; // Or throw an error
+  //       return c.json({ message: `Failed to generate binary image for "${wordToGenerate}".` }, 500);
+  //   }
   // }
+  if (!allImageResults || allImageResults.length == 0) {
+    return c.json({ message: `Failed to generate image for "${wordToGenerate}".` }, 500);
+  }
 
     console.log(`AI image received, inserting into R2. ${mimeType}`);
 

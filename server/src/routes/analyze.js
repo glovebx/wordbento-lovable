@@ -697,6 +697,145 @@ console.log(`Content is Youtube??: ${isYoutube}`);
   }
 });
 
+// --- Update ---
+analyze.post('/update', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+    // return c.json([], 200); // Return 200 OK for existing
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+  let analysisData;
+
+  // 1. Validate input
+  try {
+      analysisData = await c.req.json();
+      // TODO: Add more robust validation using Zod or similar
+      if (!analysisData || !analysisData.id) {
+          return c.json({ message: 'Invalid analysis data provided.' }, 400);
+      }
+      if (analysisData.audioKey === undefined && analysisData.captionSrt === undefined) {
+        return c.json({ message: 'Invalid data types in analysis request.' }, 400);
+      }
+  } catch (e) {
+      console.error("Failed to parse analysis request body:", e);
+      return c.json({ message: 'Invalid JSON body' }, 400);
+  }
+
+  const existingTask = await db.select()
+      .from(schema.resources)
+      .where(eq(schema.resources.id, analysisData.id))
+      .limit(1)
+      .get();
+
+  if (!existingTask) {
+      console.warn(`Task not exist: ${analysisData.id}`);
+      return c.json({ message: 'Task not found' }, 404);
+  }
+
+  // // TODO: Get authenticated user ID (replace with actual auth logic)
+  // const userId = user.id; // Placeholder for public user or replace with actual user ID
+
+  let values = {};  
+  if ('audioKey' in analysisData) {
+    values.audio_key = analysisData.audioKey;
+  }
+  if ('captionSrt' in analysisData) {
+    values.caption_srt = analysisData.captionSrt;
+    const captionTxt = extractTextFromSrt(analysisData.captionSrt);
+    values.caption_txt = captionTxt;
+    if (captionTxt.length > 16) {
+      values.title = captionTxt.substring(0, 16);
+    } else {
+      values.title = captionTxt;
+    }
+  }
+
+  // 3. Check if a record with the same exam_type and content_md5 already exists
+  try {
+      const existingAttachments = await db.select({
+        id: schema.attachments.id,
+      })
+      .from(schema.attachments)
+      .where(eq(schema.attachments.resource_id, analysisData.id))
+      .limit(1); // We only need to find one match
+
+      if (existingAttachments.length > 0) {
+        console.log(`existingAttachments: ${JSON.stringify(existingAttachments[0])}`)
+        // 成功
+        await db.update(schema.attachments)
+            .set(values)
+            .where(eq(schema.attachments.id, existingAttachments[0].id));  
+      } else {
+        values.resource_id = analysisData.id
+        const insertedResult = await db.insert(schema.attachments).values(values)
+        // Use .returning() in Drizzle for D1 to get the inserted row
+        .returning()
+        .get(); // .get() for a single row
+
+        // Check if insertion was successful and returned a row
+        if (!insertedResult) {
+            throw new Error("Failed to insert srt into table or get inserted row.");
+        }
+      }
+
+  } catch (checkError) {
+      console.error("Failed to check for existing attachment in DB:", checkError);
+      // Continue to insert if checking fails, or return an error depending on desired behavior
+      // For now, let's return an error if the check itself failed
+      return c.json({ message: 'Failed to check for existing attachment.' }, 500);
+  }
+
+  if (values.caption_txt) {
+    const simulateAnalysisData = {
+        title: values.title,
+        sourceType: 'article',
+        content: values.caption_txt,
+        examType: existingTask.exam_type,
+    }
+
+    await simulateAnalysisTask(c, existingTask.uuid, db, simulateAnalysisData);
+  }
+
+  // let taskId;
+  // try {
+  //     const existingResources = await db.select({
+  //       status: schema.resources.status,
+  //       uuid: schema.resources.uuid // Select only the uuid
+  //     })
+  //     .from(schema.resources)
+  //     .where(eq(schema.resources.id, analysisData.id))
+  //     .limit(1); // We only need to find one match
+
+  //     if (existingResources.length > 0) {
+  //       console.log(`existingResources: ${JSON.stringify(existingResources[0])}`)
+  //       taskId = existingResources[0].uuid;
+  //       // if (!isYoutube || (existingResources[0].status == 'completed' || existingResources[0].status == 'failed')) {
+  //       if (existingResources[0].status !== 'completed') {
+  //         // 成功
+  //         await db.update(schema.resources)
+  //             .set({
+  //                 status: 'completed',
+  //                 // result: JSON.stringify(candidates), // Store result as JSON string
+  //                 updated_at: sql`CURRENT_TIMESTAMP`
+  //             })
+  //             .where(eq(schema.resources.id, analysisData.id));
+  //       }
+  //     } else {
+  //       return c.json({ message: 'Invalid resource.' }, 400);
+  //     }
+
+  // } catch (checkError) {
+  //     console.error("Failed to check for existing resource in DB:", checkError);
+  //     // Continue to insert if checking fails, or return an error depending on desired behavior
+  //     // For now, let's return an error if the check itself failed
+  //     return c.json({ message: 'Failed to check for existing resource.' }, 500);
+  // }      
+  // 4. Return the task ID to the client
+  return c.json({ uuid: existingTask.uuid }, 201); // 201 Created
+});
+
 analyze.get('/history', async (c) => {
   const user = c.get('user');
   if (!user) {

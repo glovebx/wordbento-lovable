@@ -10,6 +10,9 @@ import { EditResourceDialog } from "@/components/history/EditResourceDialog";
 import { useHistoryData } from "@/hooks/useHistoryData";
 import { ResourceWithAttachments } from "@/types/database";
 import { axiosPrivate } from "@/lib/axios";
+import {
+  AnalysisSubmissionResponse,
+} from '@/types/analysisTypes'; // Import types
 
 // 移除不必要的 props 和状态
 const AnalysisHistory = () => {
@@ -83,12 +86,25 @@ const AnalysisHistory = () => {
     try {
       if (updatedData.id) {
         console.log('Updating resource:', updatedData);
-        toast({ title: "更新成功", description: "资源信息已更新。" });
+        // toast({ title: "更新成功", description: "资源信息已更新。" });
       } else {
-        console.log('Creating new resource:', updatedData);
-        toast({ title: "创建成功", description: "新资源已添加。" });
+        // console.log('Creating new resource:', updatedData);
+        // toast({ title: "创建成功", description: "新资源已添加。" });
+        return;
       }
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // await new Promise(resolve => setTimeout(resolve, 500));
+      const submissionResponse = await axiosPrivate.post<AnalysisSubmissionResponse>('/api/analyze/update', updatedData);
+
+      if (submissionResponse.status === 200 || submissionResponse.status === 201) {
+        const submittedTask = submissionResponse.data;
+        if (submittedTask?.uuid) {
+          toast({ title: "更新成功", description: "资源信息已更新。" });
+        } else {
+          throw new Error(`Failed to update resource: ${updatedData.id}`);
+        }
+      } else {
+        throw new Error(`Failed to update resource: ${updatedData.id}`);
+      }
 
       fetchAnalysisHistory(currentPage, itemsPerPage);
       setIsEditDialogOpen(false);
@@ -146,10 +162,10 @@ const AnalysisHistory = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>解析历史</CardTitle>
-            <Button onClick={handleAddNewResource} size="sm" className="flex items-center gap-1">
+            {/* <Button onClick={handleAddNewResource} size="sm" className="flex items-center gap-1">
               <PlusCircle className="h-4 w-4" />
               新增
-            </Button>
+            </Button> */}
           </CardHeader>
           <CardContent>
             {isLoading ? (

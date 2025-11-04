@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n \"WRANGLER,DRIZZLE-KIT\" -c \"blue,green\" \"wrangler dev --env development --log-level debug > wrangler_debug.log 2>&1\" \"drizzle-kit studio\"",
+    "dev": "concurrently -n \"WRANGLER,DRIZZLE-KIT\" -c \"blue,green\" \"wrangler dev --env development --ip 0.0.0.0 --log-level debug > wrangler_debug.log 2>&1\" \"drizzle-kit studio\"",
     "start": "wrangler deploy --env production",
     "build": "esbuild src/index.js --bundle --outfile=dist/index.js --platform=node --format=esm",
     "serve": "node server.js",
@@ -11,31 +11,31 @@
     "push:migration": "drizzle-kit push --db ./drizzle/sqlite.db"
   },
   "dependencies": {
-    "@andresaya/edge-tts": "^1.2.4",
-    "@libsql/client": "^0.15.9",
+    "@andresaya/edge-tts": "^1.4.4",
+    "@libsql/client": "^0.15.15",
     "@tsndr/cloudflare-worker-jwt": "^3.2.0",
-    "better-sqlite3": "11.10.0",
+    "better-sqlite3": "12.4.1",
     "cookie": "^1.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "djwt": "^2.0.0",
-    "dotenv": "^16.5.0",
-    "hono": "^4.7.11",
-    "jsonrepair": "^3.12.0",
+    "dotenv": "^17.2.3",
+    "hono": "^4.10.4",
+    "jsonrepair": "^3.13.1",
     "langs": "^2.0.0",
-    "mariadb": "^3.4.2",
-    "nanoid": "^5.1.5"
+    "mariadb": "^3.4.5",
+    "nanoid": "^5.1.6"
   },
   "devDependencies": {
-    "@cloudflare/puppeteer": "^1.0.2",
-    "@playwright/test": "^1.53.0",
-    "@types/node": "^22.15.17",
-    "concurrently": "^9.1.2",
-    "drizzle-kit": "^0.31.1",
-    "drizzle-orm": "^0.44.2",
-    "esbuild": "^0.25.5",
-    "tsx": "^4.20.3",
-    "typescript": "^5.8.3",
-    "wrangler": "^4.20.1"
+    "@cloudflare/puppeteer": "^1.0.4",
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^22.18.13",
+    "concurrently": "^9.2.1",
+    "drizzle-kit": "^0.31.6",
+    "drizzle-orm": "^0.44.7",
+    "esbuild": "^0.25.11",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.45.3"
   }
 }

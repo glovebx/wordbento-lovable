@@ -22,7 +22,7 @@ app.use('*', async (c, next) => {
 });
 
 // CORS Middleware
-const allowedOrigins = ['https://your-app.com', 'http://localhost:1234'];
+const allowedOrigins = ['https://your-app.com', 'http://localhost:1234', 'http://192.168.3.58:1234'];
 
 app.use(
   '*',

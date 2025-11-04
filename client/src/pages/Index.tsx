@@ -17,6 +17,7 @@ import { WordDataType } from '@/types/wordTypes';
 import { Button } from '@/components/ui/button'; // Import Button component
 import { Download } from 'lucide-react'; // Import Download icon
 import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis';
+import { baseURL } from "@/lib/axios";
 
 // Import the new FloatingImageCarousel component
 import FloatingImageCarousel from '@/components/FloatingImageCarousel';
@@ -67,7 +68,7 @@ const Index = () => {
         // TODO: You might want to clear wordData or navigate to a results view here
         // setWordData(null); // Example: Clear word data to show only analysis results
         if (hookTaskResult.audioKey) {
-            setCurrentAudioUrl(`http://localhost:8787/api/analyze/audio/${hookTaskResult.uuid}`)
+            setCurrentAudioUrl(`${baseURL}/api/analyze/audio/${hookTaskResult.uuid}`)
             setShowAudioPlayer(true);
         }
         if (hookTaskResult.captionSrt) {
@@ -444,7 +445,7 @@ const handlePrevious = useCallback(async () => {
     // console.log("Analysis result reset manually.");
 
     if (submission.audioKey) {
-        setCurrentAudioUrl(`http://localhost:8787/api/analyze/audio/${submission.uuid}`)
+        setCurrentAudioUrl(`${baseURL}/api/analyze/audio/${submission.uuid}`)
         setShowAudioPlayer(true);
     }
     if (submission.captionSrt) {
