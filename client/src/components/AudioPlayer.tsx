@@ -10,11 +10,7 @@ import { parseSrt, SubtitleCue } from '../utils/subtitleParser';
 import { throttle } from 'lodash-es';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LocalStorageManager from '../utils/storage';
-import LanguageUtils, { 
-  detectLanguage, 
-  segmentJapaneseText,
-  advancedJapaneseSegmentation 
-} from '../utils/languageUtils';
+import LanguageUtils from '../utils/languageUtils';
 
 // Define your specific keys for AudioPlayer here, no longer in storage.ts
 const AUDIO_PLAYER_KEYS = {

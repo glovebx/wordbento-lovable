@@ -15,6 +15,7 @@ import { sql } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like 
 import { nanoid } from "nanoid";
 import { jsonrepair } from 'jsonrepair';
 import { fixUnescapedQuotesInJson, isQuoted, removeQuotes } from '../utils/languageParser';
+import LanguageUtils from '../utils/languageUtils';
 
 // Type definitions are removed in JavaScript
 
@@ -233,10 +234,147 @@ const readImageBinaryStreams = async (imageUrls) => {
   return results;
 }
 
+const repairAiResponseToJson = (messageContent) => {  
+    console.log(`messageContent: ${ messageContent }`);
+
+    let repairedJson = null;
+
+    const jsonStr = cleanAiJsonResponse(messageContent)
+    console.log(`jsonStr: ${ jsonStr }`);
+
+    try {
+      repairedJson = JSON.parse(jsonStr);
+      console.log(`repairedJson: ${ repairedJson }`);
+    } catch(error) {
+      repairedJson = null;
+    }
+
+    if (!repairedJson) {
+      let repairedStr;
+      try {
+        repairedStr = jsonrepair(jsonStr)
+        console.log(`repairedStr: ${ repairedStr }`);
+      } catch(error) {
+        repairedStr = jsonStr;
+        console.log('jsonrepair failed, fallback to jsonStr');
+      }
+
+      try {
+        repairedJson = JSON.parse(repairedStr);
+        console.log(`repairedJson: ${ repairedJson }`);
+      } catch(error) {
+        const repairedBadStr = fixUnescapedQuotesInJson(repairedStr)
+        console.log(`repairedBadStr: ${ repairedBadStr }`);
+        repairedJson = JSON.parse(repairedBadStr);
+      }
+    }
+
+    // console.log(`jsonWord: ${ jsonWord }`);
+
+    // Validate the structure of the received data if necessary
+    return repairedJson;
+}
+
+const enPrompt = `给你一个英文单词，返回下列json格式的数据:
+{
+  "phonetic": "美式音标标注",
+  "meaning": "简洁的中文含义，作为副标题",
+  "definition": {
+    "icon": "BookOpen",
+    "en": "详细的英文词义解释，包含用法和语境。",
+    "zh": "对应的中文词义解释。"
+  },
+  "examples": {
+    "icon": "FileText",
+    "en": ["英文例句 1","英文例句 2","英文例句 3"],
+    "zh": ["中文翻译 1","中文翻译 2","中文翻译 3"]
+  },
+  "etymology": {
+    "icon": "Atom",
+    "en": "该单词的词源分析，包括其历史演变和来自哪种语言。",
+    "zh": "词源的中文说明。"
+  },
+  "affixes": {
+    "icon": "Layers",
+    "en": "词缀分析（如前缀、后缀、词根），以及相关词汇的构成。",
+    "zh": "词缀分析的中文说明。"
+  },
+  "history": {
+    "icon": "History",
+    "en": "单词的发展历史、文化背景及其用法的变迁。",
+    "zh": "发展历史与文化背景的中文说明。"
+  },
+  "forms": {
+    "icon": "ArrowUpDown",
+    "en": "单词变形，列出各种形态。",
+    "zh": "单词各种形态的中文说明。"
+  },
+  "memory_aid": {
+    "icon": "Lightbulb",
+    "en": "记忆辅助方法，例如一个无厘头的小故事或将单词字母拆解成一句有趣的话。",
+    "zh": "记忆辅助方法的中文版。"
+  },
+  "trending_story": {
+    "icon": "Newspaper",
+    "en": "一句来自影视剧的、包含该单词的经典台词（不超过80个单词），并注明出处。",
+    "zh": "台词的中文翻译及场景说明。",
+  }
+}
+单词:`;
+
+const jaPrompt = `给你一个日文单词，返回下列json格式的数据:
+{
+     "日文单词": {
+          "phonetic": "罗马音标注;假名标注,
+          "meaning": "简洁中文含义",
+          "definition": {
+               "icon": "BookOpen",
+               "en": "日文词义解释（含用法语境）",
+               "zh": "对应中文解释"
+          },
+          "examples": {
+               "icon": "FileText",
+               "en": ["日文例句1", "日文例句2", "日文例句3"],
+               "zh": ["中文翻译1", "中文翻译2", "中文翻译3"]
+          },
+          "etymology": {
+               "icon": "Atom",
+               "en": "词源分析（如汉语来源、和语演变、外来语适应）",
+               "zh": "中文词源说明"
+          },
+          "affixes": {
+               "icon": "Layers",
+               "en": "词缀分析（汉字构成、接辞功能、复合词结构）",
+               "zh": "中文词缀解释"
+          },
+          "history": {
+               "icon": "History",
+               "en": "历史演变与文化背景（如时代变迁、社会影响）",
+               "zh": "中文历史与文化说明"
+          },
+          "forms": {
+               "icon": "ArrowUpDown",
+               "en": "变形列表（动词活用形、形容词变化、礼貌体等）",
+               "zh": "中文变形说明"
+          },
+          "memory_aid": {
+               "icon": "Lightbulb",
+               "en": "记忆辅助内容，故事联想或假名拆解（日文版）",
+               "zh": "记忆辅助内容（中文版）"
+          },
+          "trending_story": {
+               "icon": "Newspaper",
+               "en": "影视剧台词（日文原句，来源注明）",
+               "zh": "台词中文翻译及剧情上下文"
+  }
+     }
+}
+单词:`; 
+
 // Placeholder function to call Gemini AI API
 // Replace with your actual API call logic
 // Type annotations removed
-const generateBentoByGeminiAi = async (c, word) => {
+const generateBentoByGeminiAi = async (c, word, isJapanese) => {
     console.log(`Calling Gemini AI for word: ${word}`);
     // This is a placeholder. You need to replace this with your actual API call.
     // Example using fetch:
@@ -246,78 +384,80 @@ const generateBentoByGeminiAi = async (c, word) => {
     const GEMINI_API_MODEL = c.env.GEMINI_API_MODEL
 
     try {
-      const prompt = `
-我给你一个单词，请从下列9个角度，返回json格式的数据。每个角度都要包含中文+英文，并根据该角度内容的含义，从"lucide-react"库中动态匹配上相应的图标。举例：热点故事跟关税相关的话，需要展示一个海关的图标：
-1、该单词的美式音标。json的键为"phonetic"
-2、该单词的简洁的中文含义，作为副标题。json的键为"meaning"
-2、词义解释。json的键为"definition"
-3、3个例句。json的键为"examples"
-4、词源分析。json的键为"etymology"
-5、词缀分析。json的键为"affixes"
-6、发展历史和文化背景。json的键为"history"
-7、单词变形，json的键为"forms"
-8、记忆辅助，在两种思路种选择一种即可：a. 无厘头的笑话或者小故事，增强记忆；b.将单词拆解成字母，每个字母组合成新单词，最后组合成一句话，这句话要跟该单词有关联。json的键为"memory_aid"
-9、电影台词，请根据单词从影视剧中选择一句包含该单词的台词（台词不要超过80个单词），并给出台词的中文翻译、台词的上下文和影视剧名称，中文+英文。json的键为"trending_story"。
+//       const prompt = `
+// 我给你一个单词，请从下列9个角度，返回json格式的数据。每个角度都要包含中文+英文，并根据该角度内容的含义，从"lucide-react"库中动态匹配上相应的图标。举例：热点故事跟关税相关的话，需要展示一个海关的图标：
+// 1、该单词的美式音标。json的键为"phonetic"
+// 2、该单词的简洁的中文含义，作为副标题。json的键为"meaning"
+// 2、词义解释。json的键为"definition"
+// 3、3个例句。json的键为"examples"
+// 4、词源分析。json的键为"etymology"
+// 5、词缀分析。json的键为"affixes"
+// 6、发展历史和文化背景。json的键为"history"
+// 7、单词变形，json的键为"forms"
+// 8、记忆辅助，在两种思路种选择一种即可：a. 无厘头的笑话或者小故事，增强记忆；b.将单词拆解成字母，每个字母组合成新单词，最后组合成一句话，这句话要跟该单词有关联。json的键为"memory_aid"
+// 9、电影台词，请根据单词从影视剧中选择一句包含该单词的台词（台词不要超过80个单词），并给出台词的中文翻译、台词的上下文和影视剧名称，中文+英文。json的键为"trending_story"。
 
-举例，单词是"hurl"时，返回内容如下：
+// 举例，单词是"hurl"时，返回内容如下：
 
-{
-	"hurl": {
-    phonetic: "/hɜːrl/",
-    meaning: "投掷、猛力抛出",
-    definition: {
-      icon: "BookOpen",    
-      en: "To throw or fling with great force, often in an aggressive manner. Can also refer to forcefully expressing harsh words or insults.",
-      zh: "用很大力气猛烈地抛、掷、扔；也可指激烈地表达尖锐的批评或侮辱性言论。"
-    },
-    examples: {
-      icon: "FileText",    
-      en: [
-        "The pitcher can hurl the baseball at over 95 miles per hour.",
-        "Protesters hurled stones at the police barricade.",
-        "The critic hurled accusations of plagiarism at the author."
-      ],
-      zh: [
-        "这位投手能以超过95英里每小时的速度投掷棒球。",
-        "抗议者向警方设置的路障投掷石块。",
-        "评论家对作者提出了抄袭的指控。"
-      ]
-    },
-    etymology: {
-      icon: "Atom",    
-      en: "The word 'hurl' comes from Middle English 'hurlen', which means 'to rush, dash against.' It's likely related to Old Norse 'hurra' meaning 'to whir or spin' and possibly connected to Low German 'hurreln' meaning 'to throw or hurl'.",
-      zh: "单词'hurl'来源于中古英语'hurlen'，意为'冲、猛撞'。它可能与古挪威语'hurra'(意为'呼啸或旋转')相关，也可能与低地德语'hurreln'(意为'抛或掷')有联系。"
-    },
-    affixes: {
-      icon: "Layers",
-      en: "The word 'hurl' is a base word without prefixes or suffixes. Related forms include: hurler (noun, person who hurls), hurling (gerund/present participle), hurled (past tense).",
-      zh: "'hurl'是一个没有前缀或后缀的基本词。相关形式包括：hurler（名词，投掷者），hurling（动名词/现在分词），hurled（过去式）。"
-    },
-    history: {
-      icon: "History",
-      en: "The concept of 'hurling' has been fundamental to human development, from primitive hunting techniques to warfare. In sports, hurling is also the name of an ancient Irish game dating back over 3,000 years, considered one of the world's oldest field games, where players use sticks (hurleys) to hit a small ball.",
-      zh: "'投掷'的概念对人类发展至关重要，从原始狩猎技术到战争都离不开它。在体育领域，'hurling'也是一种有着3000多年历史的爱尔兰古老运动的名称，被认为是世界上最古老的场地运动之一，运动员使用木棍（hurleys）击打小球。"
-    },
-    forms: {
-      icon: "ArrowUpDown",
-      en: "Present: hurl, hurls\nPast: hurled\nPast participle: hurled\nPresent participle: hurling\nNouns: hurler (person), hurl (the act)",
-      zh: "现在式：hurl, hurls\n过去式：hurled\n过去分词：hurled\n现在分词：hurling\n名词：hurler（投掷者），hurl（投掷行为）"
-    },
-    memory_aid: {
-      icon: "Lightbulb",
-      en: "Think of 'hurl' as 'H-U-Really Launch' something. The 'H' stands for 'high' and 'U' for 'up' - when you hurl something, you're really launching it high up with force!",
-      zh: "将'hurl'想象成'H-U-Really Launch'（真正发射）。'H'代表'high'（高），'U'代表'up'（向上）——当你hurl某物时，你是真的在用力将它高高发射出去！"
-    },
-    trending_story: {
-      icon: "Newspaper",
-      en: "In recent Olympic discussions, analysts noted how social media has transformed the way we perceive sports like javelin throwing. \"Athletes no longer just hurl spears for distance,\" commented sports psychologist Dr. Mei Zhang. \"They hurl themselves into viral fame with every throw.\" This phenomenon highlights how traditional feats of strength now combine with digital presence, as Olympic hopefuls hurl not just physical objects but their personal brands into the global spotlight.",
-      zh: "在最近的奥运会讨论中，分析人士注意到社交媒体已经改变了我们看待标枪等运动的方式。体育心理学家梅·张博士评论道：\"运动员不再仅仅为了距离而投掷标枪，每一次投掷都将自己推向病毒式的网络名声。\"这种现象突显了传统力量表演如何与数字存在相结合，奥运会希望者不仅投掷实物，还将个人品牌推向全球聚光灯下。"
-    }
-  }
-}
+// {
+// 	"hurl": {
+//     phonetic: "/hɜːrl/",
+//     meaning: "投掷、猛力抛出",
+//     definition: {
+//       icon: "BookOpen",    
+//       en: "To throw or fling with great force, often in an aggressive manner. Can also refer to forcefully expressing harsh words or insults.",
+//       zh: "用很大力气猛烈地抛、掷、扔；也可指激烈地表达尖锐的批评或侮辱性言论。"
+//     },
+//     examples: {
+//       icon: "FileText",    
+//       en: [
+//         "The pitcher can hurl the baseball at over 95 miles per hour.",
+//         "Protesters hurled stones at the police barricade.",
+//         "The critic hurled accusations of plagiarism at the author."
+//       ],
+//       zh: [
+//         "这位投手能以超过95英里每小时的速度投掷棒球。",
+//         "抗议者向警方设置的路障投掷石块。",
+//         "评论家对作者提出了抄袭的指控。"
+//       ]
+//     },
+//     etymology: {
+//       icon: "Atom",    
+//       en: "The word 'hurl' comes from Middle English 'hurlen', which means 'to rush, dash against.' It's likely related to Old Norse 'hurra' meaning 'to whir or spin' and possibly connected to Low German 'hurreln' meaning 'to throw or hurl'.",
+//       zh: "单词'hurl'来源于中古英语'hurlen'，意为'冲、猛撞'。它可能与古挪威语'hurra'(意为'呼啸或旋转')相关，也可能与低地德语'hurreln'(意为'抛或掷')有联系。"
+//     },
+//     affixes: {
+//       icon: "Layers",
+//       en: "The word 'hurl' is a base word without prefixes or suffixes. Related forms include: hurler (noun, person who hurls), hurling (gerund/present participle), hurled (past tense).",
+//       zh: "'hurl'是一个没有前缀或后缀的基本词。相关形式包括：hurler（名词，投掷者），hurling（动名词/现在分词），hurled（过去式）。"
+//     },
+//     history: {
+//       icon: "History",
+//       en: "The concept of 'hurling' has been fundamental to human development, from primitive hunting techniques to warfare. In sports, hurling is also the name of an ancient Irish game dating back over 3,000 years, considered one of the world's oldest field games, where players use sticks (hurleys) to hit a small ball.",
+//       zh: "'投掷'的概念对人类发展至关重要，从原始狩猎技术到战争都离不开它。在体育领域，'hurling'也是一种有着3000多年历史的爱尔兰古老运动的名称，被认为是世界上最古老的场地运动之一，运动员使用木棍（hurleys）击打小球。"
+//     },
+//     forms: {
+//       icon: "ArrowUpDown",
+//       en: "Present: hurl, hurls\nPast: hurled\nPast participle: hurled\nPresent participle: hurling\nNouns: hurler (person), hurl (the act)",
+//       zh: "现在式：hurl, hurls\n过去式：hurled\n过去分词：hurled\n现在分词：hurling\n名词：hurler（投掷者），hurl（投掷行为）"
+//     },
+//     memory_aid: {
+//       icon: "Lightbulb",
+//       en: "Think of 'hurl' as 'H-U-Really Launch' something. The 'H' stands for 'high' and 'U' for 'up' - when you hurl something, you're really launching it high up with force!",
+//       zh: "将'hurl'想象成'H-U-Really Launch'（真正发射）。'H'代表'high'（高），'U'代表'up'（向上）——当你hurl某物时，你是真的在用力将它高高发射出去！"
+//     },
+//     trending_story: {
+//       icon: "Newspaper",
+//       en: "In recent Olympic discussions, analysts noted how social media has transformed the way we perceive sports like javelin throwing. \"Athletes no longer just hurl spears for distance,\" commented sports psychologist Dr. Mei Zhang. \"They hurl themselves into viral fame with every throw.\" This phenomenon highlights how traditional feats of strength now combine with digital presence, as Olympic hopefuls hurl not just physical objects but their personal brands into the global spotlight.",
+//       zh: "在最近的奥运会讨论中，分析人士注意到社交媒体已经改变了我们看待标枪等运动的方式。体育心理学家梅·张博士评论道：\"运动员不再仅仅为了距离而投掷标枪，每一次投掷都将自己推向病毒式的网络名声。\"这种现象突显了传统力量表演如何与数字存在相结合，奥运会希望者不仅投掷实物，还将个人品牌推向全球聚光灯下。"
+//     }
+//   }
+// }
 
-现在我给你单词"${word}"，请返回json。
-                `;
+// 现在我给你单词"${word}"，请返回json。
+//                 `;
+      const prompt = (isJapanese ? jaPrompt : enPrompt) + word;
+
 
         // const jsonData = {
         //   contents:[
@@ -359,7 +499,7 @@ const generateBentoByGeminiAi = async (c, word) => {
         const jsonData = {
           model: GEMINI_API_MODEL,
           messages:[
-            {role: 'system', content: 'You are a helpful assistant.'},
+            {role: 'system', content: 'You are a professional proficient in multiple languages, including Chinese, English, Japanese, and more.'},
             {role: 'user', content: prompt},
           ]};
   
@@ -400,44 +540,45 @@ const generateBentoByGeminiAi = async (c, word) => {
         // If all checks pass, access and log the message content
         const messageContent = data.choices[0].message.content;
         console.log("API call successful. Received message:");
-        console.log(`messageContent: ${ messageContent }`);
+        // console.log(`messageContent: ${ messageContent }`);
   
-        let repairedJson = null;
+        // let repairedJson = null;
 
-        const jsonStr = cleanAiJsonResponse(messageContent)
-        console.log(`jsonStr: ${ jsonStr }`);
+        // const jsonStr = cleanAiJsonResponse(messageContent)
+        // console.log(`jsonStr: ${ jsonStr }`);
 
-        try {
-          repairedJson = JSON.parse(jsonStr);
-          console.log(`repairedJson: ${ repairedJson }`);
-        } catch(error) {
-          repairedJson = null;
-        }
+        // try {
+        //   repairedJson = JSON.parse(jsonStr);
+        //   console.log(`repairedJson: ${ repairedJson }`);
+        // } catch(error) {
+        //   repairedJson = null;
+        // }
 
-        if (!repairedJson) {
-          let repairedStr;
-          try {
-            repairedStr = jsonrepair(jsonStr)
-            console.log(`repairedStr: ${ repairedStr }`);
-          } catch(error) {
-            repairedStr = jsonStr;
-            console.log('jsonrepair failed, fallback to jsonStr');
-          }
+        // if (!repairedJson) {
+        //   let repairedStr;
+        //   try {
+        //     repairedStr = jsonrepair(jsonStr)
+        //     console.log(`repairedStr: ${ repairedStr }`);
+        //   } catch(error) {
+        //     repairedStr = jsonStr;
+        //     console.log('jsonrepair failed, fallback to jsonStr');
+        //   }
 
-          try {
-            repairedJson = JSON.parse(repairedStr);
-            console.log(`repairedJson: ${ repairedJson }`);
-          } catch(error) {
-            const repairedBadStr = fixUnescapedQuotesInJson(repairedStr)
-            console.log(`repairedBadStr: ${ repairedBadStr }`);
-            repairedJson = JSON.parse(repairedBadStr);
-          }
-        }
+        //   try {
+        //     repairedJson = JSON.parse(repairedStr);
+        //     console.log(`repairedJson: ${ repairedJson }`);
+        //   } catch(error) {
+        //     const repairedBadStr = fixUnescapedQuotesInJson(repairedStr)
+        //     console.log(`repairedBadStr: ${ repairedBadStr }`);
+        //     repairedJson = JSON.parse(repairedBadStr);
+        //   }
+        // }
 
-        // console.log(`jsonWord: ${ jsonWord }`);
+        // // console.log(`jsonWord: ${ jsonWord }`);
 
-        // Validate the structure of the received data if necessary
-        return repairedJson;
+        // // Validate the structure of the received data if necessary
+        // return repairedJson;
+        return repairAiResponseToJson(messageContent);
 
     } catch (error) {
         console.error('Network error calling Gemini AI API:', error);
@@ -464,6 +605,109 @@ const generateBentoByGeminiAi = async (c, word) => {
     //  };
     //  return Promise.resolve(mockResponse);
     // // --- End Mock AI Response ---
+};
+
+
+// Placeholder function to call Gemini AI API
+// Replace with your actual API call logic
+// Type annotations removed
+const generateBentoByDeepSeekAi = async (c, word, isJapanese) => {
+    console.log(`Calling DeepSeek AI for word: ${word}`);
+    
+    const AI_API_ENDPOINT = c.env.DEEPSEEK_API_ENDPOINT
+    const AI_API_KEY = c.env.DEEPSEEK_API_KEY
+    const AI_API_MODEL = c.env.DEEPSEEK_API_MODEL
+
+    try {
+      const prompt = (isJapanese ? jaPrompt : enPrompt) + word;
+      const jsonData = {
+        model: AI_API_MODEL,
+        messages:[
+          {role: 'system', content: 'You are a professional proficient in multiple languages, including Chinese, English, Japanese, and more.'},
+          {role: 'user', content: prompt},
+        ]};
+
+      const response = await fetch(AI_API_ENDPOINT, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${AI_API_KEY}`
+          },
+          body: JSON.stringify(jsonData),
+      });
+  
+      if (!response.ok) {
+          console.error(`DeepSeek AI API call failed: ${response.status} ${response.statusText}`);
+          return null;
+      }
+
+      const data = await response.json(); // No type assertion needed in JS
+      console.log(data);
+
+      // 2. Check if the 'choices' array exists and is not empty
+      if (!data.choices || data.choices.length === 0) {
+        console.error("API call failed: Response does not contain any choices.");
+        // Handle this case
+        // You might want to log the full response here to debug what was received
+        console.log("Full response:", data);
+        return null; // Or throw an error
+      }
+
+      // 3. Check if the first choice contains a message
+      if (!data.choices[0].message) {
+          console.error("API call failed: The first choice does not contain a message.");
+            // Handle this case
+            console.log("Full response:", data);
+          return null; // Or throw an error
+      }
+
+      // If all checks pass, access and log the message content
+      const messageContent = data.choices[0].message.content;
+      console.log("API call successful. Received message:");
+      // console.log(`messageContent: ${ messageContent }`);
+
+      // let repairedJson = null;
+
+      // const jsonStr = cleanAiJsonResponse(messageContent)
+      // console.log(`jsonStr: ${ jsonStr }`);
+
+      // try {
+      //   repairedJson = JSON.parse(jsonStr);
+      //   console.log(`repairedJson: ${ repairedJson }`);
+      // } catch(error) {
+      //   repairedJson = null;
+      // }
+
+      // if (!repairedJson) {
+      //   let repairedStr;
+      //   try {
+      //     repairedStr = jsonrepair(jsonStr)
+      //     console.log(`repairedStr: ${ repairedStr }`);
+      //   } catch(error) {
+      //     repairedStr = jsonStr;
+      //     console.log('jsonrepair failed, fallback to jsonStr');
+      //   }
+
+      //   try {
+      //     repairedJson = JSON.parse(repairedStr);
+      //     console.log(`repairedJson: ${ repairedJson }`);
+      //   } catch(error) {
+      //     const repairedBadStr = fixUnescapedQuotesInJson(repairedStr)
+      //     console.log(`repairedBadStr: ${ repairedBadStr }`);
+      //     repairedJson = JSON.parse(repairedBadStr);
+      //   }
+      // }
+
+      // // console.log(`jsonWord: ${ jsonWord }`);
+
+      // // Validate the structure of the received data if necessary
+      // return repairedJson;
+      return repairAiResponseToJson(messageContent);
+
+    } catch (error) {
+        console.error('Network error calling DeepSeek AI API:', error);
+        return null;
+    }
 };
 
 
@@ -832,6 +1076,10 @@ word.post('/search', async (c) => {
       searchSlug = isSlugQuoted ? removeQuotes(tt) : tt
     }
 
+    // 判断是日文还是英文
+    const language = LanguageUtils.detectLanguage(searchSlug);
+    const isJapanese = language === 'japanese' || language === 'mixed';
+
     let query;
     // Check if slug is provided and not empty
     if (searchSlug) {
@@ -1068,10 +1316,15 @@ word.post('/search', async (c) => {
         const wordToGenerate = searchSlug;
 
       // Call Gemini AI to generate data
-      const aiResponse = await generateBentoByGeminiAi(c, wordToGenerate);
+      let aiResponse = await generateBentoByGeminiAi(c, wordToGenerate, isJapanese);
 
       if (!aiResponse || !aiResponse[wordToGenerate]) {
-          console.error(`AI failed to generate data for "${wordToGenerate}" or returned unexpected format.`);
+          console.error(`Gemini AI failed to generate data for "${wordToGenerate}" or returned unexpected format.`);
+          // return c.json({ message: `Failed to generate data for "${wordToGenerate}".` }, 500);
+          aiResponse = await generateBentoByDeepSeekAi(c, wordToGenerate, isJapanese);
+      }
+      if (!aiResponse || !aiResponse[wordToGenerate]) {
+          console.error(`DeepSeek AI failed to generate data for "${wordToGenerate}" or returned unexpected format.`);
           return c.json({ message: `Failed to generate data for "${wordToGenerate}".` }, 500);
       }
 
