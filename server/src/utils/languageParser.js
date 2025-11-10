@@ -80,3 +80,74 @@ export function fixUnescapedQuotesInJson(badJsonString) {
         return `${keyPart}"${escapedValue}"`;
     });
 }
+
+// 定义各种语言的引号对
+const quotePairs = [
+    // 英文引号
+    ['"', '"'],   // 双引号
+    ["'", "'"],   // 单引号
+    ['`', '`'],   // 反引号
+    // 中文引号
+    ['「', '」'], // 直角引号
+    ['『', '』'], // 双直角引号
+    ['"', '"'],   // 中文双引号（同英文）
+    ["'", "'"],   // 中文单引号（同英文）
+    // 日文引号
+    ['「', '」'], // 日语单引号
+    ['『', '』'], // 日语双引号
+    // 其他语言引号
+    ['„', '「'],  // 德语引号
+    ['«', '»'],   // 法语引号
+    ['《', '》'],  // 书名号（中文）
+    ['〈', '〉'],  // 单书名号
+];
+
+export function isQuoted(str) {
+    if (typeof str !== 'string' || str.length < 2) {
+        return false;
+    }
+    
+    // // 定义各种语言的引号对
+    // const quotePairs = [
+    //     // 英文引号
+    //     ['"', '"'],   // 双引号
+    //     ["'", "'"],   // 单引号
+    //     ['`', '`'],   // 反引号
+    //     // 中文引号
+    //     ['「', '」'], // 直角引号
+    //     ['『', '』'], // 双直角引号
+    //     ['"', '"'],   // 中文双引号（同英文）
+    //     ["'", "'"],   // 中文单引号（同英文）
+    //     // 日文引号
+    //     ['「', '」'], // 日语单引号
+    //     ['『', '』'], // 日语双引号
+    //     // 其他语言引号
+    //     ['„', '“'],  // 德语引号
+    //     ['«', '»'],   // 法语引号
+    //     ['《', '》'],  // 书名号（中文）
+    //     ['〈', '〉'],  // 单书名号
+    //     // 更多引号可以继续添加...
+    // ];
+    
+    // 检查是否被任何引号对包裹
+    return quotePairs.some(([left, right]) => {
+        return str.startsWith(left) && str.endsWith(right);
+    });
+}
+
+
+export function removeQuotes(str) {
+    if (typeof str !== 'string' || str.length < 2) {
+        return str;
+    }
+
+    // 检查并移除引号
+    for (const [left, right] of quotePairs) {
+        if (str.startsWith(left) && str.endsWith(right)) {
+            return str.slice(left.length, -right.length);
+        }
+    }
+    
+    // 如果没有被引号包裹，返回原字符串
+    return str;
+}

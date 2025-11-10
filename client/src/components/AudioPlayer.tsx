@@ -10,6 +10,11 @@ import { parseSrt, SubtitleCue } from '../utils/subtitleParser';
 import { throttle } from 'lodash-es';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LocalStorageManager from '../utils/storage';
+import LanguageUtils, { 
+  detectLanguage, 
+  segmentJapaneseText,
+  advancedJapaneseSegmentation 
+} from '../utils/languageUtils';
 
 // Define your specific keys for AudioPlayer here, no longer in storage.ts
 const AUDIO_PLAYER_KEYS = {
@@ -392,66 +397,203 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     return new RegExp(`(${wordsRegexPart}|\\s+)`, 'gi');    
   }, [highlightWords]); // Only re-calculate if highlightWords array changes
 
-  const highlightText = useCallback((text: string) => {
-    // const escapedHighlightWords = highlightWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    // Use a regex that splits by spaces OR by highlight words, keeping highlight words as parts
-    // const splitRegex = new RegExp(`(${escapedHighlightWords.join('|')}|\\s+)`, 'gi');
+  // const highlightText = useCallback((text: string) => {
+  //   // const escapedHighlightWords = highlightWords.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  //   // Use a regex that splits by spaces OR by highlight words, keeping highlight words as parts
+  //   // const splitRegex = new RegExp(`(${escapedHighlightWords.join('|')}|\\s+)`, 'gi');
 
-    const parts = text.split(escapedSplitRegex).filter(Boolean); // Filter out empty strings
+  //   const parts = text.split(escapedSplitRegex).filter(Boolean); // Filter out empty strings
+
+  //   return (
+  //     <>
+  //       {parts.map((part, index) => {
+  //         // If the part is just whitespace, render it as such
+  //         if (part.trim() === '' && /\s/.test(part)) {
+  //           return <span key={index}>{part}</span>;
+  //         }
+
+  //         const isHighlight = highlightWords.some(word => word.toLowerCase() === part.toLowerCase());
+          
+  //         if (isHighlight) {
+  //           return (
+  //             <span
+  //               key={index}
+  //               className="bg-yellow-300 text-black rounded cursor-pointer hover:bg-yellow-400 transition-colors"
+  //               onClick={(e) => {
+  //                 e.stopPropagation(); // Prevent event bubbling
+  //                 // Only call onHighlightedWordClick for highlighted words
+  //                 if (onHighlightedWordClick) {
+  //                   onHighlightedWordClick(part, e.currentTarget.getBoundingClientRect());
+  //                 }
+  //                 // Do NOT show search button for highlighted words
+  //                 setWordForSearch(null);
+  //                 setSearchButtonPosition(null);
+  //               }}
+  //             >
+  //               {part}
+  //             </span>
+  //           );
+  //         } else {
+  //           // This is a non-highlighted word
+  //           return (
+  //             <span
+  //               key={index}
+  //               className="cursor-pointer hover:bg-gray-700/50 rounded"
+  //               onClick={(e) => {
+  //                 e.stopPropagation(); // Prevent event bubbling
+  //                 // Set state for the search button for THIS clicked non-highlighted word
+  //                 // Clean the word for logic, but display the original part
+  //                 const cleanedWord = part.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
+  //                 setWordForSearch(cleanedWord);
+  //                 setSearchButtonPosition(e.currentTarget.getBoundingClientRect());
+  //                 // Do NOT call onHighlightedWordClick for non-highlighted words
+  //               }}
+  //             >
+  //               {part}
+  //             </span>
+  //           );
+  //         }
+  //       })}
+  //     </>
+  //   );
+  // }, [highlightWords, escapedSplitRegex, onHighlightedWordClick]);
+
+  // 工具函数：智能清理单词
+  const cleanWordForSearch = (word: string) => {
+    if (!word || word.trim().length === 0) return '';
+    
+    // 定义允许的字符范围
+    const allowedCharsRegex = /[\w\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/g;
+    
+    // 提取所有允许的字符
+    const validChars = word.match(allowedCharsRegex);
+    
+    if (!validChars || validChars.length === 0) return '';
+    
+    const cleaned = validChars.join('');
+    
+    // 对于英文单词，转换为小写；对于日文，保持原样
+    return /^[a-zA-Z]+$/.test(cleaned) ? cleaned.toLowerCase() : cleaned;
+  };
+
+  // 工具函数：转义正则表达式特殊字符
+  const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // 优化后的正则表达式构造
+  const highlightRegex = useMemo(() => {
+    if (!highlightWords || highlightWords.length === 0) {
+      return /(?!)/; // 匹配空模式
+    }
+
+    const escapedWords = highlightWords.map(escapeRegex);
+
+    const pattern = `(${escapedWords.join('|')})`;
+    return new RegExp(pattern, 'gi');
+  }, [highlightWords]);
+
+  // 改进的高亮文本渲染函数
+  const highlightText = useCallback((text: string) => {
+    if (!text) return text;
+
+  // 检测文本语言
+  const language = LanguageUtils.detectLanguage(text);
+  const isJapanese = language === 'japanese' || language === 'mixed';
+
+  let parts: string[] = [];
+
+  if (isJapanese && highlightRegex) {
+    // 日文文本：保持原有逻辑，使用highlightRegex分割
+    parts = text.split(highlightRegex).filter(Boolean);
+  } else {
+    // 默认英文文本：按单词边界进行精细分割
+    parts = text.split(escapedSplitRegex).filter(Boolean);
+  }
 
     return (
       <>
         {parts.map((part, index) => {
-          // If the part is just whitespace, render it as such
-          if (part.trim() === '' && /\s/.test(part)) {
-            return <span key={index}>{part}</span>;
-          }
-
+          // const isMatch = highlightWords.some(word => {
+          //   const comparison = caseSensitive ? 
+          //     part === word : 
+          //     part.toLowerCase() === word.toLowerCase();
+          //   return comparison;
+          // });
           const isHighlight = highlightWords.some(word => word.toLowerCase() === part.toLowerCase());
-          
+
           if (isHighlight) {
+            // 匹配到的高亮词汇
             return (
               <span
                 key={index}
-                className="bg-yellow-300 text-black rounded cursor-pointer hover:bg-yellow-400 transition-colors"
+                className="bg-yellow-300 text-black rounded cursor-pointer hover:bg-yellow-400 transition-colors px-1 mx-0.5"
                 onClick={(e) => {
-                  e.stopPropagation(); // Prevent event bubbling
-                  // Only call onHighlightedWordClick for highlighted words
-                  if (onHighlightedWordClick) {
-                    onHighlightedWordClick(part, e.currentTarget.getBoundingClientRect());
-                  }
-                  // Do NOT show search button for highlighted words
-                  setWordForSearch(null);
-                  setSearchButtonPosition(null);
+                  e.stopPropagation();
+                  onHighlightedWordClick?.(part, e.currentTarget.getBoundingClientRect());
                 }}
               >
                 {part}
               </span>
             );
           } else {
-            // This is a non-highlighted word
-            return (
-              <span
-                key={index}
-                className="cursor-pointer hover:bg-gray-700/50 rounded"
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent event bubbling
-                  // Set state for the search button for THIS clicked non-highlighted word
-                  // Clean the word for logic, but display the original part
-                  const cleanedWord = part.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '');
-                  setWordForSearch(cleanedWord);
-                  setSearchButtonPosition(e.currentTarget.getBoundingClientRect());
-                  // Do NOT call onHighlightedWordClick for non-highlighted words
-                }}
-              >
-                {part}
+            if (!isJapanese) {
+              // 非高亮文本
+              return (
+                <span
+                  key={index}
+                  className="cursor-pointer hover:bg-gray-700/50 rounded px-0.5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // 你的非高亮词汇点击逻辑
+                    const cleanedWord = cleanWordForSearch(part);
+    
+                    if (cleanedWord && cleanedWord.length > 0) {
+                      setWordForSearch(cleanedWord);
+                      setSearchButtonPosition(e.currentTarget.getBoundingClientRect());
+                    }                  
+                  }}
+                >
+                  {part}
+                </span>
+              );
+            } else {
+              const segments = LanguageUtils.advancedJapaneseSegmentation(part);
+              return (
+              <span key={index} className="japanese-segment-container">
+                {segments.map((segment, segIndex) => {
+                  const segmentKey = `japanese-${index}-${segIndex}`;
+                  
+                  return (
+                    <span
+                      key={segmentKey}
+                      className="cursor-pointer hover:bg-gray-700/50 rounded px-0.5 japanese-word"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const cleanedWord = cleanWordForSearch(segment);
+                        
+                        if (cleanedWord && cleanedWord.length > 0) {
+                          setWordForSearch(cleanedWord);
+                          setSearchButtonPosition(e.currentTarget.getBoundingClientRect());
+                        }                  
+                      }}
+                      style={{ 
+                        display: 'inline-block',
+                        margin: '0 1px',
+                        padding: '1px 2px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      {segment}
+                    </span>
+                  );
+                })}
               </span>
-            );
+              );
+            }
           }
         })}
       </>
     );
-  }, [highlightWords, escapedSplitRegex, onHighlightedWordClick]);
+  }, [highlightRegex, highlightWords, onHighlightedWordClick]);
 
   const getSubtitlesToDisplay = useMemo(() => {
     if (currentActiveCueIndex === null || !showSubtitles || parsedCues.length == 0) {

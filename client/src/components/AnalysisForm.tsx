@@ -36,7 +36,7 @@ interface AnalysisFormProps {
   isWordLoading: boolean;
   isAnalysisLoading: boolean;
   analysisResult: AnalysisResult | null;
-  onWordClick: (word: string) => void;
+  onWordClick: (word: string, examType: string) => void;
   onClearAnalysisResult: () => void;  
   onManualAnalysisResult: (submission: Submission) => void;
   onWordSearch: (word: string) => void;
@@ -176,8 +176,19 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                       <FormItem className="space-y-0">
                           <FormControl>
                               <RadioGroup
-                                  onValueChange={handleSourceTypeChange}
-                                  defaultValue={field.value}
+                                  onValueChange={(value) => {
+                                    // 同时更新表单状态和可能需要的自定义处理
+                                    field.onChange(value);
+                                    // 添加类型检查确保安全
+                                    if (value === "url" || value === "article") {
+                                      handleSourceTypeChange(value);
+                                    } else {
+                                      console.warn(`Unexpected value: ${value}`);
+                                      // 或者使用默认值
+                                      handleSourceTypeChange("url"); // 默认回退
+                                    }
+                                  }}
+                                  value={field.value} // 关键修改：绑定当前值
                                   className="flex space-x-6"
                                   disabled={isAnalysisLoading}
                                 >                         
@@ -218,6 +229,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        value={field.value}
                         disabled={isAnalysisLoading}
                       >
                         <FormControl>
@@ -226,10 +238,14 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="TOEFL">TOEFL</SelectItem>
-                          <SelectItem value="GRE">GRE</SelectItem>
-                          <SelectItem value="TOEIC">TOEIC</SelectItem>
-                          <SelectItem value="SAT">SAT</SelectItem>
+                          <SelectItem value="GRE">GRE(EN)</SelectItem>
+                          <SelectItem value="SAT">SAT(EN)</SelectItem>
+                          <SelectItem value="TOEFL">TOEFL(EN)</SelectItem>
+                          <SelectItem value="IELTS">IELTS(EN)</SelectItem>
+                          <SelectItem value="PTE">PTE(EN)</SelectItem>
+                          <SelectItem value="N1">N1(JP)</SelectItem>
+                          <SelectItem value="N2">N2(JP)</SelectItem>
+                          <SelectItem value="N3">N3(JP)</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormItem>
@@ -346,7 +362,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                                 key={index}
                                 variant="outline"
                                 size="sm"
-                                onClick={() => onWordClick(word)}
+                                onClick={() => onWordClick(word, form.getValues('examType'))}
                                 className={cn(
                                     "cursor-pointer",
                                     word === currentWord ? "bg-blue-500 text-white hover:bg-blue-600" : "hover:bg-gray-100"

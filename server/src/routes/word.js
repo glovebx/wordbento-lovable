@@ -14,7 +14,7 @@ import * as schema from '../db/schema'; // Keep schema import for drizzle initia
 import { sql } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
 import { nanoid } from "nanoid";
 import { jsonrepair } from 'jsonrepair';
-import { fixUnescapedQuotesInJson } from '../utils/languageParser';
+import { fixUnescapedQuotesInJson, isQuoted, removeQuotes } from '../utils/languageParser';
 
 // Type definitions are removed in JavaScript
 
@@ -824,10 +824,18 @@ word.post('/search', async (c) => {
             // updated_at: schema.words.updated_at,            
           }  
 
+    let isSlugQuoted = false;      
+    let searchSlug = '';
+    if (slug && typeof slug === 'string' && slug.trim() !== '') {
+      const tt = slug.trim().toLowerCase()
+      isSlugQuoted = isQuoted(tt)
+      searchSlug = isSlugQuoted ? removeQuotes(tt) : tt
+    }
+
     let query;
     // Check if slug is provided and not empty
-    if (slug && typeof slug === 'string' && slug.trim() !== '') {
-        const searchSlug = slug.trim().toLowerCase(); // Use lowercase for search
+    if (searchSlug) {
+        // const searchSlug = slug.trim().toLowerCase(); // Use lowercase for search
         console.log(`Performing prefix match for slug: "${searchSlug}"`);
         const prefix = searchSlug + '%';
 
@@ -859,7 +867,7 @@ word.post('/search', async (c) => {
         if (result.length > 0) {
              existingWord = result[0];
              console.log(`Found exact match for "${searchSlug}" - ID: ${existingWord.id}`);
-        } else {
+        } else if (!isSlugQuoted) {
             // If no exact match, try prefix match
              console.log(`No exact match for "${searchSlug}", trying prefix match.`);
             //  let prefixResult;
@@ -1049,15 +1057,15 @@ word.post('/search', async (c) => {
       }
 
       // 3. Process New Word (If Not Found) - Call AI and Insert
-      console.log(`Word "${slug}" not found in DB. Calling AI.`);
+      console.log(`Word "${searchSlug}" not found in DB. Calling AI.`);
 
       // Ensure slug is available for AI call (should be if existingWord is null from prefix search)
-      if (!slug || typeof slug !== 'string' || slug.trim() === '') {
+      if (!searchSlug) {
             // This case should ideally not happen if the slug was empty initially
             // and no random word was found, but handle defensively.
             return c.json({ message: 'Cannot generate data for empty slug.' }, 400);
       }
-        const wordToGenerate = slug.trim().toLowerCase();
+        const wordToGenerate = searchSlug;
 
       // Call Gemini AI to generate data
       const aiResponse = await generateBentoByGeminiAi(c, wordToGenerate);

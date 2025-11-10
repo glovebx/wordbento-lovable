@@ -175,7 +175,7 @@ const Index = () => {
   // };
 
   // handleSearch 函数修改：检查缓存，未命中则更新 currentWord
-  const handleSearch = useCallback((word: string) => {
+  const handleSearch = useCallback((word: string, examType: string) => {
     if (!word || word.trim() === '') {
         toast({
             title: "请输入单词",
@@ -865,6 +865,171 @@ const handlePrevious = useCallback(async () => {
 //     }, [bentoGridRef, wordData, toast]); // Dependencies: bentoGridRef, wordData (for filename), toast
 //     // --- End: Handle Export Image ---
 
+// const handleExportImage = useCallback(async () => {
+//     const element = bentoGridRef.current;
+//     if (!element) {
+//         console.error("Bento grid element not found for capture.");
+//         toast({
+//             title: "导出失败",
+//             description: "无法找到要导出的内容。",
+//             variant: "destructive",
+//         });
+//         return;
+//     }
+
+//     console.log("Attempting to capture bento grid element with html-to-image:", element);
+
+//     // Define target output dimensions (9:16 aspect ratio for a typical card: 1080px wide, 1920px tall)
+//     const TARGET_WIDTH = 1080;
+//     const TARGET_HEIGHT = 1920; 
+
+//     // 1. 保存原始样式
+//     const originalStyles = {
+//         width: element.style.width,
+//         height: element.style.height,
+//         padding: element.style.padding,
+//         margin: element.style.margin,
+//         transform: element.style.transform,
+//         transformOrigin: element.style.transformOrigin,
+//         overflow: element.style.overflow,
+//     };
+
+//     // 2. 设置临时样式
+//     element.style.width = `${TARGET_WIDTH}px`;
+//     element.style.height = `${TARGET_HEIGHT}px`;
+//     element.style.padding = '24px';
+//     element.style.margin = '0';
+//     element.style.transform = 'scale(1)'; // 确保没有缩放
+//     element.style.transformOrigin = 'top left';
+//     element.style.overflow = 'hidden'; // 防止内容溢出
+    
+//     // 3. 设置内部网格容器的样式 - 修复左右边距问题
+//     const gridContainer = element.querySelector('.grid-container') as HTMLElement;
+//     let gridOriginalStyles: Record<string, string> | null = null; // 初始化为null
+
+//     if (gridContainer) {
+//         gridOriginalStyles = {
+//             width: gridContainer.style.width,
+//             height: gridContainer.style.height,
+//             padding: gridContainer.style.padding,
+//             margin: gridContainer.style.margin,
+//             gap: gridContainer.style.gap,
+//             display: gridContainer.style.display,
+//             justifyContent: gridContainer.style.justifyContent,
+//             alignItems: gridContainer.style.alignItems,
+//         };
+        
+//         // 设置网格容器填满整个元素
+//         gridContainer.style.width = '100%';
+//         gridContainer.style.height = '100%';
+        
+//         // 添加对称的内边距解决视觉不居中问题
+//         gridContainer.style.padding = '0 60px'; // 左右各50px边距
+        
+//         // 添加Flex布局确保内容居中
+//         gridContainer.style.display = 'flex';
+//         gridContainer.style.flexDirection = 'column'; // 垂直排列
+//         gridContainer.style.justifyContent = 'center'; // 垂直居中
+//         gridContainer.style.alignItems = 'center';     // 水平居中
+
+//         // 设置网格内容宽度为90%，确保有足够空间
+//         gridContainer.style.maxWidth = '100%';
+        
+//         gridContainer.style.margin = '0';
+//         gridContainer.style.gap = '8px'; // 减小间距避免内容溢出
+
+//         // 确保内容盒子模型正确
+//         gridContainer.style.boxSizing = 'border-box';        
+//     }
+
+//     // 4. 处理隐藏元素
+//     const elementsToHide = element.querySelectorAll('.export-hide');
+//     const originalDisplays: string[] = [];
+//     elementsToHide.forEach((el: Element) => {
+//         const htmlEl = el as HTMLElement;
+//         originalDisplays.push(htmlEl.style.display);
+//         htmlEl.style.display = 'none';
+//     });
+
+//     const carouselItemsToHide = element.querySelectorAll('.export-carousel-item');
+//     const originalCarouselItemDisplays: string[] = [];
+//     if (carouselItemsToHide.length > 1) {
+//         carouselItemsToHide.forEach((el: Element, index: number) => {
+//             if (index > 0) {
+//                 const htmlEl = el as HTMLElement;
+//                 originalCarouselItemDisplays.push(htmlEl.style.display);
+//                 htmlEl.style.display = 'none';
+//             }
+//         });
+//     }
+
+//     try {
+//         // 添加延迟确保样式应用
+//         await new Promise(resolve => setTimeout(resolve, 100));
+        
+//         // 使用 html-to-image.toPng
+//         const imageDataUrl = await htmlToImage.toPng(element, {
+//             width: TARGET_WIDTH,
+//             height: TARGET_HEIGHT,
+//             pixelRatio: 2, // 提高分辨率避免模糊
+//             cacheBust: true,
+//             backgroundColor: '#FFFFFF',
+//             style: {
+//                 backgroundColor: '#FFFFFF',
+//             }
+//         });
+
+//         // 创建下载链接
+//         const link = document.createElement('a');
+//         link.href = imageDataUrl;
+//         const filename = `word-bento-${wordData?.word_text || 'export'}.png`;
+//         link.download = filename;
+//         document.body.appendChild(link);
+//         link.click();
+//         document.body.removeChild(link);
+
+//         console.log(`Successfully exported image as ${filename}`);
+//         toast({
+//             title: "导出成功",
+//             description: `已将内容导出为图片 "${filename}"。`,
+//             variant: "default",
+//         });
+
+//     } catch (error: any) {
+//         console.error("Error capturing or exporting image:", error);
+//         toast({
+//             title: "导出失败",
+//             description: `导出图片时发生错误: ${error.message}`,
+//             variant: "destructive",
+//         });
+//     } finally {
+//         // 5. 恢复所有样式
+//         Object.assign(element.style, originalStyles);
+        
+//         // 恢复网格容器样式
+//         if (gridContainer) {
+//             Object.assign(gridContainer.style, gridOriginalStyles);
+//         }
+        
+//         // 恢复隐藏元素
+//         elementsToHide.forEach((el: Element, index: number) => {
+//             const htmlEl = el as HTMLElement;
+//             htmlEl.style.display = originalDisplays[index];
+//         });
+        
+//         if (carouselItemsToHide.length > 1) {
+//             carouselItemsToHide.forEach((el: Element, index: number) => {
+//                 if (index > 0) {
+//                     const htmlEl = el as HTMLElement;
+//                     htmlEl.style.display = originalCarouselItemDisplays[index - 1];
+//                 }
+//             });
+//         }
+        
+//         console.log("Restored all styles after export.");
+//     }
+// }, [bentoGridRef, wordData, toast]);
+
 const handleExportImage = useCallback(async () => {
     const element = bentoGridRef.current;
     if (!element) {
@@ -879,9 +1044,8 @@ const handleExportImage = useCallback(async () => {
 
     console.log("Attempting to capture bento grid element with html-to-image:", element);
 
-    // Define target output dimensions (9:16 aspect ratio for a typical card: 1080px wide, 1920px tall)
+    // 定义目标宽度，高度将根据内容动态计算
     const TARGET_WIDTH = 1080;
-    const TARGET_HEIGHT = 1920; 
 
     // 1. 保存原始样式
     const originalStyles = {
@@ -892,20 +1056,28 @@ const handleExportImage = useCallback(async () => {
         transform: element.style.transform,
         transformOrigin: element.style.transformOrigin,
         overflow: element.style.overflow,
+        position: element.style.position,
+        left: element.style.left,
+        top: element.style.top,
+        zIndex: element.style.zIndex,
     };
 
-    // 2. 设置临时样式
+    // 2. 设置临时样式 - 宽度固定，高度自动
     element.style.width = `${TARGET_WIDTH}px`;
-    element.style.height = `${TARGET_HEIGHT}px`;
+    element.style.height = 'auto'; // 高度自适应
     element.style.padding = '24px';
     element.style.margin = '0';
-    element.style.transform = 'scale(1)'; // 确保没有缩放
+    element.style.transform = 'scale(1)';
     element.style.transformOrigin = 'top left';
-    element.style.overflow = 'hidden'; // 防止内容溢出
-    
-    // 3. 设置内部网格容器的样式 - 修复左右边距问题
+    element.style.overflow = 'visible'; // 改为visible确保内容完全显示
+    element.style.position = 'fixed'; // 使用fixed定位避免页面滚动影响
+    element.style.left = '0';
+    element.style.top = '0';
+    element.style.zIndex = '9999';
+
+    // 3. 设置内部网格容器的样式
     const gridContainer = element.querySelector('.grid-container') as HTMLElement;
-    let gridOriginalStyles: Record<string, string> | null = null; // 初始化为null
+    let gridOriginalStyles: Record<string, string> | null = null;
 
     if (gridContainer) {
         gridOriginalStyles = {
@@ -917,29 +1089,27 @@ const handleExportImage = useCallback(async () => {
             display: gridContainer.style.display,
             justifyContent: gridContainer.style.justifyContent,
             alignItems: gridContainer.style.alignItems,
+            maxWidth: gridContainer.style.maxWidth,
+            boxSizing: gridContainer.style.boxSizing,
+            flexDirection: gridContainer.style.flexDirection,
         };
         
-        // 设置网格容器填满整个元素
+        // 设置网格容器自适应
         gridContainer.style.width = '100%';
-        gridContainer.style.height = '100%';
+        gridContainer.style.height = 'auto'; // 高度自适应
         
-        // 添加对称的内边距解决视觉不居中问题
-        gridContainer.style.padding = '0 60px'; // 左右各50px边距
+        // 添加对称的内边距
+        gridContainer.style.padding = '0 60px';
         
-        // 添加Flex布局确保内容居中
+        // 保持Flex布局确保内容居中
         gridContainer.style.display = 'flex';
-        gridContainer.style.flexDirection = 'column'; // 垂直排列
-        gridContainer.style.justifyContent = 'center'; // 垂直居中
-        gridContainer.style.alignItems = 'center';     // 水平居中
-
-        // 设置网格内容宽度为90%，确保有足够空间
+        gridContainer.style.flexDirection = 'column';
+        gridContainer.style.justifyContent = 'flex-start'; // 改为flex-start从顶部开始
+        gridContainer.style.alignItems = 'center';
         gridContainer.style.maxWidth = '100%';
-        
         gridContainer.style.margin = '0';
-        gridContainer.style.gap = '8px'; // 减小间距避免内容溢出
-
-        // 确保内容盒子模型正确
-        gridContainer.style.boxSizing = 'border-box';        
+        gridContainer.style.gap = '8px';
+        gridContainer.style.boxSizing = 'border-box';
     }
 
     // 4. 处理隐藏元素
@@ -964,14 +1134,24 @@ const handleExportImage = useCallback(async () => {
     }
 
     try {
-        // 添加延迟确保样式应用
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // 添加延迟确保样式应用和渲染
+        await new Promise(resolve => setTimeout(resolve, 200));
         
-        // 使用 html-to-image.toPng
+        // 计算动态高度
+        const elementHeight = element.scrollHeight;
+        console.log(`Calculated dynamic height: ${elementHeight}px`);
+        
+        // 设置最终高度
+        element.style.height = `${elementHeight}px`;
+        
+        // 再次短暂延迟确保高度设置生效
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // 使用 html-to-image.toPng，不指定固定高度
         const imageDataUrl = await htmlToImage.toPng(element, {
             width: TARGET_WIDTH,
-            height: TARGET_HEIGHT,
-            pixelRatio: 2, // 提高分辨率避免模糊
+            height: elementHeight, // 使用动态计算的高度
+            pixelRatio: 2,
             cacheBust: true,
             backgroundColor: '#FFFFFF',
             style: {
@@ -988,7 +1168,7 @@ const handleExportImage = useCallback(async () => {
         link.click();
         document.body.removeChild(link);
 
-        console.log(`Successfully exported image as ${filename}`);
+        console.log(`Successfully exported image as ${filename} with dynamic height: ${elementHeight}px`);
         toast({
             title: "导出成功",
             description: `已将内容导出为图片 "${filename}"。`,
@@ -1007,7 +1187,7 @@ const handleExportImage = useCallback(async () => {
         Object.assign(element.style, originalStyles);
         
         // 恢复网格容器样式
-        if (gridContainer) {
+        if (gridContainer && gridOriginalStyles) {
             Object.assign(gridContainer.style, gridOriginalStyles);
         }
         
