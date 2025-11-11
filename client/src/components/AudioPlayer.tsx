@@ -521,7 +521,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
             return (
               <span
                 key={index}
-                className="bg-yellow-300 text-black rounded cursor-pointer hover:bg-yellow-400 transition-colors px-1 mx-0.5"
+                className="bg-yellow-300 text-black rounded cursor-pointer hover:bg-yellow-400 transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   onHighlightedWordClick?.(part, e.currentTarget.getBoundingClientRect());
@@ -536,7 +536,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
               return (
                 <span
                   key={index}
-                  className="cursor-pointer hover:bg-gray-700/50 rounded px-0.5"
+                  className="cursor-pointer hover:bg-gray-700/50 rounded"
                   onClick={(e) => {
                     e.stopPropagation();
                     // 你的非高亮词汇点击逻辑

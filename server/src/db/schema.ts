@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { sqliteTable, text, integer, unique, index } from "drizzle-orm/sqlite-core";
+import { platform } from 'os';
 
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -104,3 +105,13 @@ export const archives = sqliteTable('archives', {
 }, (table) => [
     unique('unq_user_word').on(table.user_id, table.word_id),
 ]);
+
+export const llms = sqliteTable('llms', {
+  id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
+  user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  platform: text('platform', { enum: ['deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'dreamina', 'scraper'] }).notNull(),
+  endpoint: text('endpoint').notNull(),
+  token: text('token'),
+  model: text('model'),
+  created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+});

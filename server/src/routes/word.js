@@ -244,8 +244,9 @@ const repairAiResponseToJson = (messageContent) => {
 
     try {
       repairedJson = JSON.parse(jsonStr);
-      console.log(`repairedJson: ${ repairedJson }`);
+      console.log(`repairedJson 1: ${ repairedJson }`);
     } catch(error) {
+      console.log('convert failed, try to repair json string');
       repairedJson = null;
     }
 
@@ -261,7 +262,7 @@ const repairAiResponseToJson = (messageContent) => {
 
       try {
         repairedJson = JSON.parse(repairedStr);
-        console.log(`repairedJson: ${ repairedJson }`);
+        console.log(`repairedJson 2: ${ repairedJson }`);
       } catch(error) {
         const repairedBadStr = fixUnescapedQuotesInJson(repairedStr)
         console.log(`repairedBadStr: ${ repairedBadStr }`);
@@ -277,97 +278,99 @@ const repairAiResponseToJson = (messageContent) => {
 
 const enPrompt = `给你一个英文单词，返回下列json格式的数据:
 {
-  "phonetic": "美式音标标注",
-  "meaning": "简洁的中文含义，作为副标题",
-  "definition": {
-    "icon": "BookOpen",
-    "en": "详细的英文词义解释，包含用法和语境。",
-    "zh": "对应的中文词义解释。"
-  },
-  "examples": {
-    "icon": "FileText",
-    "en": ["英文例句 1","英文例句 2","英文例句 3"],
-    "zh": ["中文翻译 1","中文翻译 2","中文翻译 3"]
-  },
-  "etymology": {
-    "icon": "Atom",
-    "en": "该单词的词源分析，包括其历史演变和来自哪种语言。",
-    "zh": "词源的中文说明。"
-  },
-  "affixes": {
-    "icon": "Layers",
-    "en": "词缀分析（如前缀、后缀、词根），以及相关词汇的构成。",
-    "zh": "词缀分析的中文说明。"
-  },
-  "history": {
-    "icon": "History",
-    "en": "单词的发展历史、文化背景及其用法的变迁。",
-    "zh": "发展历史与文化背景的中文说明。"
-  },
-  "forms": {
-    "icon": "ArrowUpDown",
-    "en": "单词变形，列出各种形态。",
-    "zh": "单词各种形态的中文说明。"
-  },
-  "memory_aid": {
-    "icon": "Lightbulb",
-    "en": "记忆辅助方法，例如一个无厘头的小故事或将单词字母拆解成一句有趣的话。",
-    "zh": "记忆辅助方法的中文版。"
-  },
-  "trending_story": {
-    "icon": "Newspaper",
-    "en": "一句来自影视剧的、包含该单词的经典台词（不超过80个单词），并注明出处。",
-    "zh": "台词的中文翻译及场景说明。",
+  "英文单词": {
+    "phonetic": "美式音标标注",
+    "meaning": "简洁的中文含义，作为副标题",
+    "definition": {
+      "icon": "BookOpen",
+      "en": "详细的英文词义解释，包含用法和语境。",
+      "zh": "对应的中文词义解释。"
+    },
+    "examples": {
+      "icon": "FileText",
+      "en": ["英文例句 1","英文例句 2","英文例句 3"],
+      "zh": ["中文翻译 1","中文翻译 2","中文翻译 3"]
+    },
+    "etymology": {
+      "icon": "Atom",
+      "en": "该单词的词源分析，包括其历史演变和来自哪种语言。",
+      "zh": "词源的中文说明。"
+    },
+    "affixes": {
+      "icon": "Layers",
+      "en": "词缀分析（如前缀、后缀、词根），以及相关词汇的构成。",
+      "zh": "词缀分析的中文说明。"
+    },
+    "history": {
+      "icon": "History",
+      "en": "单词的发展历史、文化背景及其用法的变迁。",
+      "zh": "发展历史与文化背景的中文说明。"
+    },
+    "forms": {
+      "icon": "ArrowUpDown",
+      "en": "单词变形，列出各种形态。",
+      "zh": "单词各种形态的中文说明。"
+    },
+    "memory_aid": {
+      "icon": "Lightbulb",
+      "en": "记忆辅助方法，例如一个无厘头的小故事或将单词字母拆解成一句有趣的话。",
+      "zh": "记忆辅助方法的中文版。"
+    },
+    "trending_story": {
+      "icon": "Newspaper",
+      "en": "一句来自影视剧的、包含该单词的经典台词（不超过80个单词），并注明出处。",
+      "zh": "台词的中文翻译及场景说明。",
+    }
   }
 }
 单词:`;
 
 const jaPrompt = `给你一个日文单词，返回下列json格式的数据:
 {
-     "日文单词": {
-          "phonetic": "罗马音标注;假名标注,
-          "meaning": "简洁中文含义",
-          "definition": {
-               "icon": "BookOpen",
-               "en": "日文词义解释（含用法语境）",
-               "zh": "对应中文解释"
-          },
-          "examples": {
-               "icon": "FileText",
-               "en": ["日文例句1", "日文例句2", "日文例句3"],
-               "zh": ["中文翻译1", "中文翻译2", "中文翻译3"]
-          },
-          "etymology": {
-               "icon": "Atom",
-               "en": "词源分析（如汉语来源、和语演变、外来语适应）",
-               "zh": "中文词源说明"
-          },
-          "affixes": {
-               "icon": "Layers",
-               "en": "词缀分析（汉字构成、接辞功能、复合词结构）",
-               "zh": "中文词缀解释"
-          },
-          "history": {
-               "icon": "History",
-               "en": "历史演变与文化背景（如时代变迁、社会影响）",
-               "zh": "中文历史与文化说明"
-          },
-          "forms": {
-               "icon": "ArrowUpDown",
-               "en": "变形列表（动词活用形、形容词变化、礼貌体等）",
-               "zh": "中文变形说明"
-          },
-          "memory_aid": {
-               "icon": "Lightbulb",
-               "en": "记忆辅助内容，故事联想或假名拆解（日文版）",
-               "zh": "记忆辅助内容（中文版）"
-          },
-          "trending_story": {
-               "icon": "Newspaper",
-               "en": "影视剧台词（日文原句，来源注明）",
-               "zh": "台词中文翻译及剧情上下文"
+  "日文单词": {
+    "phonetic": "罗马音标注;假名标注,
+    "meaning": "简洁中文含义",
+    "definition": {
+          "icon": "BookOpen",
+          "en": "日文词义解释（含用法语境）",
+          "zh": "对应中文解释"
+    },
+    "examples": {
+          "icon": "FileText",
+          "en": ["日文例句1", "日文例句2", "日文例句3"],
+          "zh": ["中文翻译1", "中文翻译2", "中文翻译3"]
+    },
+    "etymology": {
+          "icon": "Atom",
+          "en": "词源分析（如汉语来源、和语演变、外来语适应）",
+          "zh": "中文词源说明"
+    },
+    "affixes": {
+          "icon": "Layers",
+          "en": "词缀分析（汉字构成、接辞功能、复合词结构）",
+          "zh": "中文词缀解释"
+    },
+    "history": {
+          "icon": "History",
+          "en": "历史演变与文化背景（如时代变迁、社会影响）",
+          "zh": "中文历史与文化说明"
+    },
+    "forms": {
+          "icon": "ArrowUpDown",
+          "en": "变形列表（动词活用形、形容词变化、礼貌体等）",
+          "zh": "中文变形说明"
+    },
+    "memory_aid": {
+          "icon": "Lightbulb",
+          "en": "记忆辅助内容，故事联想或假名拆解（日文版）",
+          "zh": "记忆辅助内容（中文版）"
+    },
+    "trending_story": {
+          "icon": "Newspaper",
+          "en": "影视剧台词（日文原句，来源注明）",
+          "zh": "台词中文翻译及剧情上下文"
+    }
   }
-     }
 }
 单词:`; 
 
@@ -379,9 +382,23 @@ const generateBentoByGeminiAi = async (c, word, isJapanese) => {
     // This is a placeholder. You need to replace this with your actual API call.
     // Example using fetch:
     
-    const GEMINI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
-    const GEMINI_API_KEY = c.env.GEMINI_API_KEY
-    const GEMINI_API_MODEL = c.env.GEMINI_API_MODEL
+    let AI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
+    let AI_API_KEY = c.env.GEMINI_API_KEY
+    let AI_API_MODEL = c.env.GEMINI_API_MODEL
+
+    const user = c.get('user');
+    if (user) {
+      const userId = user.id;
+      const llmKey = `llm-gemini-${userId}`
+      const llmData = await c.env.WORDBENTO_KV.get(llmKey, { type: 'json' });
+      if (llmData) {
+        console.log(llmData);
+        // 从数据库获取？？
+        AI_API_ENDPOINT = llmData.endpoint;
+        AI_API_KEY = llmData.token;
+        AI_API_MODEL = llmData.model;
+      }    
+    }
 
     try {
 //       const prompt = `
@@ -497,17 +514,17 @@ const generateBentoByGeminiAi = async (c, word, isJapanese) => {
         // const jsonStr = cleanAiJsonResponse(result.text)
 
         const jsonData = {
-          model: GEMINI_API_MODEL,
+          model: AI_API_MODEL,
           messages:[
             {role: 'system', content: 'You are a professional proficient in multiple languages, including Chinese, English, Japanese, and more.'},
             {role: 'user', content: prompt},
           ]};
   
-        const response = await fetch(GEMINI_API_ENDPOINT, {
+        const response = await fetch(AI_API_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GEMINI_API_KEY}`
+                'Authorization': `Bearer ${AI_API_KEY}`
             },
             body: JSON.stringify(jsonData),
         });
@@ -614,9 +631,23 @@ const generateBentoByGeminiAi = async (c, word, isJapanese) => {
 const generateBentoByDeepSeekAi = async (c, word, isJapanese) => {
     console.log(`Calling DeepSeek AI for word: ${word}`);
     
-    const AI_API_ENDPOINT = c.env.DEEPSEEK_API_ENDPOINT
-    const AI_API_KEY = c.env.DEEPSEEK_API_KEY
-    const AI_API_MODEL = c.env.DEEPSEEK_API_MODEL
+    let AI_API_ENDPOINT = c.env.DEEPSEEK_API_ENDPOINT
+    let AI_API_KEY = c.env.DEEPSEEK_API_KEY
+    let AI_API_MODEL = c.env.DEEPSEEK_API_MODEL
+
+    const user = c.get('user');
+    if (user) {
+      const userId = user.id;
+      const llmKey = `llm-deepseek-${userId}`
+      const llmData = await c.env.WORDBENTO_KV.get(llmKey, { type: 'json' });
+      if (llmData) {
+        console.log(llmData);
+        // 从数据库获取？？
+        AI_API_ENDPOINT = llmData.endpoint;
+        AI_API_KEY = llmData.token;
+        AI_API_MODEL = llmData.model;
+      }    
+    }    
 
     try {
       const prompt = (isJapanese ? jaPrompt : enPrompt) + word;
@@ -716,8 +747,8 @@ const generateImageByGeminiAi = async (c, word) => {
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
 
-  const GEMINI_API_KEY = c.env.GEMINI_API_KEY
-  const GEMINI_API_ENDPOINT = `${c.env.GEMINI_API_IMAGE_ENDPOINT}?key=${GEMINI_API_KEY}`
+  const AI_API_KEY = c.env.GEMINI_API_KEY
+  const AI_API_ENDPOINT = `${c.env.GEMINI_API_IMAGE_ENDPOINT}?key=${GEMINI_API_KEY}`
 
   try {
     const prompt = `
@@ -738,11 +769,11 @@ const generateImageByGeminiAi = async (c, word) => {
           generationConfig: {responseModalities: ["TEXT", "IMAGE"]}
         };
 
-        const response = await fetch(GEMINI_API_ENDPOINT, {
+        const response = await fetch(AI_API_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // 'Authorization': `Bearer ${GEMINI_API_KEY}`
+                // 'Authorization': `Bearer ${AI_API_KEY}`
             },
             body: JSON.stringify(jsonData),
         });
@@ -858,25 +889,25 @@ function extractHttpLinks(text) {
 const generateImageByDreamina = async (c, word, example) => {
   console.log(`Calling Dreamina AI for word: ${word} ${example}`);
 
-  const GEMINI_API_KEY = c.env.DREAMINA_API_KEY;
-  const GEMINI_API_ENDPOINT = c.env.DREAMINA_API_ENDPOINT;
-  const GEMINI_API_MODEL = c.env.DREAMINA_API_MODEL;
+  const AI_API_KEY = c.env.DREAMINA_API_KEY;
+  const AI_API_ENDPOINT = c.env.DREAMINA_API_ENDPOINT;
+  const AI_API_MODEL = c.env.DREAMINA_API_MODEL;
 
   try {
     const prompt = example && `"${example}"，根据这句话创作一张图片，要足够吸引眼球，加深对该单词的记忆。图片标题："${word}"，副标题"${example}"` || `你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。`
 
       const jsonData = {
-        model: GEMINI_API_MODEL || '',
+        model: AI_API_MODEL || '',
         prompt: prompt,          
         ratio: "9:16",
         resolution: "1k",
       };        
 
-      const response = await fetch(GEMINI_API_ENDPOINT, {
+      const response = await fetch(AI_API_ENDPOINT, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${GEMINI_API_KEY}`
+              'Authorization': `Bearer ${AI_API_KEY}`
           },
           body: JSON.stringify(jsonData),
       });
@@ -915,8 +946,8 @@ const generateImageByJiMengAi = async (c, word, example) => {
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
 
-  const GEMINI_API_KEY = c.env.JIMENG_API_KEY;
-  const GEMINI_API_ENDPOINT = c.env.JIMENG_API_ENDPOINT;
+  const AI_API_KEY = c.env.JIMENG_API_KEY;
+  const AI_API_ENDPOINT = c.env.JIMENG_API_ENDPOINT;
 
   try {
 //     const prompt = `
@@ -933,11 +964,11 @@ const generateImageByJiMengAi = async (c, word, example) => {
           ]
         };    
 
-        const response = await fetch(GEMINI_API_ENDPOINT, {
+        const response = await fetch(AI_API_ENDPOINT, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GEMINI_API_KEY}`
+                'Authorization': `Bearer ${AI_API_KEY}`
             },
             body: JSON.stringify(jsonData),
         });
@@ -1317,7 +1348,6 @@ word.post('/search', async (c) => {
 
       // Call Gemini AI to generate data
       let aiResponse = await generateBentoByGeminiAi(c, wordToGenerate, isJapanese);
-
       if (!aiResponse || !aiResponse[wordToGenerate]) {
           console.error(`Gemini AI failed to generate data for "${wordToGenerate}" or returned unexpected format.`);
           // return c.json({ message: `Failed to generate data for "${wordToGenerate}".` }, 500);

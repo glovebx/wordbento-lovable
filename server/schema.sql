@@ -168,3 +168,16 @@ CREATE TABLE IF NOT EXISTS temp_attachments (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP    
 );
 
+-- llms 表：大模型配置
+CREATE TABLE IF NOT EXISTS llms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    platform TEXT CHECK(platform IN ('deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'dreamina', 'scraper')) NOT NULL,
+    endpoint TEXT NOT NULL,
+    token TEXT,
+    model TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+

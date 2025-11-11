@@ -7,6 +7,7 @@ import main from './routes/main.js';
 import word from './routes/word.js';
 import analyze from './routes/analyze.js';
 import upload from './routes/upload.js';
+import llm from './routes/llm.js';
 // import rss from './routes/rss.js';
 import {
   getCookie
@@ -92,6 +93,7 @@ app.route('/api/main', main);
 app.route('/api/word', word);
 app.route('/api/upload', upload);
 app.route('/api/analyze', analyze);
+app.route('/api/llm', llm);
 app.route('/ws/analyze', analyze);
 // app.route('/api/rss', rss);
 
