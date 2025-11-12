@@ -21,7 +21,7 @@ import { axiosPrivate } from "@/lib/axios";
 
 import { UiResourceWithAttachment, ResourceWithAttachments, Attachment } from "@/types/database";
 import { toast } from "@/hooks/use-toast";
-import { Upload, Trash2, FileAudio, FileVideo } from "lucide-react";
+import { Upload, Trash2, FileAudio } from "lucide-react";
 import { baseURL } from "@/lib/axios";
 
 interface EditResourceDialogProps {
@@ -92,9 +92,9 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
 
   // States for NEW file uploads
   const [newAudioFile, setNewAudioFile] = useState<File | null>(null);
-  const [newVideoFile, setNewVideoFile] = useState<File | null>(null);
+  // const [newVideoFile, setNewVideoFile] = useState<File | null>(null);
   const [newAudioPreviewUrl, setNewAudioPreviewUrl] = useState<string | null>(null);
-  const [newVideoPreviewUrl, setNewVideoPreviewUrl] = useState<string | null>(null);
+  // const [newVideoPreviewUrl, setNewVideoPreviewUrl] = useState<string | null>(null);
 
   // Single source of truth for AUDIO CAPTION
   const [currentAudioCaptionSrt, setCurrentAudioCaptionSrt] = useState<string>('');
@@ -104,7 +104,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
 
   // States for preview URLs of existing media (built from BASE_MEDIA_URL + key)
   const [existingAudioPreviewUrl, setExistingAudioPreviewUrl] = useState<string | null>(null);
-  const [existingVideoPreviewUrl, setExistingVideoPreviewUrl] = useState<string | null>(null);
+  // const [existingVideoPreviewUrl, setExistingVideoPreviewUrl] = useState<string | null>(null);
 
   const isNewRecord = resource === null;
 
@@ -130,11 +130,11 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
       } else {
         setExistingAudioPreviewUrl(null);
       }
-      if (currentAttachment?.videoKey) {
-        setExistingVideoPreviewUrl(`${BASE_MEDIA_URL}/video/${resource.uuid}`);
-      } else {
-        setExistingVideoPreviewUrl(null);
-      }
+      // if (currentAttachment?.videoKey) {
+      //   setExistingVideoPreviewUrl(`${BASE_MEDIA_URL}/video/${resource.uuid}`);
+      // } else {
+      //   setExistingVideoPreviewUrl(null);
+      // }
 
     } else {
       // Adding new record - initialize with default/empty values
@@ -145,15 +145,15 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
       });
       setExistingAttachment(null);
       setExistingAudioPreviewUrl(null);
-      setExistingVideoPreviewUrl(null);
+      // setExistingVideoPreviewUrl(null);
       setCurrentAudioCaptionSrt(''); // Initialize audio caption for new record
     }
 
     // Always reset new file states when resource changes (or becomes null)
     setNewAudioFile(null);
-    setNewVideoFile(null);
+    // setNewVideoFile(null);
     setNewAudioPreviewUrl(null);
-    setNewVideoPreviewUrl(null);
+    // setNewVideoPreviewUrl(null);
 
   }, [resource]);
 
@@ -174,22 +174,22 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
     }
   };
 
-  // Handler for new video file upload
-  const handleNewVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('video/')) {
-      setNewVideoFile(file);
-      setNewVideoPreviewUrl(URL.createObjectURL(file));
-      // Do NOT modify existingAttachment or currentAudioCaptionSrt here.
-      // These changes will be reconciled in handleSave.
-    } else {
-      toast({
-        title: "文件格式错误",
-        description: "请选择视频文件",
-        variant: "destructive",
-      });
-    }
-  };
+  // // Handler for new video file upload
+  // const handleNewVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (file && file.type.startsWith('video/')) {
+  //     setNewVideoFile(file);
+  //     setNewVideoPreviewUrl(URL.createObjectURL(file));
+  //     // Do NOT modify existingAttachment or currentAudioCaptionSrt here.
+  //     // These changes will be reconciled in handleSave.
+  //   } else {
+  //     toast({
+  //       title: "文件格式错误",
+  //       description: "请选择视频文件",
+  //       variant: "destructive",
+  //     });
+  //   }
+  // };
 
   // Handler to delete audio (either new or from existing attachment)
   const handleDeleteAudio = () => {
@@ -205,18 +205,18 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
     // IMPORTANT: Do NOT clear currentAudioCaptionSrt here, as per "独立，互不影响"
   };
 
-  // Handler to delete video (either new or from existing attachment)
-  const handleDeleteVideo = () => {
-    if (newVideoFile) {
-      if (newVideoPreviewUrl) URL.revokeObjectURL(newVideoPreviewUrl);
-      setNewVideoFile(null);
-      setNewVideoPreviewUrl(null);
-    } else if (existingAttachment?.videoKey) {
-      // If deleting existing video, nullify videoKey in the existingAttachment state
-      setExistingAttachment(prev => prev ? { ...prev, videoKey: null } : null);
-      setExistingVideoPreviewUrl(null);
-    }
-  };
+  // // Handler to delete video (either new or from existing attachment)
+  // const handleDeleteVideo = () => {
+  //   if (newVideoFile) {
+  //     if (newVideoPreviewUrl) URL.revokeObjectURL(newVideoPreviewUrl);
+  //     setNewVideoFile(null);
+  //     setNewVideoPreviewUrl(null);
+  //   } else if (existingAttachment?.videoKey) {
+  //     // If deleting existing video, nullify videoKey in the existingAttachment state
+  //     setExistingAttachment(prev => prev ? { ...prev, videoKey: null } : null);
+  //     setExistingVideoPreviewUrl(null);
+  //   }
+  // };
 
   // Handler for changing audio caption
   const handleAudioCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -437,11 +437,11 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
     if (newAudioPreviewUrl) {
       URL.revokeObjectURL(newAudioPreviewUrl);
     }
-    if (newVideoPreviewUrl) {
-      URL.revokeObjectURL(newVideoPreviewUrl);
-    }
+    // if (newVideoPreviewUrl) {
+    //   URL.revokeObjectURL(newVideoPreviewUrl);
+    // }
     onOpenChange(false);
-  }, [newAudioPreviewUrl, newVideoPreviewUrl, onOpenChange]);
+  }, [newAudioPreviewUrl, onOpenChange]);
 
   if (!open) return null;
 

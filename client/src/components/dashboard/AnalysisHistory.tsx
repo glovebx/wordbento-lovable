@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Home, Loader2, PlusCircle } from "lucide-react";
+import { Home, Loader2 } from "lucide-react";
 import { HistoryTable } from "@/components/history/HistoryTable";
 import { EditResourceDialog } from "@/components/history/EditResourceDialog";
 import { useHistoryData } from "@/hooks/useHistoryData";
@@ -53,11 +53,11 @@ const AnalysisHistory = () => {
     }
   }, [toast]);
 
-  const handleAddNewResource = useCallback(() => {
-    setEditingResource(null);
-    setIsAddingNewResource(true);
-    setIsEditDialogOpen(true);
-  }, []);
+  // const handleAddNewResource = useCallback(() => {
+  //   setEditingResource(null);
+  //   setIsAddingNewResource(true);
+  //   setIsEditDialogOpen(true);
+  // }, []);
 
   const handleReSyncResource = async (resourceId: number) => {
     setIsSyncing(true);

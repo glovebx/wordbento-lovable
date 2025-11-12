@@ -175,7 +175,7 @@ const Index = () => {
   // };
 
   // handleSearch 函数修改：检查缓存，未命中则更新 currentWord
-  const handleSearch = useCallback((word: string, examType: string) => {
+  const handleSearch = useCallback((word: string) => {
     if (!word || word.trim() === '') {
         toast({
             title: "请输入单词",
@@ -234,7 +234,7 @@ const Index = () => {
             const mustHaveImage = viewMode === 'flashcard';
             const nextWordData = await fetchAndCacheWord(currentWord, NavigationMode.Next, mustHaveImage); // 等待数据获取或从缓存返回
 
-            if (nextWordData) {
+            if (nextWordData && typeof nextWordData !== 'string') {
                 // 数据已获取 (来自缓存或网络)
                 setWordData(nextWordData);
                 setCurrentWord(nextWordData.word_text); // 更新 currentWord 触发预加载
@@ -289,7 +289,7 @@ const handlePrevious = useCallback(async () => {
                const mustHaveImage = viewMode === 'flashcard';
                const previousWordData = await fetchAndCacheWord(currentWord, NavigationMode.Previous, mustHaveImage); // 等待数据获取或从缓存返回
 
-               if (previousWordData) {
+               if (previousWordData && typeof previousWordData !== 'string') {
                     // 数据已获取
                    setWordData(previousWordData);
                    setCurrentWord(previousWordData.word_text); // 更新 currentWord 触发预加载

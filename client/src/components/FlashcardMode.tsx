@@ -129,7 +129,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
         
         const data = await fetchAndCacheWord('', NavigationMode.Search, true);
 
-        if (data) {
+        if (data && typeof data !== 'string') {
             onWordChanged(data);
             if (data.imageUrls && data.imageUrls.length > 0) {
                 setImageUrl(data.imageUrls[0]);
