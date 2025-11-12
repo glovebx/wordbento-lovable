@@ -15,6 +15,8 @@ import { jsonrepair } from 'jsonrepair';
 import { cleanAiJsonResponse } from './word';
 import { calculateMD5 } from '../utils/passwords';
 import { extractTextFromSrt } from '../utils/languageParser';
+import { checkAndConsumeFreeQuota } from '../utils/security';
+import { error } from 'console';
 
 const analyze = new Hono();
 
@@ -26,7 +28,7 @@ const analyze = new Hono();
 //     // This is a placeholder. You need to replace this with your actual API call.
 //     // Example using fetch:
     
-//     const GEMINI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
+//     const AI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
 
 //     try {
 //       const prompt = analysisData.sourceType === 'article' ? `
@@ -46,11 +48,11 @@ const analyze = new Hono();
 //             }
 //           ]};
 
-//         const response = await fetch(GEMINI_API_ENDPOINT, {
+//         const response = await fetch(AI_API_ENDPOINT, {
 //             method: 'POST',
 //             headers: {
 //                 'Content-Type': 'application/json',
-//                 // 'Authorization': `Bearer ${GEMINI_API_KEY}`
+//                 // 'Authorization': `Bearer ${AI_API_KEY}`
 //             },
 //             body: JSON.stringify(jsonData),
 //         });
@@ -107,22 +109,33 @@ const analyze = new Hono();
 //     // // --- End Mock AI Response ---
 // };
 
-const extractWordsByAi = async (c, analysisData) => {
+const extractWordsByAi = async (c, analysisData, hasFreeQuota) => {
   console.log(`Calling Gemini AI for source2: ${analysisData.sourceType}`);
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
-
-// // 部署前测试绑定是否存在
-// console.log('Browser binding:', typeof c.env.MYBROWSER);
-
-//   const scraper = new DownSub();
-//   const result = await scraper.scrapeCaptions(c, analysisData.content);
-//   console.log(result);
   
-  const GEMINI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
-  const GEMINI_API_KEY = c.env.GEMINI_API_KEY
-  const GEMINI_API_MODEL = c.env.GEMINI_API_MODEL
+  let AI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
+  let AI_API_KEY = c.env.GEMINI_API_KEY
+  let AI_API_MODEL = c.env.GEMINI_API_MODEL
 
+  const user = c.get('user');
+  if (user) {
+    const userId = user.id;
+    const llmKey = `llm-gemini-${userId}`
+    const llmData = await c.env.WORDBENTO_KV.get(llmKey, { type: 'json' });
+    if (llmData) {
+      // 已登录用户用自己的配置
+      AI_API_ENDPOINT = llmData.endpoint;
+      AI_API_KEY = llmData.token;
+      AI_API_MODEL = llmData.model;
+    } else {
+      // 从数据库获取，如果数据库未定义，且免费额度已经用完，则报错
+      if (!hasFreeQuota) {
+        return false;
+      }
+    }
+  }
+  
   try {
     const prompt = analysisData.sourceType === 'article' ? `
 我给你一篇文章，请从中将${analysisData.examType}等级的单词筛选出来，请仅以json格式的数组返回，不要包含任何其他文本或解释。
@@ -132,7 +145,7 @@ URL如下：${analysisData.content}`;
 
 
       const jsonData = {
-        model: GEMINI_API_MODEL,
+        model: AI_API_MODEL,
         messages:[
           {role: 'system', content: 'You are a helpful assistant.'},
           {role: 'user', content: prompt},
@@ -140,11 +153,11 @@ URL如下：${analysisData.content}`;
 
       console.log(jsonData);  
 
-      const response = await fetch(GEMINI_API_ENDPOINT, {
+      const response = await fetch(AI_API_ENDPOINT, {
           method: 'POST',
           headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${GEMINI_API_KEY}`
+              'Authorization': `Bearer ${AI_API_KEY}`
           },
           body: JSON.stringify(jsonData),
       });
@@ -603,9 +616,9 @@ analyze.post('/', async (c) => {
   }
 
   // youtube链接需要额外处理
-    const isYoutube = isYouTubeLinkRegex(cleanedContent);
+  const isYoutube = isYouTubeLinkRegex(cleanedContent);
 
-console.log(`Content is Youtube??: ${isYoutube}`);
+  console.log(`Content is Youtube??: ${isYoutube}`);
 
   // 3. Check if a record with the same exam_type and content_md5 already exists
   try {
@@ -626,7 +639,7 @@ console.log(`Content is Youtube??: ${isYoutube}`);
         console.log(`existingResources: ${isYoutube}, ${JSON.stringify(existingResources[0])}`)
         // if (!isYoutube || (existingResources[0].status == 'completed' || existingResources[0].status == 'failed')) {
         if (!isYoutube || (existingResources[0].status !== 'failed')) {
-            console.log('45678909876545678');
+            // console.log('45678909876545678');
              // Record exists, return its UUID
             console.log(`Existing resource found with UUID: ${existingResources[0].uuid}`);
             return c.json({ uuid: existingResources[0].uuid }, 200); // Return 200 OK for existing
@@ -936,6 +949,7 @@ analyze.get('/list/:limit/:page', async (c) => {
         content: schema.resources.content, 
         words: schema.resources.result,
         status: schema.resources.status,
+        error: schema.resources.error,
         createdAt: schema.resources.created_at,
         audioKey: schema.attachments.audio_key,
         captionSrt: schema.attachments.caption_srt,
@@ -1507,13 +1521,25 @@ const simulateAnalysisTask = async (c, taskId, db, analysisData) => {
   //   console.log(`simulateAnalysisTask attempted for task ID: ${taskId}`);
   // }
 
-  let candidates = await extractWordsByAi(c, analysisData);
+  const user = c.get('user');
+
+  // 限流检查
+  let hasFreeQuota = false;
+  // --- 2. 检查和消费免费额度 ---
+  try {
+      hasFreeQuota = await checkAndConsumeFreeQuota(c, user);
+  } catch (error) {
+      // checkAndConsumeFreeQuota 内部已经抛出了 HTTPException
+      return c.json({ message: error.message }, 400);
+  }
+
+  let candidates = await extractWordsByAi(c, analysisData, hasFreeQuota);
   if (!candidates || candidates.length === 0) {
 
     await db.update(schema.resources)
     .set({
         status: 'failed',
-        error: 'Extract words failed.',
+        error: candidates === false ? 'Invalid llm config.' : 'Extract words failed.',
         updated_at: sql`CURRENT_TIMESTAMP`
     })
     .where(eq(schema.resources.uuid, taskId));

@@ -16,10 +16,71 @@ import { nanoid } from "nanoid";
 import { jsonrepair } from 'jsonrepair';
 import { fixUnescapedQuotesInJson, isQuoted, removeQuotes } from '../utils/languageParser';
 import LanguageUtils from '../utils/languageUtils';
+// // 导入 HTTPException 用于抛出 HTTP 错误
+// import { HTTPException } from 'hono/http-exception';
+import { checkAndConsumeFreeQuota } from '../utils/security';
 
 // Type definitions are removed in JavaScript
 
 const word = new Hono();
+
+// // 定义AI请求免费额度和过期时间（例如：24小时）
+// const FREE_CALLS_LIMIT = 3;
+// const TTL_SECONDS = 60 * 60 * 24; // 24小时
+// const IP_KEY_PREFIX = 'quota-ip';
+
+// /**
+//  * 检查 IP 地址的免费调用额度，并根据结果更新 KV 或抛出异常。
+//  * * @param c Hono Context 对象
+//  * @param ip 请求的 IP 地址
+//  * @param user 已登录的用户对象 (或 null)
+//  */
+// const checkAndConsumeFreeQuota = async (c, ip, isVisitor) => {
+//     const kv = c.env.WORDBENTO_KV;
+//     const ipKey = `${IP_KEY_PREFIX}-${ip}`;
+
+//     // 1. 获取当前调用记录
+//     const quotaData = await kv.get(ipKey, { type: 'json' });
+//     let currentCount = quotaData ? quotaData.count : 0;
+
+//     if (currentCount >= FREE_CALLS_LIMIT) {
+//         // 额度已用完
+
+//         // // 检查用户是否已登录
+//         if (isVisitor) {
+//             // 未登录，抛出需要登录的异常 (HTTP 401 Unauthorized)
+//             throw new HTTPException(401, {
+//                 message: "您已用完免费调用额度 (3/3)。请登录以获得更多使用机会。",
+//                 status: 401
+//             });
+//         }
+
+//         // // 已登录，但仍然额度用尽，提示使用自己的 API Key
+//         // // 在实际应用中，这里可能还会检查用户是否有付费套餐等
+//         // throw new HTTPException(402, { // 402 Payment Required 比较合适
+//         //     message: "免费额度已用完 (3/3)。请在'个人资料'页面填写您自己的 Gemini API Key 以继续使用。",
+//         //     status: 402
+//         // });
+//         return false;
+
+//     } else {
+//         // 2. 额度未用完，递增计数并更新 KV
+//         currentCount += 1;
+//         const newData = { count: currentCount, expires: Date.now() + (TTL_SECONDS * 1000) };
+        
+//         // 使用 put 方法更新 KV，并设置 TTL
+//         await kv.put(ipKey, JSON.stringify(newData), { expirationTtl: TTL_SECONDS });
+//         console.log(`IP ${ip} consumed quota: ${currentCount}/${FREE_CALLS_LIMIT}`);
+        
+//         // 如果是最后一次免费调用，给用户一个 Toast 提示
+//         if (currentCount === FREE_CALLS_LIMIT) {
+//              console.log(`IP ${ip} reached limit.`);
+//              // 注意：这里无法直接在后端抛出 Toast，需要通过 HTTP 响应头或体通知前端
+//              // 在实际项目中，您可能需要返回一个特定的响应码或在响应体中包含状态信息
+//         }
+//         return true;
+//     }
+// }
 
 /**
  * Helper function to check if a string looks like a JSON object or array.
@@ -377,11 +438,11 @@ const jaPrompt = `给你一个日文单词，返回下列json格式的数据:
 // Placeholder function to call Gemini AI API
 // Replace with your actual API call logic
 // Type annotations removed
-const generateBentoByGeminiAi = async (c, word, isJapanese) => {
+const generateBentoByGeminiAi = async (c, word, isJapanese, hasFreeQuota) => {
     console.log(`Calling Gemini AI for word: ${word}`);
     // This is a placeholder. You need to replace this with your actual API call.
     // Example using fetch:
-    
+
     let AI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
     let AI_API_KEY = c.env.GEMINI_API_KEY
     let AI_API_MODEL = c.env.GEMINI_API_MODEL
@@ -392,12 +453,16 @@ const generateBentoByGeminiAi = async (c, word, isJapanese) => {
       const llmKey = `llm-gemini-${userId}`
       const llmData = await c.env.WORDBENTO_KV.get(llmKey, { type: 'json' });
       if (llmData) {
-        console.log(llmData);
-        // 从数据库获取？？
+        // 已登录用户用自己的配置
         AI_API_ENDPOINT = llmData.endpoint;
         AI_API_KEY = llmData.token;
         AI_API_MODEL = llmData.model;
-      }    
+      } else {
+        // 从数据库获取，如果数据库未定义，且免费额度已经用完，则报错
+        if (!hasFreeQuota) {
+          return false;
+        }
+      }
     }
 
     try {
@@ -628,7 +693,7 @@ const generateBentoByGeminiAi = async (c, word, isJapanese) => {
 // Placeholder function to call Gemini AI API
 // Replace with your actual API call logic
 // Type annotations removed
-const generateBentoByDeepSeekAi = async (c, word, isJapanese) => {
+const generateBentoByDeepSeekAi = async (c, word, isJapanese, hasFreeQuota) => {
     console.log(`Calling DeepSeek AI for word: ${word}`);
     
     let AI_API_ENDPOINT = c.env.DEEPSEEK_API_ENDPOINT
@@ -641,11 +706,15 @@ const generateBentoByDeepSeekAi = async (c, word, isJapanese) => {
       const llmKey = `llm-deepseek-${userId}`
       const llmData = await c.env.WORDBENTO_KV.get(llmKey, { type: 'json' });
       if (llmData) {
-        console.log(llmData);
         // 从数据库获取？？
         AI_API_ENDPOINT = llmData.endpoint;
         AI_API_KEY = llmData.token;
         AI_API_MODEL = llmData.model;
+      } else {
+        // 从数据库获取，如果数据库未定义，且免费额度已经用完，则报错
+        if (!hasFreeQuota) {
+          return false;
+        }
       }    
     }    
 
@@ -1340,22 +1409,41 @@ word.post('/search', async (c) => {
 
       // Ensure slug is available for AI call (should be if existingWord is null from prefix search)
       if (!searchSlug) {
-            // This case should ideally not happen if the slug was empty initially
-            // and no random word was found, but handle defensively.
-            return c.json({ message: 'Cannot generate data for empty slug.' }, 400);
+        // This case should ideally not happen if the slug was empty initially
+        // and no random word was found, but handle defensively.
+        return c.json({ message: 'Cannot generate data for empty slug.' }, 400);
       }
-        const wordToGenerate = searchSlug;
+
+      // 限流检查
+      let hasFreeQuota = false;
+      // --- 2. 检查和消费免费额度 ---
+      try {
+          hasFreeQuota = await checkAndConsumeFreeQuota(c, user);
+      } catch (error) {
+          // checkAndConsumeFreeQuota 内部已经抛出了 HTTPException
+          return c.json({ message: error.message }, 400);
+      }      
+
+      const wordToGenerate = searchSlug;
 
       // Call Gemini AI to generate data
-      let aiResponse = await generateBentoByGeminiAi(c, wordToGenerate, isJapanese);
+      let aiResponse = await generateBentoByGeminiAi(c, wordToGenerate, isJapanese, hasFreeQuota);
       if (!aiResponse || !aiResponse[wordToGenerate]) {
           console.error(`Gemini AI failed to generate data for "${wordToGenerate}" or returned unexpected format.`);
-          // return c.json({ message: `Failed to generate data for "${wordToGenerate}".` }, 500);
-          aiResponse = await generateBentoByDeepSeekAi(c, wordToGenerate, isJapanese);
+          if (aiResponse === false) {
+            return c.json({ message: '免费额度已用完。请在"个人中心"配置大模型 API Key 以继续使用。' }, 500);
+          } else {
+            // return c.json({ message: `Failed to generate data for "${wordToGenerate}".` }, 500);
+            aiResponse = await generateBentoByDeepSeekAi(c, wordToGenerate, isJapanese, hasFreeQuota);
+          }
       }
       if (!aiResponse || !aiResponse[wordToGenerate]) {
           console.error(`DeepSeek AI failed to generate data for "${wordToGenerate}" or returned unexpected format.`);
-          return c.json({ message: `Failed to generate data for "${wordToGenerate}".` }, 500);
+          if (aiResponse === false) {
+            return c.json({ message: '免费额度已用完。请在"个人中心"配置大模型 API Key 以继续使用。' }, 500);
+          } else {
+            return c.json({ message: `Failed to generate data for "${wordToGenerate}".` }, 500);
+          }
       }
 
       const geminiData = aiResponse[wordToGenerate];

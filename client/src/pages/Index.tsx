@@ -133,7 +133,7 @@ const Index = () => {
       const mustHaveImage = viewMode === 'flashcard';
       const data = await fetchAndCacheWord(wordSlug, NavigationMode.Search, mustHaveImage); // 等待数据获取或从缓存返回
 
-      if (data) {
+      if (data && typeof data !== 'string') {
           setWordData(data); // 设置获取到的单词数据 (fetchAndCacheWord 已处理缓存)
           setError(null); // 确保没有错误
       } else {
@@ -142,7 +142,7 @@ const Index = () => {
           setError(`无法加载单词 ${wordSlug}。`);
            toast({
              title: "获取单词详情失败",
-             description: `抱歉，无法加载单词 ${wordSlug}。`,
+             description: (typeof data === 'string') ? data : `抱歉，无法加载单词 ${wordSlug}。`,
              variant: "destructive",
           });
         //    setWordData(null); // 确保数据为 null

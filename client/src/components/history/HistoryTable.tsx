@@ -122,6 +122,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
             <TableHead className="w-2/6 md:w-auto">内容</TableHead>
             <TableHead className="hidden sm:table-cell w-1/6 md:w-auto">考试类型</TableHead>
             <TableHead className="w-1/6 md:w-auto">状态</TableHead>
+            <TableHead className="hidden md:table-cell w-1/6 md:w-auto">错误</TableHead>
             <TableHead className="hidden md:table-cell w-1/6 md:w-auto">创建时间</TableHead>
             <TableHead className="w-1/6 md:w-auto text-right">操作</TableHead>
           </TableRow>
@@ -141,6 +142,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
               </TableCell>
               <TableCell className="hidden sm:table-cell align-top py-2 px-2 sm:px-4">{resource.examType}</TableCell>
               <TableCell className="align-top py-2 px-2 sm:px-4">{getStatusBadge(resource.status)}</TableCell>
+              <TableCell className="hidden md:table-cell align-top py-2 px-2 sm:px-4">{resource.error || ""}</TableCell>
               <TableCell className="hidden md:table-cell align-top py-2 px-2 sm:px-4">{formatDate(resource.createdAt)}</TableCell>
               <TableCell className="align-top py-2 px-2 sm:px-4 text-right">
                 <HistoryActions

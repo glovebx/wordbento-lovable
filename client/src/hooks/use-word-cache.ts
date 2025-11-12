@@ -1,6 +1,7 @@
 import { useRef, useCallback } from 'react';
 import { WordDataType } from '@/types/wordTypes';
 import { axiosPrivate } from "@/lib/axios";
+import { AxiosError } from "axios";
 
 // // 定义获取到的单词数据的类型
 // // 建议将这个接口放在一个共享的文件中（如 src/types/wordTypes.ts）
@@ -92,7 +93,7 @@ export const useWordCache = () => {
 
   // Helper function to check cache or fetch data from API, then add to cache
   // 这个函数是核心，负责检查缓存，如果未命中则从 API 获取，成功后添加到缓存
-  const fetchAndCacheWord = useCallback(async (slug: string, mode = NavigationMode.Search, mhi: boolean = false): Promise<WordDataType | null> => {
+  const fetchAndCacheWord = useCallback(async (slug: string, mode = NavigationMode.Search, mhi: boolean = false): Promise<WordDataType | string | null> => {
       const cache = wordCacheRef.current;
 
       // 1. 检查缓存
@@ -122,12 +123,15 @@ export const useWordCache = () => {
             addToCache(data.word_text, data); // 将获取到的数据添加到缓存
             return data; // 返回获取到的数据
         } else {
-            console.log('No user data found.');            
+          console.log('No user data found.');            
           return null;
         }
       } catch (err) {
           // 网络错误
           console.error(`Network error fetching word "${slug}":`, err);
+          if (err instanceof AxiosError) {
+            return err?.response?.data?.message;
+          }
           return null; // 获取失败返回 null
       }
   }, [addToCache]); // fetchAndCacheWord 依赖于 addToCache 函数
