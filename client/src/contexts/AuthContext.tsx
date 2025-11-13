@@ -102,8 +102,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (username && password.length >= 6 && email.indexOf('@') > 0) {
       console.log("AuthContext: Attempting registration...");
       try {
-        const uuid = crypto.randomUUID();
-        const response = await axiosPrivate.post('/api/auth/register', JSON.stringify({ username, email, password, uuid }));
+        // 放到服务器端处理
+        // const uuid = crypto.randomUUID();
+        const response = await axiosPrivate.post('/api/auth/register', JSON.stringify({ username, email, password }));
         console.log('AuthContext: Register API response status:', response.status);
         console.log('AuthContext: Register API response data:', response.data);
 

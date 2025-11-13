@@ -15,8 +15,7 @@ import { jsonrepair } from 'jsonrepair';
 import { cleanAiJsonResponse } from './word';
 import { calculateMD5 } from '../utils/passwords';
 import { extractTextFromSrt } from '../utils/languageParser';
-import { checkAndConsumeFreeQuota } from '../utils/security';
-import { error } from 'console';
+import { checkAndConsumeFreeQuota, getLlmConfig } from '../utils/security';
 
 const analyze = new Hono();
 
@@ -109,33 +108,35 @@ const analyze = new Hono();
 //     // // --- End Mock AI Response ---
 // };
 
-const extractWordsByAi = async (c, analysisData, hasFreeQuota) => {
-  console.log(`Calling Gemini AI for source2: ${analysisData.sourceType}`);
+const extractWordsByAi = async (c, userId, analysisData, hasFreeQuota) => {
+  console.log(`Calling AI for source2: ${analysisData.sourceType}`);
+
+  let candidates = false;
+
+  let llm = await getLlmConfig(c, 'gemini', userId, hasFreeQuota);
+
+  if (llm[1]) {
+    candidates = await extractWordsByPlaformAi(c, llm, analysisData);
+  }
+  if (!candidates || candidates.length === 0) {
+    llm = await getLlmConfig(c, 'deepseek', userId, hasFreeQuota);
+    if (llm[1]) {
+      candidates = await extractWordsByPlaformAi(c, llm, analysisData);
+    }
+  }
+
+  return candidates;
+}
+
+const extractWordsByPlaformAi = async (c, llm, analysisData) => {
+  console.log(`Calling ${llm[0]} AI for source2: ${analysisData.sourceType}`);
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
   
-  let AI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
-  let AI_API_KEY = c.env.GEMINI_API_KEY
-  let AI_API_MODEL = c.env.GEMINI_API_MODEL
+  let AI_API_ENDPOINT = llm[1]
+  let AI_API_KEY = llm[2]
+  let AI_API_MODEL = llm[3]
 
-  const user = c.get('user');
-  if (user) {
-    const userId = user.id;
-    const llmKey = `llm-gemini-${userId}`
-    const llmData = await c.env.WORDBENTO_KV.get(llmKey, { type: 'json' });
-    if (llmData) {
-      // 已登录用户用自己的配置
-      AI_API_ENDPOINT = llmData.endpoint;
-      AI_API_KEY = llmData.token;
-      AI_API_MODEL = llmData.model;
-    } else {
-      // 从数据库获取，如果数据库未定义，且免费额度已经用完，则报错
-      if (!hasFreeQuota) {
-        return false;
-      }
-    }
-  }
-  
   try {
     const prompt = analysisData.sourceType === 'article' ? `
 我给你一篇文章，请从中将${analysisData.examType}等级的单词筛选出来，请仅以json格式的数组返回，不要包含任何其他文本或解释。
@@ -163,7 +164,7 @@ URL如下：${analysisData.content}`;
       });
 
       if (!response.ok) {
-          console.error(`Gemini AI API call failed: ${response.status} ${response.statusText}`);
+          console.error(`${llm[0]} AI API call failed: ${response.status} ${response.statusText}`);
           return null;
       }
 
@@ -172,7 +173,7 @@ URL如下：${analysisData.content}`;
 
       // 2. Check if the 'choices' array exists and is not empty
       if (!data.choices || data.choices.length === 0) {
-        console.error("API call failed: Response does not contain any choices.");
+        console.error(`${llm[0]} API call failed: Response does not contain any choices.`);
         // Handle this case
         // You might want to log the full response here to debug what was received
         console.log("Full response:", data);
@@ -181,7 +182,7 @@ URL如下：${analysisData.content}`;
 
       // 3. Check if the first choice contains a message
       if (!data.choices[0].message) {
-          console.error("API call failed: The first choice does not contain a message.");
+          console.error(`${llm[0]} API call failed: The first choice does not contain a message.`);
            // Handle this case
            console.log("Full response:", data);
           return null; // Or throw an error
@@ -203,7 +204,7 @@ URL如下：${analysisData.content}`;
       return jsonWords;
 
   } catch (error) {
-      console.error('Network error calling Gemini AI API:', error);
+      console.error(`Network error calling ${llm[0]} AI API:`, error);
       return null;
   }
 };
@@ -258,6 +259,7 @@ const pollingStatusFromScraper = async (c, taskId) => {
   // Example using fetch:
 
   const YOUTUBE_SCRAPER_POLLING_ENDPOINT = c.env.YOUTUBE_SCRAPER_ENDPOINT + '/tasks/' + taskId;
+  console.log(`YOUTUBE_SCRAPER_POLLING_ENDPOINT: ${YOUTUBE_SCRAPER_POLLING_ENDPOINT}`);
 
   try {
 
@@ -409,6 +411,8 @@ const getSrtFromScraperThenExtractWords = async (c, db, task, examType) => {
       } catch (dbError) { // Removed type annotation
           console.error(`Database transaction failed for task "${task.uuid}":`, dbError);
       }
+
+      console.log(`Task "${task.uuid}" srtContent inserted successfully.`);
         
       const analysisData = {
           title: download_title,
@@ -1351,15 +1355,17 @@ analyze.get('/:taskId', async (c) => {
 
               if (isYoutube && (task.status !== 'completed' && task.status !== 'failed')) {
                   const scraperResult = await pollingStatusFromScraper(c, taskId)
-                  console.log(`scraperResult ${scraperResult}`)
+                  console.log(`scraperResult ${JSON.stringify(scraperResult)}`)
                   if (scraperResult) {
                       // 返回了mp3和字幕，需要再次调用获得最终结果
                       if (scraperResult.status == 'success') {
                           // 获取字幕，然后调用ai获取结果
                           if (!alreadyScraped.has(existingTask.uuid)) {
-                              alreadyScraped.add(existingTask.uuid)
-                              await getSrtFromScraperThenExtractWords(c, db, existingTask, examType);
-                              await getAudioFromScraperThenExtractWords(c, db, existingTask, examType);
+                            alreadyScraped.add(existingTask.uuid)
+                            await getAudioFromScraperThenExtractWords(c, db, existingTask, examType);                            
+                            await getSrtFromScraperThenExtractWords(c, db, existingTask, examType);
+                          } else {
+                            console.log(`Task has already scraped: ${existingTask.uuid}`);  
                           }
 
                           // // 成功
@@ -1521,21 +1527,32 @@ const simulateAnalysisTask = async (c, taskId, db, analysisData) => {
   //   console.log(`simulateAnalysisTask attempted for task ID: ${taskId}`);
   // }
 
-  const user = c.get('user');
+  // // 这里无法获取到当前用户
+  // const user = c.get('user');
 
-  // 限流检查
+  let userId = null;
+  // // 限流检查
   let hasFreeQuota = false;
   // --- 2. 检查和消费免费额度 ---
   try {
-      hasFreeQuota = await checkAndConsumeFreeQuota(c, user);
+    const resources = await db.select({
+      user_id: schema.resources.user_id
+    })
+    .from(schema.resources)
+    .where(eq(schema.resources.uuid, taskId))
+    .limit(1);
+    if (resources.length > 0) {
+      userId = resources[0].user_id;
+      hasFreeQuota = await checkAndConsumeFreeQuota(c, userId);      
+    }
   } catch (error) {
-      // checkAndConsumeFreeQuota 内部已经抛出了 HTTPException
-      return c.json({ message: error.message }, 400);
+    console.error(error.message);
+    // checkAndConsumeFreeQuota 内部已经抛出了 HTTPException
+    return c.json({ message: error.message }, 400);
   }
 
-  let candidates = await extractWordsByAi(c, analysisData, hasFreeQuota);
+  let candidates = await extractWordsByAi(c, userId, analysisData, hasFreeQuota);
   if (!candidates || candidates.length === 0) {
-
     await db.update(schema.resources)
     .set({
         status: 'failed',
@@ -1545,9 +1562,10 @@ const simulateAnalysisTask = async (c, taskId, db, analysisData) => {
     .where(eq(schema.resources.uuid, taskId));
     return null;
   }
-    // 去重
-    const uniqueElements = new Set(candidates);
-    candidates = Array.from(uniqueElements);
+
+  // 去重
+  const uniqueElements = new Set(candidates);
+  candidates = Array.from(uniqueElements);
 
   let values = {
           status: 'completed',

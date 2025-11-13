@@ -18,7 +18,7 @@ import { fixUnescapedQuotesInJson, isQuoted, removeQuotes } from '../utils/langu
 import LanguageUtils from '../utils/languageUtils';
 // // 导入 HTTPException 用于抛出 HTTP 错误
 // import { HTTPException } from 'hono/http-exception';
-import { checkAndConsumeFreeQuota } from '../utils/security';
+import { checkAndConsumeFreeQuota, getLlmConfig } from '../utils/security';
 
 // Type definitions are removed in JavaScript
 
@@ -435,35 +435,37 @@ const jaPrompt = `给你一个日文单词，返回下列json格式的数据:
 }
 单词:`; 
 
+const generateBentoByAi = async (c, userId, word, isJapanese, hasFreeQuota) => {
+  console.log(`Calling AI for word: ${word}`);
+
+  let aiResponse = false;
+  let llm = await getLlmConfig(c, 'gemini', userId, hasFreeQuota);
+
+  if (llm[1]) {
+    // 配置了gemini
+    aiResponse = await generateBentoByPlatformAi(c, llm, word, isJapanese);
+  }
+  if (!aiResponse || !aiResponse[word]) {
+    llm = await getLlmConfig(c, 'deepseek', userId, hasFreeQuota);
+    if (llm[1]) {
+      aiResponse = await generateBentoByPlatformAi(c, llm, word, isJapanese);
+    }
+  }
+
+  return aiResponse;
+}
+
 // Placeholder function to call Gemini AI API
 // Replace with your actual API call logic
 // Type annotations removed
-const generateBentoByGeminiAi = async (c, word, isJapanese, hasFreeQuota) => {
-    console.log(`Calling Gemini AI for word: ${word}`);
+const generateBentoByPlatformAi = async (c, llm, word, isJapanese) => {
+    console.log(`Calling ${llm[0]} AI for word: ${word}`);
     // This is a placeholder. You need to replace this with your actual API call.
     // Example using fetch:
 
-    let AI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
-    let AI_API_KEY = c.env.GEMINI_API_KEY
-    let AI_API_MODEL = c.env.GEMINI_API_MODEL
-
-    const user = c.get('user');
-    if (user) {
-      const userId = user.id;
-      const llmKey = `llm-gemini-${userId}`
-      const llmData = await c.env.WORDBENTO_KV.get(llmKey, { type: 'json' });
-      if (llmData) {
-        // 已登录用户用自己的配置
-        AI_API_ENDPOINT = llmData.endpoint;
-        AI_API_KEY = llmData.token;
-        AI_API_MODEL = llmData.model;
-      } else {
-        // 从数据库获取，如果数据库未定义，且免费额度已经用完，则报错
-        if (!hasFreeQuota) {
-          return false;
-        }
-      }
-    }
+    let AI_API_ENDPOINT = llm[1];
+    let AI_API_KEY = llm[2];
+    let AI_API_MODEL = llm[3];
 
     try {
 //       const prompt = `
@@ -595,7 +597,7 @@ const generateBentoByGeminiAi = async (c, word, isJapanese, hasFreeQuota) => {
         });
   
         if (!response.ok) {
-            console.error(`Gemini AI API call failed: ${response.status} ${response.statusText}`);
+            console.error(`${llm[0]} AI API call failed: ${response.status} ${response.statusText}`);
             return null;
         }
   
@@ -663,7 +665,7 @@ const generateBentoByGeminiAi = async (c, word, isJapanese, hasFreeQuota) => {
         return repairAiResponseToJson(messageContent);
 
     } catch (error) {
-        console.error('Network error calling Gemini AI API:', error);
+        console.error(`Network error calling ${llm[0]} AI API:`, error);
         return null;
     }
     
@@ -689,128 +691,7 @@ const generateBentoByGeminiAi = async (c, word, isJapanese, hasFreeQuota) => {
     // // --- End Mock AI Response ---
 };
 
-
-// Placeholder function to call Gemini AI API
-// Replace with your actual API call logic
-// Type annotations removed
-const generateBentoByDeepSeekAi = async (c, word, isJapanese, hasFreeQuota) => {
-    console.log(`Calling DeepSeek AI for word: ${word}`);
-    
-    let AI_API_ENDPOINT = c.env.DEEPSEEK_API_ENDPOINT
-    let AI_API_KEY = c.env.DEEPSEEK_API_KEY
-    let AI_API_MODEL = c.env.DEEPSEEK_API_MODEL
-
-    const user = c.get('user');
-    if (user) {
-      const userId = user.id;
-      const llmKey = `llm-deepseek-${userId}`
-      const llmData = await c.env.WORDBENTO_KV.get(llmKey, { type: 'json' });
-      if (llmData) {
-        // 从数据库获取？？
-        AI_API_ENDPOINT = llmData.endpoint;
-        AI_API_KEY = llmData.token;
-        AI_API_MODEL = llmData.model;
-      } else {
-        // 从数据库获取，如果数据库未定义，且免费额度已经用完，则报错
-        if (!hasFreeQuota) {
-          return false;
-        }
-      }    
-    }    
-
-    try {
-      const prompt = (isJapanese ? jaPrompt : enPrompt) + word;
-      const jsonData = {
-        model: AI_API_MODEL,
-        messages:[
-          {role: 'system', content: 'You are a professional proficient in multiple languages, including Chinese, English, Japanese, and more.'},
-          {role: 'user', content: prompt},
-        ]};
-
-      const response = await fetch(AI_API_ENDPOINT, {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${AI_API_KEY}`
-          },
-          body: JSON.stringify(jsonData),
-      });
-  
-      if (!response.ok) {
-          console.error(`DeepSeek AI API call failed: ${response.status} ${response.statusText}`);
-          return null;
-      }
-
-      const data = await response.json(); // No type assertion needed in JS
-      console.log(data);
-
-      // 2. Check if the 'choices' array exists and is not empty
-      if (!data.choices || data.choices.length === 0) {
-        console.error("API call failed: Response does not contain any choices.");
-        // Handle this case
-        // You might want to log the full response here to debug what was received
-        console.log("Full response:", data);
-        return null; // Or throw an error
-      }
-
-      // 3. Check if the first choice contains a message
-      if (!data.choices[0].message) {
-          console.error("API call failed: The first choice does not contain a message.");
-            // Handle this case
-            console.log("Full response:", data);
-          return null; // Or throw an error
-      }
-
-      // If all checks pass, access and log the message content
-      const messageContent = data.choices[0].message.content;
-      console.log("API call successful. Received message:");
-      // console.log(`messageContent: ${ messageContent }`);
-
-      // let repairedJson = null;
-
-      // const jsonStr = cleanAiJsonResponse(messageContent)
-      // console.log(`jsonStr: ${ jsonStr }`);
-
-      // try {
-      //   repairedJson = JSON.parse(jsonStr);
-      //   console.log(`repairedJson: ${ repairedJson }`);
-      // } catch(error) {
-      //   repairedJson = null;
-      // }
-
-      // if (!repairedJson) {
-      //   let repairedStr;
-      //   try {
-      //     repairedStr = jsonrepair(jsonStr)
-      //     console.log(`repairedStr: ${ repairedStr }`);
-      //   } catch(error) {
-      //     repairedStr = jsonStr;
-      //     console.log('jsonrepair failed, fallback to jsonStr');
-      //   }
-
-      //   try {
-      //     repairedJson = JSON.parse(repairedStr);
-      //     console.log(`repairedJson: ${ repairedJson }`);
-      //   } catch(error) {
-      //     const repairedBadStr = fixUnescapedQuotesInJson(repairedStr)
-      //     console.log(`repairedBadStr: ${ repairedBadStr }`);
-      //     repairedJson = JSON.parse(repairedBadStr);
-      //   }
-      // }
-
-      // // console.log(`jsonWord: ${ jsonWord }`);
-
-      // // Validate the structure of the received data if necessary
-      // return repairedJson;
-      return repairAiResponseToJson(messageContent);
-
-    } catch (error) {
-        console.error('Network error calling DeepSeek AI API:', error);
-        return null;
-    }
-};
-
-
+// 废弃，效果很差
 const generateImageByGeminiAi = async (c, word) => {
   console.log(`Calling Gemini AI for word: ${word}`);
   // This is a placeholder. You need to replace this with your actual API call.
@@ -1418,29 +1299,22 @@ word.post('/search', async (c) => {
       let hasFreeQuota = false;
       // --- 2. 检查和消费免费额度 ---
       try {
-          hasFreeQuota = await checkAndConsumeFreeQuota(c, user);
+          hasFreeQuota = await checkAndConsumeFreeQuota(c, userId);
       } catch (error) {
-          // checkAndConsumeFreeQuota 内部已经抛出了 HTTPException
-          return c.json({ message: error.message }, 400);
-      }      
+        console.error(error.message);
+        // checkAndConsumeFreeQuota 内部已经抛出了 HTTPException
+        return c.json({ message: error.message }, 400);
+      }
 
       const wordToGenerate = searchSlug;
 
       // Call Gemini AI to generate data
-      let aiResponse = await generateBentoByGeminiAi(c, wordToGenerate, isJapanese, hasFreeQuota);
+      let aiResponse = await generateBentoByAi(c, userId, wordToGenerate, isJapanese, hasFreeQuota);
       if (!aiResponse || !aiResponse[wordToGenerate]) {
-          console.error(`Gemini AI failed to generate data for "${wordToGenerate}" or returned unexpected format.`);
-          if (aiResponse === false) {
-            return c.json({ message: '免费额度已用完。请在"个人中心"配置大模型 API Key 以继续使用。' }, 500);
-          } else {
-            // return c.json({ message: `Failed to generate data for "${wordToGenerate}".` }, 500);
-            aiResponse = await generateBentoByDeepSeekAi(c, wordToGenerate, isJapanese, hasFreeQuota);
-          }
-      }
-      if (!aiResponse || !aiResponse[wordToGenerate]) {
-          console.error(`DeepSeek AI failed to generate data for "${wordToGenerate}" or returned unexpected format.`);
-          if (aiResponse === false) {
-            return c.json({ message: '免费额度已用完。请在"个人中心"配置大模型 API Key 以继续使用。' }, 500);
+          console.error(`AI failed to generate data for "${wordToGenerate}" or returned unexpected format.`);
+          if (typeof aiResponse === 'string') {
+            // 说明没有配置ai 
+            return c.json({ message: '请在个人中心配置AI大模型接入信息以继续使用。' }, 500);
           } else {
             return c.json({ message: `Failed to generate data for "${wordToGenerate}".` }, 500);
           }
@@ -1619,6 +1493,32 @@ word.post('/imagize', async (c) => {
       // Return the found word data
       console.error(`No word found with prefix: "${slug}"`);
       return c.json({}, 200);
+  } else {
+    if (!example) {
+      console.error(`No example provided, try to grab one from db: "${slug}"`);
+      // 从数据库中获取第一个例句
+      const examples = await db.select({
+        content: schema.word_content.content,
+      })
+      .from(schema.word_content)
+      .where(
+        and(
+          eq(schema.word_content.language_code, "en"),
+          eq(schema.word_content.content_type, "examples"),
+          eq(schema.word_content.word_id, existingWord.id))
+        )
+      .limit(1);
+      if (examples.length > 0) {
+        try {
+          console.error(`Examples from db: "${examples[0].content}"`);
+          const jsonExamples = JSON.parse(examples[0].content);
+          // 是一个数组
+          example = jsonExamples[0];
+        } catch (error) {
+          console.error(`Error grabing examples from db: ${slug}`, error);
+        }
+      }
+    }
   } 
 
   // // Ensure slug is available for AI call (should be if existingWord is null from prefix search)

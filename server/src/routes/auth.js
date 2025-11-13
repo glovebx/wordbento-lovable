@@ -13,10 +13,11 @@ const randomUUID = () => crypto.randomUUID();
 
 // User registration route
 auth.post('/register', async (c) => {
-  const { username, email, password, role = 'admin', uuid } = await c.req.json();
+  const { username, email, password, role = 'admin' } = await c.req.json();
 
+  const uuid = randomUUID();
   // Validate required fields
-  if (!username || !email || !password || !uuid) {
+  if (!username || !email || !password) {
     return c.json({ message: 'All fields are required.' }, 400);
   }
 
