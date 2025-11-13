@@ -895,10 +895,10 @@ analyze.get('/history', async (c) => {
             r.audioKey = !!r.audioKey;
             r.captionSrt = !!r.captionSrt;
         });
-          // Record exists, return its UUID
-          console.log(`Existing resource found with length: ${existingResources.length}`);
-          return c.json(existingResources, 200); // Return 200 OK for existing
+        // Record exists, return its UUID
+        console.log(`Existing resource found with length: ${existingResources.length}`);
       }
+      return c.json(existingResources, 200); // Return 200 OK for existing
 
   } catch (checkError) {
       console.error("Failed to check for existing resource in DB:", checkError);
