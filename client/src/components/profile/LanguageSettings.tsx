@@ -96,7 +96,7 @@ export const LanguageSettings = ({
               Saving...
             </>
           ) : (
-            'Save'
+            '更新'
           )}
         </Button>    
         </div>      

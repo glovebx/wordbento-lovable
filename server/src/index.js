@@ -8,6 +8,7 @@ import word from './routes/word.js';
 import analyze from './routes/analyze.js';
 import upload from './routes/upload.js';
 import llm from './routes/llm.js';
+import profile from './routes/profile.js';
 // import rss from './routes/rss.js';
 import {
   getCookie
@@ -23,7 +24,7 @@ app.use('*', async (c, next) => {
 });
 
 // CORS Middleware
-const allowedOrigins = ['https://your-app.com', 'http://localhost:1234', 'http://192.168.3.58:1234'];
+const allowedOrigins = ['https://your-app.com', 'http://localhost:1234', 'http://192.168.3.58:1234', 'chrome-extension://aflahjaaahplpgidflkkfaaehjleopeb'];
 
 app.use(
   '*',
@@ -61,20 +62,26 @@ app.use('/api/*', async (c, next) => {
   const sessionId = getCookie(c, 'session_id')
 
   // console.log('Session ID from Cookie:', sessionId);
+  let accessToken = sessionId ? null : c.req.header('Authorization');
+  if (accessToken) {
+    accessToken = accessToken.split(' ')[1];
+  }
 
-  if (!sessionId) {
+  console.log(`Wordbento-Auth-Key ${accessToken}`)
+
+  if (!sessionId && !accessToken) {
     if (!publicButPrivateRoutes.some(route => c.req.path.startsWith(route))) {
       // console.warn('No session ID found in cookies.');
-      return c.json({ message: 'Unauthorized: Missing session ID' }, 401);  
+      return c.json({ message: 'Unauthorized: Missing verified ID' }, 401);  
     }
     await next();
   } else {
     try {
-      const userData = await c.env.WORDBENTO_KV.get(sessionId, { type: 'json' });
+      const userData = await c.env.WORDBENTO_KV.get(sessionId || accessToken, { type: 'json' });
       // console.log('User Data Retrieved from KV:', userData);
       if (!userData) {
         // console.warn('Invalid session ID.');
-        return c.json({ message: 'Unauthorized: Invalid session ID' }, 401);
+        return c.json({ message: 'Unauthorized: Invalid verified ID' }, 401);
       }
       c.set('user', userData);
       await next();
@@ -94,6 +101,7 @@ app.route('/api/word', word);
 app.route('/api/upload', upload);
 app.route('/api/analyze', analyze);
 app.route('/api/llm', llm);
+app.route('/api/profile', profile);
 app.route('/ws/analyze', analyze);
 // app.route('/api/rss', rss);
 

@@ -126,5 +126,18 @@ export const useRecentAnalysis = (isAuthenticated: boolean) => {
       }    
   }, []);
 
-  return { recentSubmissions, isLoading, addSubmission, getSrt, hasMore, loadMore };
+  const getFullContent = useCallback(async (uuid: string) => {
+      try {
+        const response = await axiosPrivate.get(`/api/analyze/content/${uuid}`);
+        if (response.status === 200) {
+          return response.data;
+        }
+        return null;
+      } catch (error) {
+          console.error('Failed to get full content:', error);
+          return null;
+      }    
+  }, []);  
+
+  return { recentSubmissions, isLoading, addSubmission, getSrt, getFullContent, hasMore, loadMore };
 };

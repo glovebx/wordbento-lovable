@@ -121,7 +121,6 @@ llm.post('/save', async (c) => {
       // For now, let's return an error if the check itself failed
       return c.json({ message: 'Failed to update llm.' }, 500);
   }
-
 });
 
 export default llm;

@@ -9,6 +9,8 @@ import { ApiSettings } from "@/components/profile/ApiSettings";
 
 // 引入 useLlms Hook 及其类型
 import { useLlms, Llm, SaveLlmData } from '@/hooks/use-llm'; // 假设 use-llms 路径正确
+import { useProfile, Profile } from '@/hooks/use-profile'; // 假设 use-llms 路径正确
+import { AccessTokenSettings } from "../profile/AccessTokenSettings";
 
 // --- 类型定义 ---
 
@@ -227,6 +229,13 @@ const UserProfile = () => {
         isSaving: isLlmSaving 
     } = useLlms(isAuthenticated);
 
+    // 使用 useLlms Hook
+    const { 
+        recentProfile, 
+        renewAccessToken, 
+        isSaving: isTokenRefreshing 
+    } = useProfile(isAuthenticated);
+
     // 状态初始化为默认值，等待后端数据加载
     const [apiConfigs, setApiConfigs] = useState<Record<string, ApiConfigState>>(() => 
         mergeConfigAndInitState(initialApis, [])[0]
@@ -263,6 +272,23 @@ const UserProfile = () => {
             description: "Your language settings have been updated.",
         });
     };
+
+    // --- 优化后的 API 配置保存处理器 ---
+    const handleAccessTokenSettings = useCallback(async () => {
+        // 调用 useLlms 提供的 saveLlm 函数
+        const success = await renewAccessToken();
+
+        // useLlms 内部的 saveLlm 已经处理了 isSaving 状态和 Toast 提示
+        
+        if (success) {
+            // 注意：因为 saveLlm 成功后会触发 useLlms 内部的 fetchLlms，
+            // 进而更新 recentLlms，最终触发本组件的 useEffect 来合并和更新 apiConfigs 状态。
+            // 因此，这里无需手动 setApiConfigs，实现了数据流的单向性。
+        } else {
+            console.error(`Failed to refresh access token settings.`);
+            // 错误信息已在 hook 内部的 toast 中显示
+        }
+    }, [renewAccessToken]); // 依赖 apiConfigs 以获取 ID
 
     // --- 优化后的 API 配置保存处理器 ---
     const handleSaveApiSettings = useCallback(async (
@@ -332,6 +358,14 @@ const UserProfile = () => {
                         setTargetLanguage={(lang) => setLanguageSettings(prev => ({ ...prev, targetLanguage: lang }))}
                         onSave={handleSaveLanguageSettings}
                         isSaving={languageSettings.isSaving}
+                    />
+                </div>
+
+                <div id="access-token-section" className="scroll-mt-12">
+                    <AccessTokenSettings 
+                        accessToken={recentProfile?.access_token}
+                        onTokenRefresh={handleAccessTokenSettings}
+                        isSaving={isTokenRefreshing}
                     />
                 </div>
 

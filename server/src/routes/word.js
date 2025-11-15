@@ -1006,7 +1006,7 @@ word.post('/search', async (c) => {
     try {
        const body = await c.req.json();
        slug = body.slug;
-       mode = body.mode;
+       mode = body.mode || NavigationMode.Search;
        mustHaveImage = !!body.mhi;
     } catch (e) {
         console.error("Failed to parse request body:", e);
@@ -1033,7 +1033,7 @@ word.post('/search', async (c) => {
     const user = c.get('user');
     const userId = user ? user.id : null;
 
-    console.warn(`login user: ${ userId }`);
+    // console.warn(`login user: ${ userId }`);
 
     // const simpleWordsFields = {
     //         id: schema.words.id,

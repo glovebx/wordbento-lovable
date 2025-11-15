@@ -109,7 +109,7 @@ export const ApiSettings = ({
               Saving...
             </>
           ) : (
-            'Save'
+            '更新'
           )}
         </Button>
       </div>

@@ -1285,6 +1285,53 @@ analyze.get('/srt/:uuid', async (c) => {
   }
 });
 
+
+// 获取资源关联的完整文本
+analyze.get('/content/:uuid', async (c) => {
+  console.log('Attempting to retrieve full content from DB');
+
+  const uuid = c.req.param('uuid');
+  // If objectKey is empty, it's a bad request
+  if (!uuid) {
+    return new Response('Bad Request: Missing uuid.', { status: 400 });
+  }  
+
+  console.log(`Attempting to retrieve full content from DB with uuid: "${uuid}"`);
+
+  const db = drizzle(c.env.DB, { schema });
+  try {
+      const existingResources = await db.select({
+        content: schema.resources.content,
+      })
+      .from(schema.resources)
+      .where(eq(schema.resources.uuid, uuid))
+      .limit(1); // We only need to find one match
+
+    if (existingResources.length == 0) {
+        return new Response('Bad Request: Invalid uuid.', { status: 400 });
+    }
+
+    const content = existingResources[0].content;
+
+    const headers = new Headers();
+    // // Add CORS headers if your frontend is on a different origin during local development
+    // headers.set('Access-Control-Allow-Origin', '*'); // Allow all origins for local testing
+    // headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    // headers.set('Access-Control-Allow-Headers', '*'); // Allow all headers
+
+    headers.set('Content-Type', 'text/plain;charset=UTF-8');
+
+    return new Response(content, {
+      status: 200, // HTTP status code 200 OK
+      headers: headers,
+    });
+
+  } catch (error) {
+    console.error(`Error retrieving full content "${uuid}" from DB:`, error);
+    return new Response('Internal Server Error: Failed to retrieve content.', { status: 500 });
+  }
+});
+
 // --- WebSocket Endpoint for Status Updates (New) ---
 // This route handles the WebSocket upgrade and sends status updates by polling the DB.
 // This is a simplified approach for demonstration. A push-based system from the background

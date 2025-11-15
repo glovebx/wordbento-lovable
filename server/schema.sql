@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     password TEXT NOT NULL,
     role TEXT NOT NULL,
     salt TEXT NOT NULL,
+    access_token TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_sign DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -179,5 +180,18 @@ CREATE TABLE IF NOT EXISTS llms (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- dictionary 表：内置的字典
+CREATE TABLE IF NOT EXISTS dictionary (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    word TEXT NOT NULL,
+    lang TEXT CHECK(lang IN ('en', 'jp')) NOT NULL,
+    phonetic TEXT NOT NULL,
+    meaning TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    frequency INTEGER,  -- 常用
+    difficulty INTEGER, -- 难度
+    UNIQUE (word, lang) -- 确保每个单词在每种语言只有一条记录
 );
 
