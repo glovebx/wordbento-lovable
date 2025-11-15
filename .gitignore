@@ -10,6 +10,8 @@ node_modules/
 # testing
 coverage/
 
+wordbento-ai-assistant-v*/
+
 # next.js
 .next/
 out/
