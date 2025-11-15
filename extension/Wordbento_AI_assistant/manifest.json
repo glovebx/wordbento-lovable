@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Wordbento单词AI助手",
+  "version": "1.0.1",
+  "description": "Wordbento，英文/日文单词AI助手",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://www.youtube.com/*",
+    "https://x.com/*",
+    "https://wordbento.metaerp.ai/*",
+    "http://192.168.3.58:1234/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/watch*", "https://x.com/*"],
+      "js": ["src/content.js"],
+      "css": ["css/content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Wordbento单词AI助手设置"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["css/content.css"],
+      "matches": ["https://www.youtube.com/*", "https://x.com/*"]
+    }
+  ]
+}
