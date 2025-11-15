@@ -1,4 +1,4 @@
-# YouTube沉浸式翻译插件
+# Wordbento单词AI助手插件
 
 🌍 一个专为英语学习者设计的Chrome浏览器插件，在浏览英文网站、观看YouTube视频时提供AI辅助的单词学习功能。
 
