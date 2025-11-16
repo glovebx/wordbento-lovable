@@ -37,10 +37,11 @@ class WordbentoTranslator {
     }
     // 在 contentScript.js 中
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-      if (request.action === 'showMessage') {
+      if (request.action === 'addedToWordbento') {
         // 在页面上显示消息的逻辑
         console.log('收到消息:', request.message);
-        this.showMessage(request.message, 'success');
+        // this.showMessage(request.message, 'success');
+        this.showFloatingWordDefinition(request.word);
         // // 可以调用 sendResponse() 来回复背景脚本
         // sendResponse({ status: 'success' });
       }
@@ -384,6 +385,131 @@ class WordbentoTranslator {
   //     this.showMessage('添加到生词本失败', 'error');
   //   }
   // }
+
+
+  // 显示浮动提示框的核心函数
+  showFloatingWordDefinition(word) {
+    // 获取用户选中的文本范围
+    const selection = window.getSelection();
+    let rect;
+    if (selection.rangeCount === 0) {
+      // 如果没有选中范围，尝试用其他方式定位，例如在页面中央显示
+      rect = {
+        x: window.pageXOffset + 100,
+        y: window.pageYOffset + 100,
+      }
+    } else {
+      // 获取选中范围的边界
+      const range = selection.getRangeAt(0);
+      rect = range.getBoundingClientRect();
+    }
+    this.showWordDefinition(word, rect.x, rect.y);
+
+    // // 如果选中的是单个元素（如图标）或折叠的选区，rect 可能为 0
+    // // 此时尝试从选区中的节点获取位置
+    // if (rect.width === 0 && rect.height === 0) {
+    //   const container = range.commonAncestorContainer;
+    //   // 确保容器是一个元素节点
+    //   const element = container.nodeType === 3 ? container.parentElement : container;
+    //   if (element) {
+    //     const elementRect = element.getBoundingClientRect();
+    //     createFloatingTip(message, data, elementRect);
+    //     return;
+    //   }
+    // }
+
+    // // 如果有有效的选中区域，则在其附近创建提示
+    // if (rect) {
+    //   createFloatingTip(message, data, rect);
+    // }
+  }
+
+  // 创建一个浮动提示元素
+  createFloatingTip(message, data, targetRect) {
+    // 移除可能已存在的旧提示框，避免重复
+    const existingTip = document.getElementById('wordbento-floating-tip');
+    if (existingTip) {
+      existingTip.remove();
+    }
+
+    // 创建提示框的 DOM 元素
+    const tipElement = document.createElement('div');
+    tipElement.id = 'wordbento-floating-tip';
+    tipElement.innerHTML = `
+      <strong>${message}</strong>
+      ${data ? `<br><span>详细信息: ${JSON.stringify(data)}</span>` : ''}
+    `;
+
+    // 设置提示框的样式 (关键：使用绝对定位)
+    Object.assign(tipElement.style, {
+      position: 'absolute',
+      background: '#4CAF50', // 绿色背景表示成功
+      color: 'white',
+      padding: '8px 12px',
+      borderRadius: '4px',
+      fontSize: '14px',
+      zIndex: '10000', // 确保在最上层
+      boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+      maxWidth: '300px',
+      wordWrap: 'break-word',
+      // 初始位置，下面会根据坐标调整
+      left: '0',
+      top: '0',
+      display: 'block'
+    });
+
+    // 将提示框添加到页面
+    document.body.appendChild(tipElement);
+
+    // 计算提示框应该出现的位置
+    const tipRect = tipElement.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // 理想位置：在选中区域的上方居中
+    let desiredTop = targetRect.top + window.pageYOffset - tipRect.height - 5; // 5px 间距
+    let desiredLeft = targetRect.left + window.pageXOffset + (targetRect.width / 2) - (tipRect.width / 2);
+
+    // 边界检测，防止提示框超出视口[8](@ref)
+    // 水平方向防止超出左右边界
+    if (desiredLeft < 5) desiredLeft = 5;
+    if (desiredLeft + tipRect.width > viewportWidth - 5) {
+      desiredLeft = viewportWidth - tipRect.width - 5;
+    }
+
+    // 垂直方向：如果上方空间不够，就显示在下方
+    if (desiredTop < window.pageYOffset) {
+      desiredTop = targetRect.bottom + window.pageYOffset + 5;
+    }
+
+    // 应用计算好的位置
+    tipElement.style.top = `${desiredTop}px`;
+    tipElement.style.left = `${desiredLeft}px`;
+
+    // 3 秒后自动淡出移除
+    setTimeout(() => {
+      tipElement.style.transition = 'opacity 0.5s ease';
+      tipElement.style.opacity = '0';
+      setTimeout(() => {
+        if (tipElement.parentNode) {
+          tipElement.parentNode.removeChild(tipElement);
+        }
+      }, 500);
+    }, 3000);
+  }
+
+  // 备用的定位函数（当无法获取选中区域时使用）
+  getFallbackPosition() {
+    // 简单返回一个靠近视口中上部的矩形区域
+    return {
+      top: window.pageYOffset + 100,
+      left: window.pageXOffset + 100,
+      width: 0,
+      height: 0,
+      bottom: window.pageYOffset + 100,
+      right: window.pageXOffset + 100
+    };
+  }
 
   showMessage(message, type = 'success') {
     console.log('显示消息:', message, type);

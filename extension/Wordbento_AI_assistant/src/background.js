@@ -14,7 +14,7 @@ chrome.runtime.onInstalled.addListener(() => {
         panelPosition: 'right',
         shortcuts: {
           togglePanel: 'Ctrl+T',
-          addToWordbook: 'Ctrl+D'
+          addToWordbento: 'Ctrl+D'
         }
       };
       
@@ -30,7 +30,7 @@ chrome.runtime.onInstalled.addListener(() => {
   // });
   
   chrome.contextMenus.create({
-    id: 'addToWordbook',
+    id: 'addToWordbento',
     title: '添加到Wordbento',
     contexts: ['selection']
   });
@@ -89,7 +89,8 @@ async function saveWordToWordbento(text) {
     
     if (data.content) {
       console.log('Wordbento追加单词成功');
-      return {...data, word: text};
+      const { id, content, word_text, imageUrls, created_at, ...result } = { ...data, word: text};
+      return result;
     }
     
     throw new Error('Wordbento响应格式错误');
@@ -104,12 +105,83 @@ async function saveWordToWordbento(text) {
   }
 }
 
+// 从本地生词本获取单词
+async function getWordFromLocalWordbook(word) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(['wordbook'], (result) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      
+      const wordbook = result.wordbook || [];
+      
+      // 检查是否已存在
+      const existingIndex = wordbook.findIndex(item => item.word.toLowerCase() === word.toLowerCase());
+      
+      const definition = (existingIndex !== -1) ? wordbook[existingIndex].definition : null;
+      // 返回定义
+      resolve(definition);
+    });
+  });
+}
+
+// 保存单词到本地生词本
+async function saveWordToLocalWordbook(word, definition) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(['wordbook'], (result) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      
+      const wordbook = result.wordbook || [];
+      
+      // 检查是否已存在
+      const existingIndex = wordbook.findIndex(item => item.word.toLowerCase() === word.toLowerCase());
+      
+      const wordEntry = {
+        word,
+        definition,
+        addedAt: new Date().toISOString(),
+        reviewCount: 0,
+        lastReviewed: null
+      };
+      
+      if (existingIndex !== -1) {
+        // 更新现有条目
+        wordbook[existingIndex] = { ...wordbook[existingIndex], ...wordEntry };
+      } else {
+        // 添加新条目
+        wordbook.push(wordEntry);
+      }
+      
+      chrome.storage.local.set({ wordbook }, () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve();
+        }
+      });
+    });
+  });
+}
+
 // 获取单词定义
 async function fetchWordDefinition(word) {
   try {
-    const data = await saveWordToWordbento(word);
+    let definition = {};
+    try { 
+      definition = await getWordFromLocalWordbook(word);
+    } catch (error) {
+      console.error('获取本地单词定义失败:', error);
+    }
+
+    if (!definition || !Object.hasOwn(definition, 'meaning')) {
+      definition = await saveWordToWordbento(word);
+    }
     
-    return data;
+    return definition;
     
   } catch (error) {
     console.error('获取单词定义失败:', error);
@@ -140,14 +212,16 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === 'addToWordbook' && info.selectionText) {
+  if (info.menuItemId === 'addToWordbento' && info.selectionText) {
     // 添加选中文本到生词本
     const word = info.selectionText.trim();
     saveWordToWordbento(word)
+    .then(definition => saveWordToLocalWordbook(word, definition))
     .then(() => {
       chrome.tabs.sendMessage(tab.id, {
-        action: 'showMessage',
-        message: `"${word}" 已添加到Wordbento`
+        action: 'addedToWordbento',
+        message: `"${word}" 已添加到Wordbento`,
+        word: word
       });
     })
     .catch(error => {
