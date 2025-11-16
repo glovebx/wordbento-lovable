@@ -397,13 +397,14 @@ class WordbentoTranslator {
       rect = {
         x: window.pageXOffset + 100,
         y: window.pageYOffset + 100,
+        height: 12,
       }
     } else {
       // 获取选中范围的边界
       const range = selection.getRangeAt(0);
       rect = range.getBoundingClientRect();
     }
-    this.showWordDefinition(word, rect.x, rect.y);
+    this.showWordDefinition(word, rect.x, rect.y + rect.height);
 
     // // 如果选中的是单个元素（如图标）或折叠的选区，rect 可能为 0
     // // 此时尝试从选区中的节点获取位置
