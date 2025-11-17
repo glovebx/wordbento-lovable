@@ -10,6 +10,7 @@ chrome.runtime.onInstalled.addListener(() => {
         wordbentoApiKey: '',
         showPostcard: true,
         showPhonetic: true,
+        showYtpCaptionContainer: true,
         theme: 'dark',
         panelPosition: 'right',
         shortcuts: {
@@ -45,11 +46,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         .catch(error => sendResponse({ success: false, error: error.message }));
       return true;
       
-    case 'saveToWordbook':
-      saveWordToWordbento(request.word)
-        .then(() => sendResponse({ success: true }))
-        .catch(error => sendResponse({ success: false, error: error.message }));
-      return true;
+    // case 'saveToWordbook':
+    //   saveWordToWordbento(request.word)
+    //     .then(() => sendResponse({ success: true }))
+    //     .catch(error => sendResponse({ success: false, error: error.message }));
+    //   return true;
   }
 });
 
@@ -89,8 +90,9 @@ async function saveWordToWordbento(text) {
     
     if (data.content) {
       console.log('Wordbento追加单词成功');
-      const { id, content, word_text, imageUrls, created_at, ...result } = { ...data, word: text};
-      return result;
+      const { id, content, word_text, imageUrls, created_at, ...definition } = { ...data, word: text};
+      await saveWordToLocalWordbook(text, definition);
+      return definition;
     }
     
     throw new Error('Wordbento响应格式错误');
@@ -215,17 +217,21 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === 'addToWordbento' && info.selectionText) {
     // 添加选中文本到生词本
     const word = info.selectionText.trim();
-    saveWordToWordbento(word)
-    .then(definition => saveWordToLocalWordbook(word, definition))
-    .then(() => {
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'addedToWordbento',
-        message: `"${word}" 已添加到Wordbento`,
-        word: word
-      });
-    })
-    .catch(error => {
-      console.error('添加到Wordbento失败:', error);
-    });
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'addToWordbento',
+      message: `"${word}" 已添加到Wordbento`,
+      word: word
+    });    
+    // saveWordToWordbento(word)
+    // .then(() => {
+    //   chrome.tabs.sendMessage(tab.id, {
+    //     action: 'addToWordbento',
+    //     message: `"${word}" 已添加到Wordbento`,
+    //     word: word
+    //   });
+    // })
+    // .catch(error => {
+    //   console.error('添加到Wordbento失败:', error);
+    // });
   }
 });

@@ -17,6 +17,7 @@ async function loadSettings() {
     document.getElementById('wordbentoApiKey').value = settings.wordbentoApiKey || '';
     document.getElementById('showPostcard').checked = settings.showPostcard !== false;
     document.getElementById('showPhonetic').checked = settings.showPhonetic !== false;
+    document.getElementById('showYtpCaptionContainer').checked = settings.showYtpCaptionContainer !== false;
     document.getElementById('theme').value = settings.theme || 'dark';
     document.getElementById('panelPosition').value = settings.panelPosition || 'right';
     
@@ -79,7 +80,7 @@ async function loadWordbook() {
     
     preview.innerHTML = recentWords.map(word => `
       <div class="word-item">
-        <span class="word-text">${word.word}</span>
+        <span class="word-text">${word.word} ${word.definition.phonetic}</span>
         <span class="word-date">${formatDate(word.addedAt)}</span>
       </div>
     `).join('');
@@ -101,7 +102,7 @@ function bindEvents() {
   
   // 设置变更时自动保存
   // const settingInputs = ['translationEngine', 'wordbentoApiKey', 'showPostcard', 'showPhonetic', 'theme', 'panelPosition'];
-  const settingInputs = ['wordbentoApiKey', 'showPostcard', 'showPhonetic', 'theme', 'panelPosition'];
+  const settingInputs = ['wordbentoApiKey', 'showPostcard', 'showPhonetic', 'showYtpCaptionContainer', 'theme', 'panelPosition'];
   settingInputs.forEach(id => {
     const element = document.getElementById(id);
     if (element) {
@@ -118,6 +119,7 @@ async function saveSettings() {
       wordbentoApiKey: document.getElementById('wordbentoApiKey').value,
       showPostcard: document.getElementById('showPostcard').checked,
       showPhonetic: document.getElementById('showPhonetic').checked,
+      showYtpCaptionContainer: document.getElementById('showYtpCaptionContainer').checked,
       theme: document.getElementById('theme').value,
       panelPosition: document.getElementById('panelPosition').value
     };

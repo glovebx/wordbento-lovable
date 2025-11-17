@@ -6,8 +6,9 @@
   top: 100px;
   right: 20px;
   width: 400px;
-  min-height: 150px;
-  background: rgba(0, 0, 0, 0.9);
+  min-height: 120px;
+  max-height: 640px; /* 添加最大高度限制 */
+  background: rgba(0, 0, 0, 0.8);
   border: 1px solid #333;
   border-radius: 8px;
   color: white;
@@ -16,6 +17,8 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column; /* 设置为弹性列布局 */  
 }
 
 .yt-translation-panel.pinned {
@@ -33,6 +36,7 @@
   border-bottom: 1px solid #333;
   cursor: move;
   user-select: none;
+  flex-shrink: 0; /* 防止头部被压缩 */
 }
 
 .panel-title {
@@ -65,6 +69,29 @@
 /* 面板内容 */
 .panel-content {
   padding: 16px;
+  overflow-y: auto; /* 关键属性：垂直方向自动显示滚动条 */
+  overflow-x: hidden; /* 隐藏水平滚动条 */
+  flex: 1; /* 占据剩余空间 */
+  max-height: calc(100% - 60px); /* 计算最大高度，减去头部高度 */  
+}
+
+/* 可选：自定义滚动条样式（Webkit浏览器） */
+.panel-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.panel-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.panel-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .subtitle-container {
@@ -78,6 +105,7 @@
   border-radius: 6px;
   line-height: 1.5;
   font-size: 22px;
+  word-wrap: break-word; /* 确保长单词或URL能够换行 */
 }
 
 .original-text {

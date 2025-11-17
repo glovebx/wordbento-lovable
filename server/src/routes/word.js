@@ -389,7 +389,7 @@ const enPrompt = `给你一个英文单词，返回下列json格式的数据:
 const jaPrompt = `给你一个日文单词，返回下列json格式的数据:
 {
   "日文单词": {
-    "phonetic": "罗马音标注;假名标注,
+    "phonetic": "假名标注",
     "meaning": "简洁中文含义",
     "definition": {
           "icon": "BookOpen",
