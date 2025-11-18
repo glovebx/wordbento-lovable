@@ -7,7 +7,7 @@ import { Hono } from 'hono';
 // Assuming your Drizzle client is configured elsewhere with the schema.
 // For D1 with Drizzle, you typically initialize it like drizzle(env.DB, { schema });
 // We'll keep the drizzle import and schema reference in the initialization.
-import { and, eq, gt, lt, isNull, asc, desc } from 'drizzle-orm';
+import { and, eq, inArray, gt, lt, isNull, asc, desc } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 // The schema object itself is usually defined in a separate file and imported for drizzle initialization
 import * as schema from '../db/schema'; // Keep schema import for drizzle initialization
@@ -1877,6 +1877,128 @@ word.post('/tts', async (c) => {
     console.log(`No word found with prefix: "${searchSlug}"`);
     // return c.text('Error retrieving audio', 500);
     return c.json({ message: 'Internal Server Error during TTS proxy' }, 500);
+  }
+
+});
+
+// 今日单词
+word.post('/today', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json([], 200); // Return 200 OK for existing
+  }
+
+  let maxId = 0;
+  try {
+     const body = await c.req.json();
+     maxId = body.maxId;
+  } catch (e) {
+      console.error("Failed to parse request body:", e);
+      return c.json({ message: 'Invalid JSON body' }, 400);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+  
+  try {
+    // 1.1. 获取总记录数
+    const existsWords = await db.select({
+        id: schema.words.id,
+    })
+    .from(schema.words)
+    .where(and(
+      // eq(schema.words.user_id, user.id)  
+      gt(schema.words.id, maxId),
+      sql`date(${schema.words.created_at}, 'localtime') = date('now', 'localtime')`
+    ))
+    // .where(gt(schema.words.id, maxId))
+    // .orderBy(desc(schema.words.id))
+    .limit(5);
+
+    const totalCount = existsWords.length;
+    if (totalCount === 0) {
+      return c.json({
+        data: [],
+        totalCount: 0
+      }, 200);
+    }
+
+    const existsIds = existsWords.map(data => data.id)
+        
+    const paginatedWords = await db.select({
+      id: schema.words.id,
+      word_text: schema.words.word_text,
+      phonetic: schema.words.phonetic,
+      meaning: schema.words.meaning,
+    })
+    .from(schema.words)
+    .where(inArray(schema.words.id, existsIds));
+    // .orderBy(desc(schema.words.id));
+
+    let successfulWords = [];
+    if (paginatedWords.length > 0) {
+
+      // TODO: 放入缓存优化
+      const results = await Promise.allSettled(paginatedWords.map(async (existingWord) => {
+          // 并行获取相关内容和图片记录
+          const [contentRecords, imageRecords] = await Promise.all([
+              db.select()
+                  .from(schema.word_content)
+                  .where(eq(schema.word_content.word_id, existingWord.id)),
+              db.select()
+                  .from(schema.images)
+                  .where(eq(schema.images.word_id, existingWord.id))
+          ]);
+
+          let newWord = formatDbResultToWordResponse(c, existingWord, contentRecords, imageRecords);
+          newWord.word = newWord.word_text;
+          // newWord.text = `${newWord.word}\n${newWord.phonetic}, ${newWord.meaning}`;
+          newWord.text = `${newWord.word}\n\n${newWord.phonetic}`;
+          return newWord;
+      }));
+
+      successfulWords = results
+          .filter(result => result.status === 'fulfilled')
+          .map(result => result.value);      
+
+      // const paginatedImages = await db.select({
+      //   word_id: schema.images.word_id,
+      //   image_key: schema.images.image_key
+      // })
+      // .from(schema.images)
+      // .where(inArray(schema.images.word_id, existsIds));
+
+
+            
+      // // 使用reduce转换为目标格式
+      // const wordImages = paginatedImages.reduce((acc, item) => {
+      //     const { word_id, image_key } = item;
+          
+      //     if (!acc[word_id]) {
+      //         acc[word_id] = [];
+      //     }
+          
+      //     if (image_key) {
+      //         acc[word_id].push(image_key);
+      //     }
+          
+      //     return acc;
+      // }, {});
+
+      // paginatedWords.forEach(r => {
+      //     r.imageUrls = wordImages[r.id] || []
+      // });
+      console.log(`Today words found with length: ${paginatedWords.length}`);
+    }
+
+    // 返回分页数据和总记录数
+    return c.json({
+      data: successfulWords,
+      totalCount: totalCount
+    }, 200);    
+
+  } catch (checkError) {
+      console.error("Failed to check for today words in DB:", checkError);
+      return c.json({ message: 'Failed to get today words.' }, 500);
   }
 
 });
