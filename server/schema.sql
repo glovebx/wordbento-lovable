@@ -182,6 +182,18 @@ CREATE TABLE IF NOT EXISTS llms (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- word_views 表：存储用户对单词的查看历史
+CREATE TABLE IF NOT EXISTS word_views (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,       -- 外键，关联到 users 表的 id
+    word_id INTEGER NOT NULL,       -- 外键，关联到 words 表的 id
+
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE
+);
+
 -- dictionary 表：内置的字典
 CREATE TABLE IF NOT EXISTS dictionary (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -189,9 +201,10 @@ CREATE TABLE IF NOT EXISTS dictionary (
     lang TEXT CHECK(lang IN ('en', 'jp')) NOT NULL,
     phonetic TEXT NOT NULL,
     meaning TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     frequency INTEGER,  -- 常用
     difficulty INTEGER, -- 难度
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    
     UNIQUE (word, lang) -- 确保每个单词在每种语言只有一条记录
 );
 

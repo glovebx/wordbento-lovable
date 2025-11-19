@@ -137,6 +137,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
         <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
           <TabsTrigger value="search">搜索</TabsTrigger>
           <TabsTrigger value="analyze">解析</TabsTrigger>
+          {/* <TabsTrigger value="today">今日</TabsTrigger> */}
         </TabsList>
         
         <TabsContent value="search" className="mt-4 relative">

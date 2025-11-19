@@ -115,3 +115,11 @@ export const llms = sqliteTable('llms', {
   model: text('model'),
   created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const word_views = sqliteTable('word_views', {
+  id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
+  user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  word_id: integer('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
+  created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  // updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+});

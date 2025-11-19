@@ -975,6 +975,31 @@ const generateImageByJiMengAi = async (c, word, example) => {
   }
 };
 
+// 将查看记录写入数据库
+// 也可以写入缓存
+const log2WordViews = async (db, userId, wordId) => {
+  if (!userId || !wordId) return;
+
+  try {
+    // const insertedWordResult = 
+    await db.insert(schema.word_views).values({
+        user_id: userId,
+        word_id: wordId
+    })
+    // // Use .returning() in Drizzle for D1 to get the inserted row
+    // .returning()
+    // .get(); // .get() for a single row
+
+    // // Check if insertion was successful and returned a row
+    // if (!insertedWordResult) {
+    //       throw new Error("Failed to insert word into views table or get inserted row.");
+    // }
+  } catch (error) {
+      console.error('Network error insert into DB:', error);
+      // return null;
+  }
+};
+
 // Define navigation modes using a plain object
 const NavigationMode = {
   // Represents a search operation (typically initiated by user input).
@@ -1275,6 +1300,8 @@ word.post('/search', async (c) => {
         // Format the data for the frontend response
         wordData = formatDbResultToWordResponse(c, existingWord, contentRecords, imageRecords);
 
+        log2WordViews(db, userId, existingWord.id);
+
         // Return the found word data
         console.log("Returning existing word data.");
         return c.json(wordData, 200);
@@ -1363,6 +1390,8 @@ word.post('/search', async (c) => {
                 .where(eq(schema.word_content.word_id, newWord.id));
 
           wordData = formatDbResultToWordResponse(c, newWord, newlyInsertedContent);
+
+          log2WordViews(db, userId, newWord.id);
 
           console.log(`Word "${wordToGenerate}" and content inserted successfully.`);
           // Return the newly created word data with 201 status
@@ -1888,10 +1917,10 @@ word.post('/today', async (c) => {
     return c.json([], 200); // Return 200 OK for existing
   }
 
-  let maxId = 0;
+  let maxViewsId = 0;
   try {
      const body = await c.req.json();
-     maxId = body.maxId;
+     maxViewsId = body.maxId;
   } catch (e) {
       console.error("Failed to parse request body:", e);
       return c.json({ message: 'Invalid JSON body' }, 400);
@@ -1901,20 +1930,24 @@ word.post('/today', async (c) => {
   
   try {
     // 1.1. 获取总记录数
-    const existsWords = await db.select({
-        id: schema.words.id,
+    const existsWordViews = await db.select({
+      id: schema.word_views.id,
+      word_id: schema.word_views.word_id,
     })
-    .from(schema.words)
+    .from(schema.word_views)
     .where(and(
-      // eq(schema.words.user_id, user.id)  
-      gt(schema.words.id, maxId),
-      sql`date(${schema.words.created_at}, 'localtime') = date('now', 'localtime')`
+      eq(schema.word_views.user_id, user.id),  
+      gt(schema.word_views.id, maxViewsId),
+      sql`date(${schema.word_views.created_at}, 'localtime') = date('now', 'localtime')`
     ))
     // .where(gt(schema.words.id, maxId))
     // .orderBy(desc(schema.words.id))
     .limit(5);
 
-    const totalCount = existsWords.length;
+    const existsIds = existsWordViews.map(d => d.word_id)
+    const uniqueExistsIds = [...new Set(existsIds)];
+
+    const totalCount = uniqueExistsIds.length;
     if (totalCount === 0) {
       return c.json({
         data: [],
@@ -1922,7 +1955,9 @@ word.post('/today', async (c) => {
       }, 200);
     }
 
-    const existsIds = existsWords.map(data => data.id)
+    const allViewsIds = existsWordViews.map(view => view.id);
+    // 最近的views的id
+    const latestViewsId = Math.max(...allViewsIds);
         
     const paginatedWords = await db.select({
       id: schema.words.id,
@@ -1931,7 +1966,7 @@ word.post('/today', async (c) => {
       meaning: schema.words.meaning,
     })
     .from(schema.words)
-    .where(inArray(schema.words.id, existsIds));
+    .where(inArray(schema.words.id, uniqueExistsIds));
     // .orderBy(desc(schema.words.id));
 
     let successfulWords = [];
@@ -1993,6 +2028,7 @@ word.post('/today', async (c) => {
     // 返回分页数据和总记录数
     return c.json({
       data: successfulWords,
+      latestViewsId: latestViewsId,
       totalCount: totalCount
     }, 200);    
 
