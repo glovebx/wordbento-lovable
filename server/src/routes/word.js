@@ -7,7 +7,7 @@ import { Hono } from 'hono';
 // Assuming your Drizzle client is configured elsewhere with the schema.
 // For D1 with Drizzle, you typically initialize it like drizzle(env.DB, { schema });
 // We'll keep the drizzle import and schema reference in the initialization.
-import { and, eq, inArray, gt, lt, isNull, asc, desc } from 'drizzle-orm';
+import { and, eq, inArray, gt, lt, gte, lte, isNull, asc, desc } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 // The schema object itself is usually defined in a separate file and imported for drizzle initialization
 import * as schema from '../db/schema'; // Keep schema import for drizzle initialization
@@ -19,6 +19,7 @@ import LanguageUtils from '../utils/languageUtils';
 // // 导入 HTTPException 用于抛出 HTTP 错误
 // import { HTTPException } from 'hono/http-exception';
 import { checkAndConsumeFreeQuota, getLlmConfig } from '../utils/security';
+import { toSqliteUtcString } from '../utils/dateUtils';
 
 // Type definitions are removed in JavaScript
 
@@ -1926,8 +1927,27 @@ word.post('/today', async (c) => {
       return c.json({ message: 'Invalid JSON body' }, 400);
   }
 
+  console.log('maxViewsId =>', maxViewsId);
+
   const db = drizzle(c.env.DB, { schema });
   
+  // 1. 在 JS 中获取当天的起始和结束时间（可以控制时区）
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+
+  // 2. 关键修改：转换为 ISO 字符串 (D1 只能读懂字符串)
+  // 注意：toISOString() 会转换为 UTC 时间，这通常是数据库存储的标准
+  // const startStr = start.toISOString(); 
+  // const endStr = end.toISOString();
+  // 2. 转换为数据库能理解的 UTC 字符串格式
+  // 结果示例: startStr = "2025-11-19 16:00:00", endStr = "2025-11-20 15:59:59"
+  const startStr = toSqliteUtcString(start);
+  const endStr = toSqliteUtcString(end);  
+
+  console.log('startStr - endStr', startStr, endStr);
+
   try {
     // 1.1. 获取总记录数
     const existsWordViews = await db.select({
@@ -1937,12 +1957,13 @@ word.post('/today', async (c) => {
     .from(schema.word_views)
     .where(and(
       eq(schema.word_views.user_id, user.id),  
-      gt(schema.word_views.id, maxViewsId),
-      sql`date(${schema.word_views.created_at}, 'localtime') = date('now', 'localtime')`
+      gt(schema.word_views.id, parseInt(maxViewsId)),
+      // 使用 gte (大于等于) 和 lte (小于等于)
+      // 这里传入字符串，而不是 Date 对象
+      gte(schema.word_views.created_at, startStr),
+      lte(schema.word_views.created_at, endStr)
     ))
-    // .where(gt(schema.words.id, maxId))
-    // .orderBy(desc(schema.words.id))
-    .limit(5);
+    .limit(1);
 
     const existsIds = existsWordViews.map(d => d.word_id)
     const uniqueExistsIds = [...new Set(existsIds)];
@@ -1986,8 +2007,12 @@ word.post('/today', async (c) => {
 
           let newWord = formatDbResultToWordResponse(c, existingWord, contentRecords, imageRecords);
           newWord.word = newWord.word_text;
+          let etymology = ''
+          if (newWord.content && newWord.content.etymology && newWord.content.etymology.en) {
+            etymology = `\n\n${newWord.content.etymology.en}`
+          }
           // newWord.text = `${newWord.word}\n${newWord.phonetic}, ${newWord.meaning}`;
-          newWord.text = `${newWord.word}\n\n${newWord.phonetic}`;
+          newWord.text = `${newWord.word}\n\n${newWord.phonetic}${etymology}`;
           return newWord;
       }));
 
