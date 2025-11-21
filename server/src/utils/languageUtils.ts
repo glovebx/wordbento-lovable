@@ -12,10 +12,10 @@ export class LanguageUtils {
   /**
    * 检测文本的语言类型
    * @param text 要检测的文本
-   * @returns 语言类型：'english' | 'japanese' | 'mixed' | 'other'
+   * @returns 语言类型：'english' | 'japanese' | 'mixed' | 'english-like'
    */
-  public static detectLanguage(text: string): 'english' | 'japanese' | 'mixed' | 'other' {
-    if (!text || text.trim().length === 0) return 'other';
+  public static detectLanguage(text: string): 'english' | 'japanese' | 'mixed' | 'english-like' {
+    if (!text || text.trim().length === 0) return 'english-like';
 
     const hiraganaRegex = new RegExp(`[${this.HIRAGANA_RANGE}]`);
     const katakanaRegex = new RegExp(`[${this.KATAKANA_RANGE}]`);
@@ -29,7 +29,7 @@ export class LanguageUtils {
     if (hasJapanese) return 'japanese';
     if (hasEnglish) return 'english';
 
-    return 'other';
+    return 'english-like';
   }
 
   /**

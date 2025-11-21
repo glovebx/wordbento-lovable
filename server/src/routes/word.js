@@ -837,7 +837,92 @@ function extractHttpLinks(text) {
   return links;
 }
 
-const generateImageByDreamina = async (c, word, example) => {
+// 海报风格
+const posterStyle = 
+[
+{
+    "style": "vintage travel poster",
+    "desc": "复古旅行海报"
+  },
+  {
+    "style": "cyberpunk graphic design",
+    "desc": "赛博朋克风格"
+  },
+  {
+    "style": "watercolor and ink painting",
+    "desc": "水墨水彩风格"
+  },
+  {
+    "style": "psychedelic art",
+    "desc": "迷幻艺术"
+  },
+  {
+    "style": "Ink drawing and watercolor wash, loose lines, soft color bleeds",
+    "desc": "墨水笔触与水彩渲染，线条洒脱，颜色柔和晕染 - 适合：诗意、自然、情感细腻的单词"
+  },
+  {
+    "style": "Woodcut print style, bold lines, high contrast, textured paper",
+    "desc": "木刻版画风格，线条粗犷，高对比度，带纹理纸张 - 适合：有力、古老、有警示或寓言意味的单词"
+  },
+  {
+    "style": "Soft pastel drawing, chalky texture, dreamy and muted colors",
+    "desc": "柔和粉彩画，粉质感纹理，梦幻柔和的色彩 - 适合：温柔、梦幻、童年回忆相关的单词"
+  },
+  {
+    "style": "Ukiyo-e style, flat areas of color, strong outlines, classic Japanese art",
+    "desc": "浮世绘风格，平涂色彩，强烈的轮廓线，经典日本艺术 - 适合：日文单词，或与东方文化、自然景观相关的词汇"
+  },
+  {
+    "style": "Minimalist, monochromatic, uses a single color with plenty of negative space",
+    "desc": "极简主义，单色调，大量留白 - 适合：概念抽象、哲学思辨的单词"
+  },
+  {
+    "style": "Abstract liquid art, fluid shapes, ink in water, vibrant color merges",
+    "desc": "抽象液态艺术，流动形态，水墨交融，色彩 vibrant 融合 - 适合：表达情感、变化、潜意识或科学概念的单词"
+  },
+  {
+    "style": "Neo-pop art, bold outlines, saturated colors, halftone patterns",
+    "desc": "新波普艺术，粗轮廓线，高饱和色彩，网点图案 - 适合：流行、时尚、富有活力甚至带点反叛的单词"
+  },
+  {
+    "style": "Bauhaus design, geometric shapes, primary colors, clean typography",
+    "desc": "包豪斯设计，几何图形，三原色，干净的版式 - 适合：与设计、结构、理性相关的单词"
+  },
+  {
+    "style": "Art Deco, geometric patterns, metallic accents, elegant and sleek",
+    "desc": "装饰风艺术，几何图案，金属质感，优雅流畅 - 适合：奢华、精致、充满“爵士时代”风情的单词"
+  },
+  {
+    "style": "Mid-century modern illustration, organic shapes, earthy tones",
+    "desc": "中世纪现代风格插画，有机形态，大地色系 - 适合：家居、温馨、复古未来主义相关的单词"
+  },
+  {
+    "style": "Swiss Style poster, asymmetric layout, clean typography, photo collage",
+    "desc": "瑞士平面设计风格，不对称布局，干净字体，照片拼贴 - 适合：需要强版式设计感、信息清晰的单词"
+  },
+  {
+    "style": "Gothic style, intricate blackwork, occult symbolism, dramatic lighting",
+    "desc": "哥特风格，复杂的黑色图案，神秘符号，戏剧性光线 - 适合：黑暗、神秘、古典、与神话或魔法相关的单词"
+  },
+  {
+    "style": "Bioluminescent, deep sea creatures, glowing in the dark, ethereal",
+    "desc": "生物发光，深海生物，暗处发光，空灵 - 适合：神秘、未知、美丽而诡异的事物"
+  },
+  {
+    "style": "Glitch art, digital distortion, RGB shift, corrupted data aesthetics",
+    "desc": "故障艺术，数字失真，RGB 色彩分离，数据错误美学 - 适合：表达混乱、错误、数字时代或解构意义的单词"
+  },
+  {
+    "style": "Synthwave, retro-futuristic, grid lines, neon colors, digital sunset",
+    "desc": "合成波普，复古未来主义，网格线，霓虹色彩，数字日落 - 适合：怀旧、电子乐、80年代流行文化相关的单词"
+  },
+  {
+    "style": "Cybernetic organic, blending flesh and machinery, intricate details",
+    "desc": "赛博格有机体，血肉与机械融合，复杂细节 - 适合：探讨人性、科技、进化等深刻主题的单词"
+  }
+]
+
+const generateImageByDreamina = async (c, word, phonetic, example, language) => {
   console.log(`Calling Dreamina AI for word: ${word} ${example}`);
 
   const AI_API_KEY = c.env.DREAMINA_API_KEY;
@@ -845,7 +930,11 @@ const generateImageByDreamina = async (c, word, example) => {
   const AI_API_MODEL = c.env.DREAMINA_API_MODEL;
 
   try {
-    const prompt = example && `"${example}"，根据这句话创作一张图片，要足够吸引眼球，加深对该单词的记忆。图片标题："${word}"，副标题"${example}"` || `你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。`
+    const randomIndex = Math.floor(Math.random() * posterStyle.length);
+    const style = posterStyle[randomIndex].style;
+
+    // const prompt = example && `"${example}"，根据这句话创作一张图片，要足够吸引眼球，加深对该单词的记忆。图片标题："${word}"，副标题"${example}"` || `你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。`
+    const prompt = example && generatePosterPromptWithExample(word, language, phonetic, example, style) || generatePosterPromptWithoutExample(word, language, phonetic, style);
 
       const jsonData = {
         model: AI_API_MODEL || '',
@@ -892,7 +981,65 @@ const generateImageByDreamina = async (c, word, example) => {
   }
 };
 
-const generateImageByJiMengAi = async (c, word, example) => {
+
+// 高级版本海报提示词生成函数（带例句）
+const generatePosterPromptWithExample = (
+  word, 
+  language,
+  pronunciation, 
+  exampleSentence, 
+  style = null,
+  additionalInstructions = ""
+) => {
+    // 默认风格
+    if (!style) {
+        style = "modern minimalist poster, high quality, cinematic lighting, visually striking";
+    }  
+  // 基础提示词模板
+  let prompt = `Conceptual poster design for ${language} word: "${word}". main title: "${word}", subtitle: "${pronunciation}". 
+  The entire scene should visually interpret and embody the meaning and mood of the sentence: "${exampleSentence}". 
+  Use a layout that integrates the text seamlessly into the image. The title "${word}" should be large, bold, and artistic at the top. 
+  The pronunciation "${pronunciation}" should be smaller and elegantly placed below the title. 
+  The full sentence "${exampleSentence}" should be incorporated as a design element within the scene, not just a block of text. 
+  Style: ${style}`;
+  
+  // 添加额外指令（如果有）
+  if (additionalInstructions) {
+    prompt += `\nAdditional instructions: ${additionalInstructions}`;
+  }
+  
+  return prompt;
+};
+
+// 没有例句的高级版本，支持额外参数
+const generatePosterPromptWithoutExample = (
+  word, 
+  language,
+  pronunciation, 
+  style = null, 
+  additionalInstructions = "") => {
+    // 默认风格
+    if (!style) {
+        style = "modern minimalist poster, high quality, cinematic lighting, visually striking";
+    }
+    
+    let prompt = `Conceptual poster design for ${language} word: "${word}".
+The entire composition must be a visual definition and embodiment of the word's core meaning and essence.
+The main title "${word}" should be large, bold, and artistically integrated as the focal point.
+Directly below it, elegantly display the pronunciation: "${pronunciation}".
+The style and imagery of the entire poster should intuitively communicate the feeling and concept of "${word}"
+to someone who doesn't know the language. Avoid literal clichés, strive for a clever and evocative visual metaphor.
+Style: ${style}`;
+    
+    // 添加额外指令（如果有）
+    if (additionalInstructions) {
+        prompt += `\n${additionalInstructions}`;
+    }
+    
+    return prompt;
+};
+
+const generateImageByJiMengAi = async (c, word, phonetic, example, language) => {
   console.log(`Calling JiMeng AI for word: ${word} ${example}`);
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
@@ -901,11 +1048,11 @@ const generateImageByJiMengAi = async (c, word, example) => {
   const AI_API_ENDPOINT = c.env.JIMENG_API_ENDPOINT;
 
   try {
-//     const prompt = `
-// 你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。
-//               `;
+    const randomIndex = Math.floor(Math.random() * posterStyle.length);
+    const style = posterStyle[randomIndex].style;
 
-    const prompt = example && `"${example}"，根据这句话创作一张图片，要足够吸引眼球，加深对该单词的记忆。图片标题："${word}"，副标题"${example}"` || `你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。`
+    // const prompt = example && `"${example}"，根据这句话创作一张图片，要足够吸引眼球，加深对该单词的记忆。图片标题："${word}"，副标题"${example}"` || `你是一名资深的创意工作者。现在我给你一个单词"${word}"，请根据单词的含义创作图片，配色或者图片形式要能够吸引眼球，帮我加深记忆。`
+    const prompt = example && generatePosterPromptWithExample(word, language, phonetic, example, style) || generatePosterPromptWithoutExample(word, language, phonetic, style);
 
         const jsonData = {
           model: '',
@@ -972,6 +1119,78 @@ const generateImageByJiMengAi = async (c, word, example) => {
 
   } catch (error) {
       console.error('Network error calling JiMeng Image AI API:', error);
+      return null;
+  }
+};
+
+// 豆包的
+const generateImageBySeeDreamAi = async (c, word, phonetic, example, language) => {
+  console.log(`Calling SeeDream AI for word: ${word} ${example}`);
+
+  const AI_API_KEY = c.env.SEEDREAM_API_KEY;
+  const AI_API_ENDPOINT = c.env.SEEDREAM_API_ENDPOINT;
+  const AI_API_MODEL = c.env.SEEDREAM_API_MODEL;
+
+  try {
+    const randomIndex = Math.floor(Math.random() * posterStyle.length);
+    const style = posterStyle[randomIndex].style;
+
+    const prompt = example && generatePosterPromptWithExample(word, language, phonetic, example, style) || generatePosterPromptWithoutExample(word, language, phonetic, style);
+
+        const jsonData = {
+          model: AI_API_MODEL,
+          prompt: prompt,
+          size: '1440x2560',
+          response_format: "url",
+          sequential_image_generation: "disabled",  // 仅需要1张图片
+          stream: false,
+          watermark: false
+        };    
+
+        const response = await fetch(AI_API_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${AI_API_KEY}`
+            },
+            body: JSON.stringify(jsonData),
+        });
+
+        if (!response.ok) {
+            console.error(`SeeDream AI API call failed: ${response.status} ${response.statusText}`);
+            return null;
+        }
+
+        // console.log(jsonData);
+
+        const data = await response.json(); // No type assertion needed in JS
+        console.log(data);
+
+        // 2. Check if the 'choices' array exists and is not empty
+        if (!data.data || data.data.length === 0) {
+          console.error("API call failed: Response does not contain any data.");
+          // Handle this case
+          // You might want to log the full response here to debug what was received
+          console.log("Full response:", data);
+          return null; // Or throw an error
+        }
+  
+        // 3. Check if the first choice contains a message
+        if (!data.data[0].url) {
+            console.error("API call failed: The first choice does not contain valid url.");
+             // Handle this case
+             console.log("Full response:", data);
+            return null; // Or throw an error
+        }
+
+        const imageUrls = [data.data[0].url];
+        
+        console.log("Contents imageUrls:", imageUrls);  
+
+        return imageUrls;
+
+  } catch (error) {
+      console.error('Network error calling SeeDream Image AI API:', error);
       return null;
   }
 };
@@ -1558,12 +1777,18 @@ word.post('/imagize', async (c) => {
   //       return c.json({ message: 'Cannot generate data for empty slug.' }, 400);
   // }
   const wordToGenerate = slug.trim().toLowerCase();
+  const phonetic = existingWord.phonetic;
   const exampleToGenerate = example.trim();
 
-  let imageUrls = await generateImageByDreamina(c, wordToGenerate, exampleToGenerate);
+  // 判断是日文还是英文
+  const language = LanguageUtils.detectLanguage(wordToGenerate);
+  // const isJapanese = language === 'japanese' || language === 'mixed';  
+
+  // let imageUrls = await generateImageByDreamina(c, wordToGenerate, phonetic, exampleToGenerate, language);
+  let imageUrls = await generateImageBySeeDreamAi(c, wordToGenerate, phonetic, exampleToGenerate, language);
 
   if (!imageUrls || imageUrls.length == 0) {
-    imageUrls = await generateImageByJiMengAi(c, wordToGenerate, exampleToGenerate);
+    imageUrls = await generateImageByJiMengAi(c, wordToGenerate, phonetic, exampleToGenerate, language);
   }
   // const imageUrls = ['https://p3-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/c0efd5fd4a414fbaab1232df5e876d6b~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=sGXKNhKHkj%2F2msIbhAQtcLlGNXk%3D&format=.jpeg', 
   //   'https://p9-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3bc050392177442ebed27dc883891b7a~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=uipvjRhc40XXAMDhIBEeO%2BEuit4%3D&format=.jpeg', 
@@ -1963,7 +2188,7 @@ word.post('/today', async (c) => {
       gte(schema.word_views.created_at, startStr),
       lte(schema.word_views.created_at, endStr)
     ))
-    .limit(1);
+    .limit(5);
 
     const existsIds = existsWordViews.map(d => d.word_id)
     const uniqueExistsIds = [...new Set(existsIds)];
@@ -2011,8 +2236,17 @@ word.post('/today', async (c) => {
           if (newWord.content && newWord.content.etymology && newWord.content.etymology.en) {
             etymology = `\n\n${newWord.content.etymology.en}`
           }
+          // let examples = ''
+          // if (newWord.content && newWord.content.examples && newWord.content.examples.en) {
+          //   examples = "\n\n__LLM_RESPONSE__ [" + newWord.content.examples.en.join(",") + "]"
+          // }
+          let examples = ''
+          if (newWord.content && newWord.content.examples && newWord.content.examples.en) {
+            examples = "\n\n----\n\n" + newWord.content.examples.en.join("\n\n")
+          }          
+
           // newWord.text = `${newWord.word}\n${newWord.phonetic}, ${newWord.meaning}`;
-          newWord.text = `${newWord.word}\n\n${newWord.phonetic}${etymology}`;
+          newWord.text = `${newWord.word}\n\n${newWord.phonetic}${etymology}${examples}`;
           return newWord;
       }));
 
