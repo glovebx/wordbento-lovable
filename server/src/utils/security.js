@@ -106,7 +106,8 @@ export const getLlmConfig = async (c, platform, userId, hasFreeQuota) => {
       .from(schema.llms)
       .where(and(
         eq(schema.llms.platform, platform), 
-        eq(schema.llms.user_id, userId)
+        eq(schema.llms.user_id, userId),
+        eq(schema.llms.active, 1)
       ))
       .limit(1); // We only need to find one match
 
@@ -128,7 +129,7 @@ export const getLlmConfig = async (c, platform, userId, hasFreeQuota) => {
         AI_API_KEY = existingLlm.token;
         AI_API_MODEL = existingLlm.model;        
       } else {
-        console.log('LLM does not Exist!!!!');
+        console.log('LLM does not Exist or not actived!!!!');
       }
     }
   } else if (hasFreeQuota) {

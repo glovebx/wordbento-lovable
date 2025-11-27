@@ -8,6 +8,7 @@ export const users = sqliteTable("users", {
   password: text("password").notNull(),
   role: text("role").default("user").notNull(),
   salt: text("salt").notNull(),
+  vip_level: integer('vip_level'),
   access_token: text("access_token"),
   created_at: text("created_at").default("CURRENT_TIMESTAMP"),
   updated_at: text("updated_at").default("CURRENT_TIMESTAMP"),
@@ -109,10 +110,11 @@ export const archives = sqliteTable('archives', {
 export const llms = sqliteTable('llms', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
   user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  platform: text('platform', { enum: ['deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'dreamina', 'scraper'] }).notNull(),
+  platform: text('platform', { enum: ['deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'seedream', 'dreamina', 'scraper'] }).notNull(),
   endpoint: text('endpoint').notNull(),
   token: text('token'),
   model: text('model'),
+  active: integer('active').default(1),
   created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
 

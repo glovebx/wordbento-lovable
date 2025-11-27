@@ -113,7 +113,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       setShowExampleDialog(true);
     } else {
       console.log("No examples found or examples not in expected array format, generating image with word only.");
-      const generatedUrls = await generateImages(word.word_text, '');
+      const generatedUrls = await generateImages(word.word_text, '', true);
       if (generatedUrls && generatedUrls.length > 0) {
         onImagesGenerated(word.word_text);
         setImageUrls(generatedUrls);
@@ -134,7 +134,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
 
       console.log(`Generating image for word "${word.word_text}" with example: "${selectedExample}"`);
 
-      const generatedUrls = await generateImages(word.word_text, selectedExample);
+      const generatedUrls = await generateImages(word.word_text, selectedExample, true);
 
       if (generatedUrls && generatedUrls.length > 0) {
         onImagesGenerated(word.word_text);

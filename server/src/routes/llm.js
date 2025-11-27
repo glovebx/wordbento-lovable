@@ -23,6 +23,7 @@ llm.get('/list', async (c) => {
           endpoint: schema.llms.endpoint,
           token: schema.llms.token, 
           model: schema.llms.model,
+          active: schema.llms.active,
       })
       .from(schema.llms)
       .where(eq(schema.llms.user_id, userId));
@@ -59,7 +60,7 @@ llm.post('/save', async (c) => {
           return c.json({ message: 'Invalid llm data provided.' }, 400);
       }
       //  // Basic enum checks (should align with requestData interface)
-      const validPlatforms = ['deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'dreamina', 'scraper'];
+      const validPlatforms = ['deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'seedream', 'dreamina', 'scraper'];
       // //  const validExamTypes = ['托福', 'GRE', 'TOEIC', 'SAT', '6级'];
       // //  if (!validSourceTypes.includes(requestData.sourceType) || !validExamTypes.includes(requestData.examType)) {
       if (!validPlatforms.includes(requestData.platform)) {
@@ -90,6 +91,7 @@ llm.post('/save', async (c) => {
               endpoint: requestData.endpoint,
               token: requestData.token,
               model: requestData.model,
+              active: requestData.active,
             })
             .where(eq(schema.llms.id, existingLlms[0].id));
       } else {
@@ -100,6 +102,7 @@ llm.post('/save', async (c) => {
             endpoint: requestData.endpoint,
             token: requestData.token,
             model: requestData.model,
+            active: requestData.active,
         });        
       }
 
@@ -109,6 +112,7 @@ llm.post('/save', async (c) => {
           endpoint: requestData.endpoint,
           token: requestData.token,
           model: requestData.model,
+          active: requestData.active,
         }
         await c.env.WORDBENTO_KV.put(llmKey, JSON.stringify(llmDataKv));
       }

@@ -13,11 +13,14 @@ interface ApiSettingsProps {
   isModelRequired: boolean; // 新增属性
   model?: string; // model 变为可选
   setModel?: (value: string) => void; // setModel 变为可选
+  active?: boolean;
+  setActive: (value: boolean) => void; // setModel 变为可选
   endpointId: string;
   apiKeyId: string;
   modelId?: string;
+  activeId?: string;
   // Add a callback function for when the save button is clicked
-  onSave: (endpoint: string, apiKey: string, model?: string) => Promise<void>; // Async function to handle saving
+  onSave: (endpoint: string, apiKey: string, model?: string, active?: boolean) => Promise<void>; // Async function to handle saving
   isSaving: boolean; // Prop to indicate if saving is in progress (controlled by parent)
 }
 
@@ -30,9 +33,12 @@ export const ApiSettings = ({
   isModelRequired, // 新增属性
   model, // model 变为可选
   setModel, // setModel 变为可选
+  active,
+  setActive,
   endpointId,
   apiKeyId,
   modelId,
+  activeId,
   onSave, // Receive the onSave callback
   isSaving, // Receive the isSaving state
 }: ApiSettingsProps) => {
@@ -43,7 +49,7 @@ export const ApiSettings = ({
   // Effect to determine if the save button should be enabled
   // Enable if endpoint and apiKey are not empty
   useEffect(() => {
-    const isValid = endpoint.trim() !== '' && apiKey.trim() !== '';
+    const isValid = endpoint.trim() !== '' && apiKey.trim() !== '' && ((isModelRequired && model?.trim() !== '') || !isModelRequired);
     setCanSave(isValid);
   }, [endpoint, apiKey, model]); // Dependencies: re-run when endpoint or apiKey changes
 
@@ -51,7 +57,7 @@ export const ApiSettings = ({
   // Handler for the save button click
   const handleSaveClick = async () => {
     if (canSave && !isSaving) { // Only save if valid and not already saving
-      await onSave(endpoint, apiKey, model); // Call the parent's onSave function
+      await onSave(endpoint, apiKey, model, active); // Call the parent's onSave function
     }
   };
 
@@ -94,6 +100,31 @@ export const ApiSettings = ({
             />
           </div>
         )}
+
+        {/* 新增 Active 开关 - Tailwind版本 */}
+        <div className="space-y-2">
+          {/* <Label htmlFor={activeId}>Active</Label> */}
+          <div className="flex items-center space-x-3">
+            <button
+              type="button"
+              id={activeId}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                active ? 'bg-blue-600' : 'bg-gray-200'
+              } ${isSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              onClick={() => !isSaving && setActive(!active)}
+              disabled={isSaving}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  active ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className="text-sm text-gray-600">
+              {active ? 'Enabled' : 'Disabled'}
+            </span>
+          </div>
+        </div>
 
       </div>
 

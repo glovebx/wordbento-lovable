@@ -20,7 +20,7 @@
       "matches": ["https://www.youtube.com/watch*", "https://x.com/*"],
       "js": ["src/content.js"],
       "css": ["css/content.css"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
   ],
   "background": {

@@ -258,11 +258,13 @@ const formatDbResultToWordResponse = (c, word, contentRecords, imageRecords) => 
 
 /**
  * 从一组图片URL中读取每张图片的二进制流。
+ * 2025/11/23，只取前2张图片
  * @param {string[]} imageUrls 包含图片URL的字符串数组。
  * @returns {Promise<ArrayBuffer[]>} 一个 Promise，解析为包含每张图片 ArrayBuffer 的数组。
  * 如果任何图片加载失败，该 Promise 将会 reject。
  */
 const readImageBinaryStreams = async (imageUrls) => {  
+  // const allResultsPromises = imageUrls.slice(0, 2).map(async (url) => {
   const allResultsPromises = imageUrls.map(async (url) => {
     try {
       console.log(`正在读取图片: ${url}`);
@@ -294,6 +296,38 @@ const readImageBinaryStreams = async (imageUrls) => {
 
   console.log("所有图片加载尝试已完成。");
   return results;
+
+  // const allResults = []; // 用于存储所有图片的读取结果
+  
+  // // 使用 for...of 循环实现串行读取
+  // for (const url of imageUrls) {
+  //   try {
+  //     console.log(`正在读取图片: ${url}`);
+  //     const response = await fetch(url, {
+  //       mode: 'cors' // 确保处理跨域请求，如果图片不在同一域
+  //     });
+
+  //     if (!response.ok) {
+  //       // 如果HTTP请求不成功（例如404，500等），则返回包含错误信息的对象
+  //       const errorMessage = `HTTP 错误: ${response.status} ${response.statusText}`;
+  //       console.error(`无法加载图片 ${url}: ${errorMessage}`);
+  //       allResults.push({ url: url, error: errorMessage });
+  //       continue; // 继续处理下一个URL
+  //     }
+
+  //     // 获取响应的二进制数据作为 ArrayBuffer
+  //     const arrayBuffer = await response.arrayBuffer();
+  //     console.log(`成功读取图片: ${url}, 大小: ${arrayBuffer.byteLength} 字节`);
+  //     allResults.push({ url: url, data: arrayBuffer }); // 成功时存储数据
+  //   } catch (error) {
+  //     // 捕获网络错误或其他异常，返回包含错误信息的对象
+  //     const errorMessage = error instanceof Error ? error.message : String(error);
+  //     console.error(`读取图片 ${url} 失败:`, errorMessage);
+  //     allResults.push({ url: url, error: errorMessage }); // 失败时存储错误
+  //   }
+  // }
+  
+  // return allResults; // 返回所有结果  
 }
 
 const repairAiResponseToJson = (messageContent) => {  
@@ -921,6 +955,26 @@ const posterStyle =
     "desc": "赛博格有机体，血肉与机械融合，复杂细节 - 适合：探讨人性、科技、进化等深刻主题的单词"
   }
 ]
+
+const generateImageByAi = async (c, userId, word, phonetic, example, language, hasFreeQuota) => {
+  console.log(`Calling AI for image: ${word}`);
+
+  let imageUrls = [];
+  let llm = await getLlmConfig(c, 'jimeng', userId, hasFreeQuota);
+
+  if (llm[1]) {
+    // 配置了jimeng
+    imageUrls = await generateImageByJiMengAi(c, word, phonetic, example, language);
+  }
+  if (!imageUrls || imageUrls.length == 0) {
+    llm = await getLlmConfig(c, 'seedream', userId, hasFreeQuota);
+    if (llm[1]) {
+      imageUrls = await generateImageBySeeDreamAi(c, word, phonetic, example, language);
+    }
+  }
+
+  return imageUrls;
+}
 
 const generateImageByDreamina = async (c, word, phonetic, example, language) => {
   console.log(`Calling Dreamina AI for word: ${word} ${example}`);
@@ -1684,12 +1738,17 @@ word.post('/imagize', async (c) => {
       return c.json({ message: 'Invalid Content-Type, expected application/json' }, 415);
   }
 
-  let slug; // Removed type annotation
+  const user = c.get('user');
+  const userId = user ? user.id : null;
+
+  let slug;
   let example;
+  let force = false;  // 是否强制重新生成
   try {
      const body = await c.req.json();
      slug = body.slug;
      example = body.example || '';
+     force = body.force;
   } catch (e) {
       console.error("Failed to parse request body:", e);
       return c.json({ message: 'Invalid JSON body' }, 400);
@@ -1785,11 +1844,27 @@ word.post('/imagize', async (c) => {
   // const isJapanese = language === 'japanese' || language === 'mixed';  
 
   // let imageUrls = await generateImageByDreamina(c, wordToGenerate, phonetic, exampleToGenerate, language);
-  let imageUrls = await generateImageBySeeDreamAi(c, wordToGenerate, phonetic, exampleToGenerate, language);
+  // // let imageUrls = await generateImageBySeeDreamAi(c, wordToGenerate, phonetic, exampleToGenerate, language);
 
-  if (!imageUrls || imageUrls.length == 0) {
-    imageUrls = await generateImageByJiMengAi(c, wordToGenerate, phonetic, exampleToGenerate, language);
-  }
+  // if (!imageUrls || imageUrls.length == 0) {
+  //   imageUrls = await generateImageByJiMengAi(c, wordToGenerate, phonetic, exampleToGenerate, language);
+  // }
+
+  // 限流检查
+  let hasFreeQuota = false;
+  // --- 2. 检查和消费免费额度 ---
+  try {
+      hasFreeQuota = await checkAndConsumeFreeQuota(c, userId);
+  } catch (error) {
+    console.error(error.message);
+    // checkAndConsumeFreeQuota 内部已经抛出了 HTTPException
+    return c.json({ message: error.message }, 400);
+  }  
+
+  let imageUrls = await generateImageByAi(c, userId, wordToGenerate, phonetic, exampleToGenerate, language, hasFreeQuota);
+
+  // console.log(imageUrls);
+
   // const imageUrls = ['https://p3-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/c0efd5fd4a414fbaab1232df5e876d6b~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=sGXKNhKHkj%2F2msIbhAQtcLlGNXk%3D&format=.jpeg', 
   //   'https://p9-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3bc050392177442ebed27dc883891b7a~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=uipvjRhc40XXAMDhIBEeO%2BEuit4%3D&format=.jpeg', 
   //   'https://p26-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/76b4331521494f5780d04c7682615124~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=Gnv%2Fp1XoAo5WqBYUWjIc%2BzoWHTQ%3D&format=.jpeg', 
@@ -1800,7 +1875,7 @@ word.post('/imagize', async (c) => {
   if (imageUrls && imageUrls.length > 0) {
     console.log('开始加载图片...');
     allImageResults = await readImageBinaryStreams(imageUrls);
-    console.log('所有图片加载结果:', allImageResults);
+    console.log('所有图片加载结果:', allImageResults.length);
   }
 
   // 去掉gemini生图，质量不好

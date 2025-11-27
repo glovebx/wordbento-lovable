@@ -46,7 +46,7 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
 
     const fetchImageUrls = async (word: string) => {
         try {
-            const generatedUrls = await generateImages(word, '');
+            const generatedUrls = await generateImages(word, '', false);
             if (generatedUrls && generatedUrls.length > 0) {
                 setImageUrls(generatedUrls);
             } else {

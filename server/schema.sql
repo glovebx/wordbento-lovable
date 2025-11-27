@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     password TEXT NOT NULL,
     role TEXT NOT NULL,
     salt TEXT NOT NULL,
+    vip_level INTEGER,
     access_token TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -173,10 +174,11 @@ CREATE TABLE IF NOT EXISTS temp_attachments (
 CREATE TABLE IF NOT EXISTS llms (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    platform TEXT CHECK(platform IN ('deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'dreamina', 'scraper')) NOT NULL,
+    platform TEXT CHECK(platform IN ('deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'seedream', 'dreamina', 'scraper')) NOT NULL,
     endpoint TEXT NOT NULL,
     token TEXT,
     model TEXT,
+    active INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

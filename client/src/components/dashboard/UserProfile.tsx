@@ -9,7 +9,7 @@ import { ApiSettings } from "@/components/profile/ApiSettings";
 
 // 引入 useLlms Hook 及其类型
 import { useLlms, Llm, SaveLlmData } from '@/hooks/use-llm'; // 假设 use-llms 路径正确
-import { useProfile, Profile } from '@/hooks/use-profile'; // 假设 use-llms 路径正确
+import { useProfile } from '@/hooks/use-profile'; // 假设 use-llms 路径正确
 import { AccessTokenSettings } from "../profile/AccessTokenSettings";
 
 // --- 类型定义 ---
@@ -19,6 +19,7 @@ interface BaseApiConfig {
     platform: Llm['platform'] | 'scraper'; // 包含 scraper
     title: string;
     description: string;
+    active: boolean;
     isModelRequired: boolean;
 }
 
@@ -29,6 +30,7 @@ type ApiConfigState = BaseApiConfig & {
     endpoint: string;
     apiKey: string;
     model?: string;
+    active?: boolean;
 };
 
 // // 更新 ApiConfig 类型，添加 isModelRequired 属性
@@ -47,24 +49,35 @@ const initialApis: BaseApiConfig[] = [
         platform: "gemini",
         title: "Gemini",
         description: "for general text.",
+        active: true,
         isModelRequired: true,
     },
     {
         platform: "deepseek",
         title: "DeepSeek",
         description: "for professional text.",
+        active: true,
         isModelRequired: true,
     },
     {
         platform: "jimeng",
         title: "Jimeng",
         description: "for image creation.",
+        active: true,
+        isModelRequired: true,
+    },
+    {
+        platform: "seedream",
+        title: "SeeDream",
+        description: "for image creation.",
+        active: true,
         isModelRequired: true,
     },
     {
         platform: "scraper",
         title: "Scraper",
         description: "for data extraction.",
+        active: true,
         isModelRequired: false
     }
 ];
@@ -202,6 +215,7 @@ const mergeConfigAndInitState = (
             endpoint: backendLlm?.endpoint || "",
             apiKey: backendLlm?.token || "", // 注意：后端是 token，前端可能是 apiKey
             model: backendLlm?.model || "",
+            active: !!backendLlm?.active,
         };
 
         // 确保非 Model Required 的配置不包含 model 字段（尽管可选类型可以忽略）
@@ -293,7 +307,7 @@ const UserProfile = () => {
     // --- 优化后的 API 配置保存处理器 ---
     const handleSaveApiSettings = useCallback(async (
         platform: Llm['platform'], 
-        newConfig: { endpoint: string, apiKey: string, model?: string }
+        newConfig: { endpoint: string, apiKey: string, model?: string, active?: boolean }
     ) => {
         // // 对于 Scraper 等不属于 Llm 模型的，仅进行前端状态更新或调用其他 API
         // if (platform === 'scraper') {
@@ -318,6 +332,7 @@ const UserProfile = () => {
             endpoint: newConfig.endpoint,
             token: newConfig.apiKey, // 关键：将前端的 apiKey 映射为后端的 token
             model: newConfig.model || '',
+            active: !!newConfig.active,
         };
 
         // 调用 useLlms 提供的 saveLlm 函数
@@ -389,14 +404,17 @@ const UserProfile = () => {
                                 setApiKey={(val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], apiKey: val } }))}
                                 endpointId={`${api.platform}-endpoint`}
                                 apiKeyId={`${api.platform}-api-key`}
-                                onSave={(endpoint, apiKey, model) => handleSaveApiSettings(api.platform, { endpoint, apiKey, model })}
+                                onSave={(endpoint, apiKey, model, active) => handleSaveApiSettings(api.platform, { endpoint, apiKey, model, active })}
                                 // 使用 useLlms 的 isSaving 状态
                                 isSaving={isLlmSaving || isSaving[api.platform]} 
                                 
                                 isModelRequired={api.isModelRequired}
                                 model={currentConfig.model}
                                 setModel={api.isModelRequired ? (val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], model: val } })) : undefined}
+                                active={currentConfig.active}
+                                setActive={(val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], active: val } }))}
                                 modelId={`${api.platform}-model`}
+                                activeId={`${api.platform}-active`}
                             />
                         </div>
                     );

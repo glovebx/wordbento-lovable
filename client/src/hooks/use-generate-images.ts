@@ -19,7 +19,7 @@ export const useGenerateImages = () => {
    * @param wordText The text of the word for which to generate images.
    * @returns A Promise that resolves with an array of image URLs on success, or null on failure.
    */
-  const generateImages = useCallback(async (wordText: string, example: string): Promise<string[] | null> => {
+  const generateImages = useCallback(async (wordText: string, example: string, force: boolean): Promise<string[] | null> => {
     setIsGeneratingImages(true);
     setGenerationError(null); // Clear previous errors
     console.log(`Hook: Attempting to generate images for word: ${wordText}`);
@@ -27,7 +27,7 @@ export const useGenerateImages = () => {
     try {
       // Example API call (replace with your actual endpoint and payload)
       // Assuming a POST endpoint like /api/word/:wordText/generate-images that returns { imageUrls: string[] }
-      const response = await axiosPrivate.post('/api/word/imagize', JSON.stringify({ slug: wordText, example: example }));
+      const response = await axiosPrivate.post('/api/word/imagize', JSON.stringify({ slug: wordText, example: example, force: force }));
 
       if (response.status === 200 && response.data?.imageUrls) {
         console.log("Hook: Image generation successful. Received URLs:");
