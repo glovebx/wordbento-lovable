@@ -389,7 +389,7 @@ const enPrompt = `给你一个英文单词，返回下列json格式的数据:
     },
     "etymology": {
       "icon": "Atom",
-      "en": "该单词的词源分析，包括其历史演变和来自哪种语言。",
+      "en": "该单词的词源分析，包括来自哪一种语言。",
       "zh": "词源的中文说明。"
     },
     "affixes": {
@@ -428,7 +428,7 @@ const jaPrompt = `给你一个日文单词，返回下列json格式的数据:
     "meaning": "简洁中文含义",
     "definition": {
           "icon": "BookOpen",
-          "en": "日文词义解释（含用法语境）",
+          "en": "日文词义解释（含用法和语境）",
           "zh": "对应中文解释"
     },
     "examples": {
@@ -2215,7 +2215,8 @@ word.post('/tts', async (c) => {
 word.post('/today', async (c) => {
   const user = c.get('user');
   if (!user) {
-    return c.json([], 200); // Return 200 OK for existing
+    // return c.json([], 200); // Return 200 OK for existing
+    return c.json({ message: 'Forbidden' }, 403);
   }
 
   let maxViewsId = 0;
@@ -2233,6 +2234,7 @@ word.post('/today', async (c) => {
   
   // 1. 在 JS 中获取当天的起始和结束时间（可以控制时区）
   const start = new Date();
+  start.setDate(start.getDate() - 1); // 减去一天
   start.setHours(0, 0, 0, 0);
   const end = new Date();
   end.setHours(23, 59, 59, 999);
@@ -2262,8 +2264,8 @@ word.post('/today', async (c) => {
       // 这里传入字符串，而不是 Date 对象
       gte(schema.word_views.created_at, startStr),
       lte(schema.word_views.created_at, endStr)
-    ))
-    .limit(5);
+    ));
+    // .limit(5);
 
     const existsIds = existsWordViews.map(d => d.word_id)
     const uniqueExistsIds = [...new Set(existsIds)];

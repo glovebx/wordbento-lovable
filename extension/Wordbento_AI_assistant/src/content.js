@@ -207,7 +207,7 @@ class WordbentoTranslator {
         subtitleText = Array.from(lines)
           .map(line => {
             // 提取行内所有文本内容
-            return line.textContent.replace(/\s+/g, ' ').trim();
+            return line.textContent.replace(/\s+/g, ' ').trim().toLowerCase();
           })
           .filter(text => text.length > 0)
           .join(' '); // 行与行之间用空格连接

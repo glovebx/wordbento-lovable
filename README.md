@@ -30,6 +30,11 @@ The repository uses a monorepo structure with `pnpm` workspaces:
 
 - **`client/`**: React-based frontend using Vite and Tailwind CSS.
 - **`server/`**: Backend built on Cloudflare Workers with Hono and Drizzle ORM.
+- **`extension/`**: Chrome extension.
+
+### Assistant Repo
+- **[Youtube-download-scraper][https://github.com/glovebx/Youtube-dl-scraper]**: Download youtube video without cookie.
+- **[Android word client][https://github.com/glovebx/moco-ai-client]**: Synchronize words to Android app.
 
 ### Scripts
 The root package includes global scripts:
