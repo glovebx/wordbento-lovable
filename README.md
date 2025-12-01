@@ -33,8 +33,8 @@ The repository uses a monorepo structure with `pnpm` workspaces:
 - **`extension/`**: Chrome extension.
 
 ### Assistant Repo
-- **[Youtube-download-scraper][https://github.com/glovebx/Youtube-dl-scraper]**: Download youtube video without cookie.
-- **[Android word client][https://github.com/glovebx/moco-ai-client]**: Synchronize words to Android app.
+- **[Youtube-download-scraper](https://github.com/glovebx/Youtube-dl-scraper)**: Download youtube video without cookie.
+- **[Android client](https://github.com/glovebx/moco-ai-client)**: Synchronize words to Android app.
 
 ### Scripts
 The root package includes global scripts:
