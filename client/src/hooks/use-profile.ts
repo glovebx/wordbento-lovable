@@ -55,7 +55,7 @@ export const useProfile = (isAuthenticated: boolean) => {
   // Effect for initial load and when isAuthenticated changes
   useEffect(() => {
     // 重置状态
-    setRecentProfile([]);
+    setRecentProfile(null);
     if (isAuthenticated) {
       fetchProfile();
     } else {

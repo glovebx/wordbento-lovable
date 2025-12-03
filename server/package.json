@@ -11,16 +11,16 @@
     "push:migration": "drizzle-kit push --db ./drizzle/sqlite.db"
   },
   "dependencies": {
-    "@andresaya/edge-tts": "^1.4.4",
+    "@andresaya/edge-tts": "^1.6.2",
     "@libsql/client": "^0.15.15",
     "@tsndr/cloudflare-worker-jwt": "^3.2.0",
-    "better-sqlite3": "12.4.1",
-    "cookie": "^1.0.2",
+    "better-sqlite3": "12.5.0",
+    "cookie": "^1.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "djwt": "^2.0.0",
     "dotenv": "^17.2.3",
-    "hono": "^4.10.4",
+    "hono": "^4.10.7",
     "jsonrepair": "^3.13.1",
     "langs": "^2.0.0",
     "mariadb": "^3.4.5",
@@ -28,14 +28,14 @@
   },
   "devDependencies": {
     "@cloudflare/puppeteer": "^1.0.4",
-    "@playwright/test": "^1.56.1",
-    "@types/node": "^22.18.13",
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^22.19.1",
     "concurrently": "^9.2.1",
-    "drizzle-kit": "^0.31.6",
+    "drizzle-kit": "^0.31.7",
     "drizzle-orm": "^0.44.7",
-    "esbuild": "^0.25.11",
-    "tsx": "^4.20.6",
+    "esbuild": "^0.27.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "wrangler": "^4.45.3"
+    "wrangler": "^4.51.0"
   }
 }

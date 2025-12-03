@@ -2264,8 +2264,8 @@ word.post('/today', async (c) => {
       // 这里传入字符串，而不是 Date 对象
       gte(schema.word_views.created_at, startStr),
       lte(schema.word_views.created_at, endStr)
-    ));
-    // .limit(5);
+    ))
+    .limit(50);
 
     const existsIds = existsWordViews.map(d => d.word_id)
     const uniqueExistsIds = [...new Set(existsIds)];
