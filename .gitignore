@@ -2,6 +2,7 @@
 
 geckodriver
 geckodriver.log
+.pyc
 
 test.py
 today.py
