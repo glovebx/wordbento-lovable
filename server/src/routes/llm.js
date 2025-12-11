@@ -106,8 +106,8 @@ llm.post('/save', async (c) => {
         });        
       }
 
-      const llmKey = `llm-${requestData.platform}-${userId}`
-      if (requestData.endpoint && requestData.active) {
+      if (requestData.endpoint) {
+        const llmKey = `llm-${requestData.platform}-${userId}`
         const llmDataKv = {
           endpoint: requestData.endpoint,
           token: requestData.token,
@@ -115,8 +115,6 @@ llm.post('/save', async (c) => {
           active: requestData.active,
         }
         await c.env.WORDBENTO_KV.put(llmKey, JSON.stringify(llmDataKv));
-      } else {
-        await c.env.WORDBENTO_KV.delete(llmKey);
       }
 
       return c.json({}, 200); // 201 Created

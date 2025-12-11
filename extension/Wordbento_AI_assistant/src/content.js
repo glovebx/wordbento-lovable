@@ -5,26 +5,50 @@ class WordbentoTranslator {
     this.isActive = false;
     this.translationPanel = null;
     this.currentSubtitles = [];
-    this.subtitleObserver = null; // 重命名，区分 URL/DOM 观察者
-    // this.urlObserver = null;      // 新增 URL 变化观察者
+    this.observer = null;
     this.showYtpCaptionContainer = true;
-    this.currentSubtitleText = '';
-    // this.lastUrl = window.location.href; // 记录当前 URL
-    this.isInitialized = false; // 跟踪是否已完成核心初始化
     this.init();
   }
 
-  init() {        
-    // // 监听 URL 变化，这是解决 SPA 问题的关键
-    // this.startUrlObserver();
-
+  init() {
     // 等待页面加载完成
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => this.start());
     } else {
       this.start();
     }
+  }
 
+  start() {
+    console.log('Wordbento单词AI助手插件已启动');
+    
+    // 检查是否在YouTube视频页面
+    if (this.isYouTubeVideoPage()) {
+      // 创建翻译面板
+      this.createTranslationPanel();
+      
+      // 开始监听字幕变化
+      this.startSubtitleObserver();
+      
+      // 添加单词点击事件监听
+      this.addWordClickListener();
+      
+      // 监听键盘快捷键
+      this.addKeyboardListener();
+
+      // 调用方式
+      const that = this;
+      this.getSettings()
+        .then(settings => {
+          console.log('获取到的设置:', settings);
+          // 这里可以继续链式调用
+          that.showYtpCaptionContainer = settings.showYtpCaptionContainer;
+        })
+        .catch(error => {
+          console.error('获取设置失败:', error);
+        });
+
+    }
     // 在 contentScript.js 中
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'addToWordbento') {
@@ -35,93 +59,11 @@ class WordbentoTranslator {
         // // 可以调用 sendResponse() 来回复背景脚本
         // sendResponse({ status: 'success' });
       }
-    });      
+    });    
   }
-
-  start() {
-    console.log('Wordbento单词AI助手插件已启动');
-    
-    // 检查是否在YouTube视频页面
-    if (this.isYouTubeVideoPage()) {
-      // 确保在 SPA 导航时只初始化一次面板和监听器
-      if (!this.isInitialized) {
-        // 创建翻译面板
-        this.createTranslationPanel();
-        
-        // 开始监听字幕变化
-        this.startSubtitleObserver();
-        
-        // 添加单词点击事件监听
-        this.addWordClickListener();
-        
-        // 监听键盘快捷键
-        this.addKeyboardListener();
-
-        // 调用方式
-        const that = this;
-        this.getSettings()
-          .then(settings => {
-            console.log('获取到的设置:', settings);
-            // 这里可以继续链式调用
-            that.showYtpCaptionContainer = settings.showYtpCaptionContainer;
-          })
-          .catch(error => {
-            console.error('获取设置失败:', error);
-          });
-
-        this.isInitialized = true; // 标记核心初始化完成  
-      } else {
-        // 如果已初始化，但URL匹配，确保面板是可见的
-        if (this.translationPanel) {
-            this.translationPanel.style.display = 'block';
-        }
-        // 在 SPA 导航到新的视频时，我们需要重新清理字幕历史
-        this.currentSubtitles = []; 
-        // 重新尝试提取一次字幕
-        setTimeout(() => this.extractSubtitles(), 500);        
-      }
-    } else {
-        // 如果不在视频页面，隐藏面板并停止字幕监听
-        if (this.translationPanel) {
-            this.translationPanel.style.display = 'none';
-        }
-        if (this.subtitleObserver) {
-            this.subtitleObserver.disconnect();
-            this.subtitleObserver = null;
-        }
-        this.isInitialized = false; // 重置初始化状态
-    }  
-  }
-
-  // // ==========================================================
-  // // 关键改动：监听 URL 变化以处理 SPA 导航
-  // // ==========================================================
-  // startUrlObserver() {
-  //   console.log('Wordbento: 启动 URL 变化观察者');
-    
-  //   // 监听 URL 变化
-  //   this.urlObserver = new MutationObserver(() => {
-  //       const currentUrl = window.location.href;
-  //       if (currentUrl !== this.lastUrl) {
-  //           console.log('Wordbento: 检测到 URL 变化:', this.lastUrl, '->', currentUrl);
-  //           this.lastUrl = currentUrl;
-            
-  //           // 重新运行 start 方法，它将根据新 URL 决定是初始化还是清理
-  //           this.start();
-  //       }
-  //   });
-
-  //   // 观察整个文档的 DOM 变化，因为 URL 变化通常伴随着 DOM 结构的大幅改变
-  //   // 或者您也可以只观察 body 或 title 元素
-  //   this.urlObserver.observe(document.documentElement, { 
-  //     childList: true, 
-  //     subtree: true,
-  //   });
-  // }  
 
   isYouTubeVideoPage() {
-    // return window.location.pathname === '/watch' && window.location.search.includes('v=');
-    return window.location.href.includes('/watch?v=');
+    return window.location.pathname === '/watch' && window.location.search.includes('v=');
   }
 
   createTranslationPanel() {
@@ -210,16 +152,12 @@ class WordbentoTranslator {
   }
 
   startSubtitleObserver() {
-    if (this.subtitleObserver) {
-        this.subtitleObserver.disconnect();
-        this.subtitleObserver = null;
-    } 
     // 监听YouTube字幕容器
     // const subtitleSelector = '.caption-window, .ytp-caption-window-container, [class*="caption"]';
     
     // 添加防抖优化
     let subtitleTimeout;    
-    this.subtitleObserver = new MutationObserver((mutations) => {
+    this.observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         // if (mutation.type === 'childList' || mutation.type === 'characterData') {
         if (mutation.type === 'childList') {
@@ -235,10 +173,10 @@ class WordbentoTranslator {
     
     // 开始观察
     const targetNode = document.querySelector('#movie_player') || document.body;
-    this.subtitleObserver.observe(targetNode, {
+    this.observer.observe(targetNode, {
       childList: true,
       subtree: true,
-      // characterData: true  // 移除这个，因为它会极大地增加性能开销，用 childList 和防抖通常足够抓取字幕变化
+      characterData: true
     });
     
     // 立即尝试提取一次字幕
@@ -449,65 +387,6 @@ class WordbentoTranslator {
     });
   }
 
-  getActualTranslateValues(element) {
-      const style = window.getComputedStyle(element);
-      const matrix = style.transform;
-      
-      // 如果没有 transform，则返回 0
-      if (matrix === 'none') {
-          return { x: 0, y: 0 };
-      }
-
-      // 提取矩阵中的值
-      // matrix(a, b, c, d, tx, ty)
-      const matrixValues = matrix.match(/matrix.*\((.+)\)/)[1].split(', ');
-      
-      // 对于 matrix(a, b, c, d, tx, ty) 形式，tx 是第 5 个值 (索引 4)，ty 是第 6 个值 (索引 5)
-      // 对于 matrix3d 形式，tx 是第 13 个值 (索引 12)，ty 是第 14 个值 (索引 13)
-      const is3d = matrixValues.length === 16; 
-      
-      const x = parseFloat(matrixValues[is3d ? 12 : 4]);
-      const y = parseFloat(matrixValues[is3d ? 13 : 5]);
-      
-      return { x, y };
-  }
-
-  getPanelScreenCoordinates() {
-      if (!this.translationPanel) {
-          return null;
-      }
-
-      // 1. 获取元素原始的矩形边界信息 (相对于视口)
-      const rect = this.translationPanel.getBoundingClientRect();
-      
-      // // 2. 获取当前的 translate 偏移量
-      // // 使用您的 makeDraggable 中维护的 currentX 和 currentY 是最简单且最精确的方法。
-      // // 如果您在 makeDraggable 中将它们存储在类属性中，可以直接访问：
-      // // const offsetX = this.currentX || 0; 
-      // // const offsetY = this.currentY || 0; 
-
-      // // **或者，使用 getActualTranslateValues 函数（如上所述）**
-      // const translate = this.getActualTranslateValues(this.translationPanel);
-      // const offsetX = translate.x;
-      // const offsetY = translate.y;
-
-
-      // // 3. 计算最终的视口坐标
-      // const screenX = rect.left + offsetX;
-      // const screenY = rect.top + offsetY;
-
-      // // 4. 计算最终的文档坐标 (相对于整个网页)
-      // const documentX = screenX + window.scrollX;
-      // const documentY = screenY + window.scrollY;
-
-      return {
-          screenX: rect.left,
-          screenY: rect.top,
-          // documentX: documentX,
-          // documentY: documentY
-      };
-  }
-
   showWordDefinition(word, x, y) {
     // 移除已存在的定义弹窗
     const existingPopup = document.querySelector('.word-definition-popup');
@@ -518,14 +397,9 @@ class WordbentoTranslator {
     // 创建单词定义弹窗
     const popup = document.createElement('div');
     popup.className = 'word-definition-popup';
-    // popup.style.left = x + 'px';
-    const panelPos = this.getPanelScreenCoordinates();
-    if (panelPos) {
-      popup.style.left = (panelPos.screenX + ((x - panelPos.screenX)/2)) + 'px';
-    } else {
-      popup.style.left = x + 'px';
-    }
-    popup.style.top = (y + 18) + 'px';
+    popup.style.left = x + 'px';
+    popup.style.top = y + 'px';
+    
     popup.innerHTML = `
       <div class="word-header">
         <span class="word-text">${word}</span>
