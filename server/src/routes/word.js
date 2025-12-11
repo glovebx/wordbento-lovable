@@ -960,23 +960,27 @@ const generateImageByAi = async (c, userId, word, phonetic, example, language, h
   console.log(`Calling AI for image: ${word}`);
 
   let imageUrls = [];
-  let llm = await getLlmConfig(c, 'jimeng', userId, hasFreeQuota);
-
+  let llm = await getLlmConfig(c, 'dreamina', userId, hasFreeQuota);
   if (llm[1]) {
-    // 配置了jimeng
-    imageUrls = await generateImageByJiMengAi(c, word, phonetic, example, language);
+    imageUrls = await generateImageByDreaminaAi(c, word, phonetic, example, language);
   }
   if (!imageUrls || imageUrls.length == 0) {
-    llm = await getLlmConfig(c, 'seedream', userId, hasFreeQuota);
+    llm = await getLlmConfig(c, 'jimeng', userId, hasFreeQuota);
     if (llm[1]) {
-      imageUrls = await generateImageBySeeDreamAi(c, word, phonetic, example, language);
+      // 配置了jimeng
+      imageUrls = await generateImageByJiMengAi(c, word, phonetic, example, language);
+    }
+    if (!imageUrls || imageUrls.length == 0) {
+      llm = await getLlmConfig(c, 'seedream', userId, hasFreeQuota);
+      if (llm[1]) {
+        imageUrls = await generateImageBySeeDreamAi(c, word, phonetic, example, language);
+      }
     }
   }
-
   return imageUrls;
 }
 
-const generateImageByDreamina = async (c, word, phonetic, example, language) => {
+const generateImageByDreaminaAi = async (c, word, phonetic, example, language) => {
   console.log(`Calling Dreamina AI for word: ${word} ${example}`);
 
   const AI_API_KEY = c.env.DREAMINA_API_KEY;
@@ -1054,7 +1058,7 @@ const generatePosterPromptWithExample = (
   The entire scene should visually interpret and embody the meaning and mood of the sentence: "${exampleSentence}". 
   Use a layout that integrates the text seamlessly into the image. The title "${word}" should be large, bold, and artistic at the top. 
   The pronunciation "${pronunciation}" should be smaller and elegantly placed below the title. 
-  The full sentence "${exampleSentence}" should be incorporated as a design element within the scene, not just a block of text. 
+  The full sentence "${exampleSentence}" should be incorporated as a design element within the scene, It is crucial that the text remains highly legible—ensure clear fonts, strong contrast with the background, and an appropriate size/layout that prioritizes readability.
   Style: ${style}`;
   
   // 添加额外指令（如果有）
@@ -1255,6 +1259,7 @@ const log2WordViews = async (db, userId, wordId) => {
   if (!userId || !wordId) return;
 
   try {
+    // TODO: 如果今天已经记录过该单词，则忽略
     // const insertedWordResult = 
     await db.insert(schema.word_views).values({
         user_id: userId,
@@ -1843,13 +1848,6 @@ word.post('/imagize', async (c) => {
   const language = LanguageUtils.detectLanguage(wordToGenerate);
   // const isJapanese = language === 'japanese' || language === 'mixed';  
 
-  // let imageUrls = await generateImageByDreamina(c, wordToGenerate, phonetic, exampleToGenerate, language);
-  // // let imageUrls = await generateImageBySeeDreamAi(c, wordToGenerate, phonetic, exampleToGenerate, language);
-
-  // if (!imageUrls || imageUrls.length == 0) {
-  //   imageUrls = await generateImageByJiMengAi(c, wordToGenerate, phonetic, exampleToGenerate, language);
-  // }
-
   // 限流检查
   let hasFreeQuota = false;
   // --- 2. 检查和消费免费额度 ---
@@ -1862,6 +1860,7 @@ word.post('/imagize', async (c) => {
   }  
 
   let imageUrls = await generateImageByAi(c, userId, wordToGenerate, phonetic, exampleToGenerate, language, hasFreeQuota);
+  // let imageUrls = await generateImageByDreaminaAi(c, wordToGenerate, phonetic, exampleToGenerate, language);
 
   // console.log(imageUrls);
 
@@ -1914,27 +1913,28 @@ word.post('/imagize', async (c) => {
       console.error(`Database transaction failed for delete images "${existingWord.word_text}":`, dbError);
     }
 
-    const allResultsPromises = allImageResults.map(async (imageBinaryData) => {
+    // 2025/12/11 不保存成功下载到本地的数据
+    const allResultsPromises = allImageResults.filter(img => !!img.data).map(async (imageBinaryData) => {
       // Start a database transaction for inserting into multiple tables
       try {
-        // 保存到本地失败了，直接存入url（其实没有意义，即梦这个URL会失效）
-        if (!imageBinaryData.data && imageBinaryData.url) {
-          const insertedImageResult = await db.insert(schema.images).values({
-            word_id: existingWord.id, // Associate with public user ID 0
-            image_key: imageBinaryData.url,
-            prompt: exampleToGenerate
-            })
-            // Use .returning() in Drizzle for D1 to get the inserted row
-            .returning()
-            .get(); // .get() for a single row
+        // // 保存到本地失败了，直接存入url（其实没有意义，即梦这个URL会失效）
+        // if (!imageBinaryData.data && imageBinaryData.url) {
+        //   const insertedImageResult = await db.insert(schema.images).values({
+        //     word_id: existingWord.id, // Associate with public user ID 0
+        //     image_key: imageBinaryData.url,
+        //     prompt: exampleToGenerate
+        //     })
+        //     // Use .returning() in Drizzle for D1 to get the inserted row
+        //     .returning()
+        //     .get(); // .get() for a single row
 
-          // Check if insertion was successful and returned a row
-          if (!insertedImageResult) {
-            throw new Error("Failed to insert image into table or get inserted row.");
-          }
+        //   // Check if insertion was successful and returned a row
+        //   if (!insertedImageResult) {
+        //     throw new Error("Failed to insert image into table or get inserted row.");
+        //   }
 
-          return imageBinaryData.url;
-        }
+        //   return imageBinaryData.url;
+        // }
 
         const objectKey = nanoid(10);
         const objectPath = `${objectKey}.jpeg`
@@ -2320,7 +2320,11 @@ word.post('/today', async (c) => {
           let examples = ''
           if (newWord.content && newWord.content.examples && newWord.content.examples.en) {
             examples = "\n\n----\n\n" + newWord.content.examples.en.join("\n\n")
-          }          
+          }
+          // let affixes = ''
+          // if (newWord.content && newWord.content.affixes && newWord.content.affixes.zh) {
+          //   affixes = "\n\n----\n\n" + newWord.content.affixes.zh
+          // }
 
           // newWord.text = `${newWord.word}\n${newWord.phonetic}, ${newWord.meaning}`;
           newWord.text = `${newWord.word}\n\n${newWord.phonetic}${etymology}${examples}`;
