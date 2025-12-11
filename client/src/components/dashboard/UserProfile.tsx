@@ -74,6 +74,13 @@ const initialApis: BaseApiConfig[] = [
         isModelRequired: true,
     },
     {
+        platform: "dreamina",
+        title: "Dreamina",
+        description: "for image creation.",
+        active: true,
+        isModelRequired: true,
+    },
+    {
         platform: "scraper",
         title: "Scraper",
         description: "for data extraction.",
