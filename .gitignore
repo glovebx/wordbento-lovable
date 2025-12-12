@@ -10,6 +10,8 @@ test.py
 today.py
 *.json
 
+downloaded_images/
+
 # dependencies
 node_modules/
 .pnp/
