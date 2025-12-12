@@ -7,6 +7,7 @@ import selenium
 from selenium import webdriver
 
 from xhs_publisher import xhs_publisher
+from word_bento_client import WordBentoClient
 
 all_sites = ['xhs',]
 
@@ -44,12 +45,40 @@ def publish_to_platform(platform: str, contents: dict):
         traceback.print_exc()  # 打印完整的异常跟踪信息
         print(e)
 
+def main():
+    """
+    主函数 - 配置参数并运行客户端
+    """
+    # 配置参数
+    BASE_URL = "http://192.168.3.58:8787"
+    AUTH_KEY = "fa2357b2-4fbe-4a42-8901-300571fc6cfa"
+    STATE_FILE = "sequence_word_state.json"  # 状态存储文件
+    
+    # 创建客户端实例
+    client = WordBentoClient(BASE_URL, AUTH_KEY, STATE_FILE)
+    
+    try:
+        # 执行处理流程
+        contents = client.process_sequence_words()
+        if contents:
+            publish_to_platform('xhs', contents)
+        else:
+            print("没有获取到单词内容！！")
+    except KeyboardInterrupt:
+        print("\n程序被用户中断")
+    except Exception as e:
+        print(f"程序执行异常: {e}")
+    finally:
+        # 确保资源被正确释放
+        client.close()
+        print("程序执行完毕")
 
 if __name__ == '__main__':
-    contents = {
-        'title': '单词打卡：dispersal',
-        'description': "The act or process of spreading things or people over a wide area, or of becoming spread in this way. Often used in contexts of biology (seed/pollen dispersal), ecology (population dispersal), or social phenomena (information/crowd dispersal).\n词根：'spers-'（源自拉丁语 'spargere'，意为散开）。前缀：'dis-'（分开，远离，具有反转力）。后缀：'-al'（构成表示动作的名词）。相关词汇：disperse（动词），dispersion（名词），dispersive（形容词）。",
-        'images': ['/Users/glovebx/Downloads/QvWtzEkG1X.png'],
-        'tags': ['单词打卡', '每日单词', '英语学习', '英语单词速记', '英语词汇', '单词记忆法', '日常英语']
-    }
-    publish_to_platform('xhs', contents)
+    # contents = {
+    #     'title': '单词打卡：dispersal',
+    #     'description': "The act or process of spreading things or people over a wide area, or of becoming spread in this way. Often used in contexts of biology (seed/pollen dispersal), ecology (population dispersal), or social phenomena (information/crowd dispersal).\n词根：'spers-'（源自拉丁语 'spargere'，意为散开）。前缀：'dis-'（分开，远离，具有反转力）。后缀：'-al'（构成表示动作的名词）。相关词汇：disperse（动词），dispersion（名词），dispersive（形容词）。",
+    #     'images': ['/Users/glovebx/Downloads/QvWtzEkG1X.png'],
+    #     'tags': ['单词打卡', '每日单词', '英语学习', '英语单词速记', '英语词汇', '单词记忆法', '日常英语']
+    # }
+    # publish_to_platform('xhs', contents)
+    main()

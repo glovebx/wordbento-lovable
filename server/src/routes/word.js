@@ -635,6 +635,9 @@ const generateBentoByPlatformAi = async (c, llm, word, isJapanese) => {
             console.error(`${llm[0]} AI API call failed: ${response.status} ${response.statusText}`);
             return null;
         }
+
+        // const text = await response.text();
+        // console.log('text ==>', text);
   
         const data = await response.json(); // No type assertion needed in JS
         console.log(data);
@@ -2375,6 +2378,115 @@ word.post('/today', async (c) => {
   } catch (checkError) {
       console.error("Failed to check for today words in DB:", checkError);
       return c.json({ message: 'Failed to get today words.' }, 500);
+  }
+
+});
+
+
+// 发布到小红书的单词，按顺序
+word.post('/sequence', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    // return c.json([], 200); // Return 200 OK for existing
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  let limit = 1;
+  let maxWordsId = 0;
+  try {
+     const body = await c.req.json();
+     maxWordsId = body.maxId || 0;
+     limit = parseInt(body.limit || 1);
+  } catch (e) {
+      console.error("Failed to parse request body:", e);
+      return c.json({ message: 'Invalid JSON body' }, 400);
+  }
+
+  console.log('maxWordsId =>', maxWordsId);
+
+  const db = drizzle(c.env.DB, { schema });
+  
+  try {        
+    const paginatedWords = await db.select({
+      id: schema.words.id,
+      word_text: schema.words.word_text,
+      phonetic: schema.words.phonetic,
+      meaning: schema.words.meaning,
+    })
+    .from(schema.words)
+    .where(
+      gt(schema.words.id, parseInt(maxWordsId)),
+    )
+    .limit(limit);
+
+    const allWordIds = paginatedWords.map(w => w.id);
+    // 最近的word的id
+    const latestWordId = Math.max(...allWordIds);
+    const totalCount = paginatedWords.length;
+
+    let successfulWords = [];
+    if (paginatedWords.length > 0) {
+
+      // TODO: 放入缓存优化
+      const results = await Promise.allSettled(paginatedWords.map(async (existingWord) => {
+          // 并行获取相关内容和图片记录
+          const [contentRecords, imageRecords] = await Promise.all([
+              db.select()
+                  .from(schema.word_content)
+                  .where(eq(schema.word_content.word_id, existingWord.id)),
+              db.select()
+                  .from(schema.images)
+                  .where(eq(schema.images.word_id, existingWord.id))
+          ]);
+
+          let newWord = formatDbResultToWordResponse(c, existingWord, contentRecords, imageRecords);
+          newWord.word = newWord.word_text;
+
+          let definition = ''
+          if (newWord.content && newWord.content.definition && newWord.content.definition.en) {
+            definition = `\n${newWord.content.definition.en}`
+          }
+
+          let etymology = ''
+          if (newWord.content && newWord.content.etymology && newWord.content.etymology.en) {
+            etymology = `\n\n${newWord.content.etymology.en}`
+          }
+          // let examples = ''
+          // if (newWord.content && newWord.content.examples && newWord.content.examples.en) {
+          //   examples = "\n\n__LLM_RESPONSE__ [" + newWord.content.examples.en.join(",") + "]"
+          // }
+          let examples = ''
+          if (newWord.content && newWord.content.examples && newWord.content.examples.en) {
+            examples = "\n\n" + newWord.content.examples.en.map((example, index) => `${index + 1}. ${example}`).join("\n");
+
+          }
+          // let affixes = ''
+          // if (newWord.content && newWord.content.affixes && newWord.content.affixes.zh) {
+          //   affixes = "\n\n----\n\n" + newWord.content.affixes.zh
+          // }
+
+          // newWord.text = `${newWord.word}\n${newWord.phonetic}, ${newWord.meaning}`;
+          newWord.text = `${newWord.word} ${newWord.phonetic}${definition}${etymology}${examples}\n\n${existingWord.meaning}`;
+          return newWord;
+      }));
+
+      successfulWords = results
+          .filter(result => result.status === 'fulfilled')
+          .map(result => result.value);      
+
+      console.log(`Sequence words found with length: ${paginatedWords.length}`);
+    }
+
+    // 返回分页数据和总记录数
+    return c.json({
+      data: successfulWords,
+      latestWordId: latestWordId,
+      totalCount: totalCount
+    }, 200);    
+
+  } catch (checkError) {
+      console.error("Failed to check for sequence words in DB:", checkError);
+      return c.json({ message: 'Failed to get sequence words.' }, 500);
   }
 
 });

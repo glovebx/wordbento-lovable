@@ -79,7 +79,7 @@ def xhs_publisher(driver, contents: dict):
 
     # 3. 在光标位于末尾后，添加一个空格（如果需要）
     # 使用Selenium发送空格键。此时光标已在末尾，此操作是可靠的。
-    editor.send_keys(Keys.SPACE)
+    editor.send_keys(Keys.ENTER)
 
     time.sleep(2)
 
