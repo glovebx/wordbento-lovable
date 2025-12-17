@@ -1790,6 +1790,7 @@ word.post('/imagize', async (c) => {
            .where(eq(schema.images.word_id, existingWord.id));
           //  .limit(1);
           // 如果图片是http开头，默认已经失效（即梦的图片），客户端会出现生成图片的按钮
+          // 如果图片不是4张，重新生成一遍
           if (images && images.length > 0 && images.filter(img => img.image_key.startsWith('http')).length == 0) {
             // const imageUrls = images.map(img => img.image_key.startsWith('http') && img.image_key || `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
             const imageUrls = images.map(img => `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
@@ -2237,7 +2238,8 @@ word.post('/today', async (c) => {
   
   // 1. 在 JS 中获取当天的起始和结束时间（可以控制时区）
   const start = new Date();
-  start.setDate(start.getDate() - 1); // 减去一天
+  // start.setDate(start.getDate() - 1); // 减去一天
+  // start.setDate(start.getDate());
   start.setHours(0, 0, 0, 0);
   const end = new Date();
   end.setHours(23, 59, 59, 999);
