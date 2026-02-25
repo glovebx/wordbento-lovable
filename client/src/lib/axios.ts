@@ -42,21 +42,30 @@ axiosPrivate.interceptors.response.use(
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true; // Mark the request as retried to avoid infinite loops
 
-      console.error("Unauthorized access, performing logout."); // Log the unauthorized error
+      console.error("Unauthorized access detected (401)."); // Log the unauthorized error
 
       // Clear localStorage to remove any stored user data
-      localStorage.clear();
+      try {
+        localStorage.clear();
+      } catch (e) {
+        // ignore localStorage errors
+      }
 
-      // Optionally, clear session cookies
-      // Ensure domain and path are correct for your application
-      // SameSite=None requires Secure=true, which is appropriate for cross-site requests over HTTPS
-      document.cookie = "session_id=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=.toopost.us; secure; SameSite=None";
+      // NOTE:
+      // If the session cookie is HttpOnly it cannot be cleared from JS.
+      // The proper way is to have the server clear the cookie, or trigger a client-side reload
+      // so that the app re-checks session state. We'll dispatch a global event that the
+      // AuthProvider can listen to and clear its React state immediately.
+      try {
+        window.dispatchEvent(new CustomEvent('sessionExpired'));
+      } catch (e) {
+        // ignore dispatch errors
+      }
 
-      // // Redirect the user to the login page
-      // // Using window.location.href will cause a full page reload
-      // window.location.href = "/";
+      // Optionally force a reload (commented out to avoid jarring UX):
+      // window.location.href = '/';
 
-      // Reject the promise immediately after initiating logout/redirect
+      // Reject the promise so calling code can handle it as well
       return Promise.reject(error);
     }
 

@@ -114,7 +114,7 @@ auth.post('/logout', async (c) => {
 
       // Determine environment and cookie settings
       const isProduction = process.env.NODE_ENV === 'production';
-      const cookieDomain = isProduction ? '.toopost.us' : undefined;
+      const cookieDomain = isProduction ? '.metaerp.ai' : undefined;
       const sameSite = isProduction ? 'None' : 'Lax';
       const secure = isProduction;
 
@@ -152,6 +152,20 @@ auth.get('/session', async (c) => {
     const sessionData = await c.env.WORDBENTO_KV.get(sessionId, { type: 'json' });
     if (!sessionData) {
       console.warn('Session not found for session_id:', sessionId);
+
+      const isProduction = process.env.NODE_ENV === 'production';
+      const cookieDomain = isProduction ? '.metaerp.ai' : undefined;
+      const sameSite = isProduction ? 'None' : 'Lax';
+      const secure = isProduction;
+            
+      // Delete the session cookie
+      deleteCookie(c, 'session_id', {
+        path: '/',
+        secure: secure,
+        sameSite: sameSite,
+        domain: cookieDomain,
+      });
+  
       return c.json({ user: null }, 200);
     }
     // 删除user_id

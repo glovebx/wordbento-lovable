@@ -26,9 +26,6 @@ import { Label } from '@/components/ui/label';
 import GeneratingFallback from '@/components/GeneratingFallback';
 import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from './AuthModal';
-
-// Import the useGenerateImages hook
-import { useGenerateImages } from '@/hooks/use-generate-images';
 import { WordDataType } from '@/types/wordTypes';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react'; // Only Loader2 needed here for the main component
@@ -43,6 +40,22 @@ interface WordImageDisplayProps {
   onImagesGenerated: (word: string) => void;
   onShowImageDialogChange?: (isOpen: boolean) => void;
   onShowExampleDialogChange?: (isOpen: boolean) => void;
+  /**
+   * 外部触发生成图片的请求处理器（上层容器应执行生成并通过 `generatedImageUrls` 回传结果）
+   */
+  requestGenerateImages?: (word: string, example: string, force: boolean) => void;
+  /**
+   * 由上层容器传入的已生成图片 URL 列表
+   */
+  generatedImageUrls?: string[];
+  /**
+   * 上层容器是否正在生成图片（用于禁用按钮和显示 loading）
+   */
+  isGenerating?: boolean;
+  /**
+   * 上层容器的生成错误信息（可选）
+   */
+  generationError?: { message?: string } | null;
 }
 
 const WordImageDisplay: React.FC<WordImageDisplayProps> = ({ 
@@ -52,6 +65,10 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   onImagesGenerated,
   onShowImageDialogChange,
   onShowExampleDialogChange,
+  requestGenerateImages,
+  generatedImageUrls,
+  isGenerating,
+  generationError,
 }) => {
   // State to control the visibility of the ENLARGED image dialog
   const [showEnlargedImageDialog, setShowEnlargedImageDialog] = useState(false);
@@ -63,8 +80,6 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   const { isAuthenticated } = useAuth();  
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Use the useGenerateImages hook internally
-  const { generateImages, isGeneratingImages, generationError } = useGenerateImages();
 
   // State for the new example selection dialog
   const [showExampleDialog, setShowExampleDialog] = useState(false);
@@ -113,13 +128,11 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       setShowExampleDialog(true);
     } else {
       console.log("No examples found or examples not in expected array format, generating image with word only.");
-      const generatedUrls = await generateImages(word.word_text, '', true);
-      if (generatedUrls && generatedUrls.length > 0) {
-        onImagesGenerated(word.word_text);
-        setImageUrls(generatedUrls);
+      if (typeof requestGenerateImages === 'function') {
+        requestGenerateImages(word.word_text, '', true);
       }
     }        
-  }, [isAuthenticated, generateImages, word, selectedExample, onImagesGenerated]);
+  }, [isAuthenticated, requestGenerateImages, word, selectedExample, onImagesGenerated]);
 
 
   // Handler when an example is selected in the dialog and confirmed
@@ -134,13 +147,20 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
 
       console.log(`Generating image for word "${word.word_text}" with example: "${selectedExample}"`);
 
-      const generatedUrls = await generateImages(word.word_text, selectedExample, true);
-
-      if (generatedUrls && generatedUrls.length > 0) {
-        onImagesGenerated(word.word_text);
-        setImageUrls(generatedUrls);
+      if (typeof requestGenerateImages === 'function') {
+        requestGenerateImages(word.word_text, selectedExample, true);
       }
-  }, [generateImages, word, selectedExample, onImagesGenerated]);
+  }, [requestGenerateImages, word, selectedExample, onImagesGenerated]);
+
+  // When parent passes generatedImageUrls, update internal imageUrls and notify via onImagesGenerated
+  useEffect(() => {
+    if (generatedImageUrls && Array.isArray(generatedImageUrls) && generatedImageUrls.length > 0) {
+      console.log(generatedImageUrls);
+      
+      setImageUrls(generatedImageUrls);
+      onImagesGenerated(word.word_text);
+    }
+  }, [generatedImageUrls, onImagesGenerated, word.word_text]);
 
 
   // Determine if we should show the "Generate Images" button
@@ -148,7 +168,8 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   // 即梦失效的图片格式：https://p23..., https://p26..., https://p9...
   const hasHttpsJimengImages = (imageUrls && imageUrls.length > 0 && imageUrls.filter(img => img.startsWith('https://p')).length > 0);
   // 部分图片出错了，需要重新生成，暂时放开
-  const showGenerateButton = ((!imageUrls || imageUrls.length === 0) || hasHttpsJimengImages) && !isGeneratingImages;
+  // const showGenerateButton = ((!imageUrls || imageUrls.length === 0) || hasHttpsJimengImages) && !isGeneratingImages;
+  const showGenerateButton = true;
   // Determine if we should show the small Carousel
   const showSmallCarousel = imageUrls && imageUrls.length > 0;
 
@@ -160,8 +181,8 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       {/* Conditional Rendering based on state */}
       {showGenerateButton && (
         <div className="text-center my-8">
-          <Button onClick={handleGenerateButtonClick} disabled={isGeneratingImages || isWordLoading}>
-            {isGeneratingImages ? (
+          <Button onClick={handleGenerateButtonClick} disabled={isGenerating || isWordLoading}>
+            {isGenerating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 生成中... 
@@ -173,12 +194,12 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
         </div>
       )}
 
-      {isGeneratingImages && !showSmallCarousel && (
+      {isGenerating && !showSmallCarousel && (
         <GeneratingFallback message="" />        
       )}
 
        {/* Optional: Display generation error if any */}
-       {generationError && !isGeneratingImages && (
+       {generationError && !isGenerating && (
            <div className="text-center my-8 text-red-600">
                <p>图片生成失败: {generationError.message}</p>
            </div>
@@ -244,19 +265,19 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
                   <p className="text-center text-gray-500">没有找到英文例句。</p>
               )}
               <DialogFooter>
-                  <Button
+                    <Button
                       onClick={handleExampleSelected}
-                      disabled={!selectedExample || isGeneratingImages}
-                  >
-                      {isGeneratingImages ? (
-                          <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              生成中...
-                          </>
+                      disabled={!selectedExample || isGenerating}
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          生成中...
+                        </>
                       ) : (
-                          "确定"
+                        "确定"
                       )}
-                  </Button>
+                    </Button>
               </DialogFooter>
           </DialogContent>
       </Dialog>

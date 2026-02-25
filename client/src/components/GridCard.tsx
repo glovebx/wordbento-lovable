@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 // import { Bookmark } from 'lucide-react';
 // import { useAuth } from '@/contexts/AuthContext';
 // import AuthModal from './AuthModal';
@@ -18,14 +19,36 @@ interface GridCardProps {
   icon: React.ReactNode;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  /**
+   * 用于触发图片生成的请求处理器（上层容器可传已绑定 wordText 的函数）
+   * 函数签名： (example: string, force: boolean) => Promise<void> | void
+   */
+  requestGenerateImages?: (example: string, force: boolean) => Promise<void> | void;
+  /**
+   * 由上层容器传入的已生成图片 URL 列表
+   */
+  generatedImageUrls?: string[];
+  /**
+   * 上层容器是否正在生成图片（用于禁用按钮和显示 loading）
+   */
+  isGenerating?: boolean;
+  /**
+   * 上层容器的生成错误信息（可选）
+   */
+  generationError?: { message?: string } | null;
 }
 
 const GridCard: React.FC<GridCardProps> = ({
+  id,
   title,
   content,
   icon,
   className,
   size = 'md',
+  requestGenerateImages,
+  generatedImageUrls,
+  isGenerating,
+  generationError,
 }) => {
   // const { isAuthenticated, bookmarks, toggleBookmark } = useAuth();
   // const [showAuthModal, setShowAuthModal] = useState(false);
@@ -40,6 +63,8 @@ const GridCard: React.FC<GridCardProps> = ({
     
   //   toggleBookmark(id);
   // };
+
+  // Generation handled by parent via props: requestGenerateImages, generatedImageUrls, isGenerating, generationError
 
   const sizeClasses = {
     sm: 'col-span-1',
@@ -56,20 +81,34 @@ const GridCard: React.FC<GridCardProps> = ({
           className
         )}
       >
-        {/* <div className="absolute top-3 right-3 z-10">
-          <button
-            onClick={handleBookmarkClick}
-            className="p-1.5 rounded-full hover:bg-accent transition-colors"
-            title={isBookmarked ? "取消收藏" : "收藏"}
-          >
-            <Bookmark 
-              className={cn(
-                "h-5 w-5 transition-colors", 
-                isBookmarked ? "fill-primary text-primary" : "text-muted-foreground group-hover:text-foreground"
-              )}
-            />
-          </button>
-        </div> */}
+        {id === 'trendingStory' && (typeof content.en === 'string') && (
+          <div className="absolute top-5 right-3 z-10">
+            <Button
+              onClick={() => requestGenerateImages && requestGenerateImages(content.en as string, false)}
+              disabled={isGenerating}
+              title={generationError?.message || '生成图片'}
+            >
+              {isGenerating ? '生成中...' : '生成图片'}
+            </Button>
+          </div>
+        )}
+        {/*
+          Bookmark button (kept commented for future use)
+          <div className="absolute top-3 right-3 z-10">
+            <button
+              onClick={handleBookmarkClick}
+              className="p-1.5 rounded-full hover:bg-accent transition-colors"
+              title={isBookmarked ? "取消收藏" : "收藏"}
+            >
+              <Bookmark 
+                className={cn(
+                  "h-5 w-5 transition-colors", 
+                  isBookmarked ? "fill-primary text-primary" : "text-muted-foreground group-hover:text-foreground"
+                )}
+              />
+            </button>
+          </div>
+        */}
         
         <div className="p-5">
           <div className="flex items-center gap-3 mb-3">

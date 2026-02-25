@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n \"WRANGLER,DRIZZLE-KIT\" -c \"blue,green\" \"wrangler dev --env development --ip 0.0.0.0 --log-level info > wrangler_debug.log 2>&1\" \"drizzle-kit studio\"",
+    "dev": "concurrently -n \"WRANGLER,DRIZZLE-KIT\" -c \"blue,green\" \"wrangler dev --env development --ip 0.0.0.0 --log-level debug > wrangler_debug.log 2>&1\" \"drizzle-kit studio\"",
     "start": "wrangler deploy --env production",
     "build": "esbuild src/index.js --bundle --outfile=dist/index.js --platform=node --format=esm",
     "serve": "node server.js",

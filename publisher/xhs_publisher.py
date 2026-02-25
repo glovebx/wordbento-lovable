@@ -86,7 +86,7 @@ def xhs_publisher(driver, contents: dict):
     # # 设置tags
     for tag in tags:
         editor.send_keys('#' + tag)
-        time.sleep(2)
+        time.sleep(3)
         editor.send_keys(Keys.ENTER)
         time.sleep(1)
         editor.send_keys(Keys.SPACE)

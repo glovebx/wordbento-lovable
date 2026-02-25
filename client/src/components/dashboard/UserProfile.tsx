@@ -60,6 +60,13 @@ const initialApis: BaseApiConfig[] = [
         isModelRequired: true,
     },
     {
+        platform: "openai",
+        title: "OpenAI",
+        description: "for professional text.",
+        active: true,
+        isModelRequired: true,
+    },
+    {
         platform: "jimeng",
         title: "Jimeng",
         description: "for image creation.",

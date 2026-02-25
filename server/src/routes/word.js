@@ -474,16 +474,25 @@ const generateBentoByAi = async (c, userId, word, isJapanese, hasFreeQuota) => {
   console.log(`Calling AI for word: ${word}`);
 
   let aiResponse = false;
-  let llm = await getLlmConfig(c, 'gemini', userId, hasFreeQuota);
+
+  let llm = await getLlmConfig(c, 'openai', userId, hasFreeQuota);
 
   if (llm[1]) {
-    // 配置了gemini
+    // 配置了openai
     aiResponse = await generateBentoByPlatformAi(c, llm, word, isJapanese);
   }
   if (!aiResponse || !aiResponse[word]) {
-    llm = await getLlmConfig(c, 'deepseek', userId, hasFreeQuota);
+    llm = await getLlmConfig(c, 'gemini', userId, hasFreeQuota);
+  
     if (llm[1]) {
+      // 配置了gemini
       aiResponse = await generateBentoByPlatformAi(c, llm, word, isJapanese);
+    }
+    if (!aiResponse || !aiResponse[word]) {
+      llm = await getLlmConfig(c, 'deepseek', userId, hasFreeQuota);
+      if (llm[1]) {
+        aiResponse = await generateBentoByPlatformAi(c, llm, word, isJapanese);
+      }
     }
   }
 
@@ -893,10 +902,10 @@ const posterStyle =
     "style": "psychedelic art",
     "desc": "迷幻艺术"
   },
-  {
-    "style": "Ink drawing and watercolor wash, loose lines, soft color bleeds",
-    "desc": "墨水笔触与水彩渲染，线条洒脱，颜色柔和晕染 - 适合：诗意、自然、情感细腻的单词"
-  },
+  // {
+  //   "style": "Ink drawing and watercolor wash, loose lines, soft color bleeds",
+  //   "desc": "墨水笔触与水彩渲染，线条洒脱，颜色柔和晕染 - 适合：诗意、自然、情感细腻的单词"
+  // },
   {
     "style": "Woodcut print style, bold lines, high contrast, textured paper",
     "desc": "木刻版画风格，线条粗犷，高对比度，带纹理纸张 - 适合：有力、古老、有警示或寓言意味的单词"
@@ -905,18 +914,18 @@ const posterStyle =
     "style": "Soft pastel drawing, chalky texture, dreamy and muted colors",
     "desc": "柔和粉彩画，粉质感纹理，梦幻柔和的色彩 - 适合：温柔、梦幻、童年回忆相关的单词"
   },
-  {
-    "style": "Ukiyo-e style, flat areas of color, strong outlines, classic Japanese art",
-    "desc": "浮世绘风格，平涂色彩，强烈的轮廓线，经典日本艺术 - 适合：日文单词，或与东方文化、自然景观相关的词汇"
-  },
-  {
-    "style": "Minimalist, monochromatic, uses a single color with plenty of negative space",
-    "desc": "极简主义，单色调，大量留白 - 适合：概念抽象、哲学思辨的单词"
-  },
-  {
-    "style": "Abstract liquid art, fluid shapes, ink in water, vibrant color merges",
-    "desc": "抽象液态艺术，流动形态，水墨交融，色彩 vibrant 融合 - 适合：表达情感、变化、潜意识或科学概念的单词"
-  },
+  // {
+  //   "style": "Ukiyo-e style, flat areas of color, strong outlines, classic Japanese art",
+  //   "desc": "浮世绘风格，平涂色彩，强烈的轮廓线，经典日本艺术 - 适合：日文单词，或与东方文化、自然景观相关的词汇"
+  // },
+  // {
+  //   "style": "Minimalist, monochromatic, uses a single color with plenty of negative space",
+  //   "desc": "极简主义，单色调，大量留白 - 适合：概念抽象、哲学思辨的单词"
+  // },
+  // {
+  //   "style": "Abstract liquid art, fluid shapes, ink in water, vibrant color merges",
+  //   "desc": "抽象液态艺术，流动形态，水墨交融，色彩 vibrant 融合 - 适合：表达情感、变化、潜意识或科学概念的单词"
+  // },
   {
     "style": "Neo-pop art, bold outlines, saturated colors, halftone patterns",
     "desc": "新波普艺术，粗轮廓线，高饱和色彩，网点图案 - 适合：流行、时尚、富有活力甚至带点反叛的单词"
@@ -941,10 +950,10 @@ const posterStyle =
     "style": "Gothic style, intricate blackwork, occult symbolism, dramatic lighting",
     "desc": "哥特风格，复杂的黑色图案，神秘符号，戏剧性光线 - 适合：黑暗、神秘、古典、与神话或魔法相关的单词"
   },
-  {
-    "style": "Bioluminescent, deep sea creatures, glowing in the dark, ethereal",
-    "desc": "生物发光，深海生物，暗处发光，空灵 - 适合：神秘、未知、美丽而诡异的事物"
-  },
+  // {
+  //   "style": "Bioluminescent, deep sea creatures, glowing in the dark, ethereal",
+  //   "desc": "生物发光，深海生物，暗处发光，空灵 - 适合：神秘、未知、美丽而诡异的事物"
+  // },
   {
     "style": "Glitch art, digital distortion, RGB shift, corrupted data aesthetics",
     "desc": "故障艺术，数字失真，RGB 色彩分离，数据错误美学 - 适合：表达混乱、错误、数字时代或解构意义的单词"
@@ -953,10 +962,90 @@ const posterStyle =
     "style": "Synthwave, retro-futuristic, grid lines, neon colors, digital sunset",
     "desc": "合成波普，复古未来主义，网格线，霓虹色彩，数字日落 - 适合：怀旧、电子乐、80年代流行文化相关的单词"
   },
+  // {
+  //   "style": "Cybernetic organic, blending flesh and machinery, intricate details",
+  //   "desc": "赛博格有机体，血肉与机械融合，复杂细节 - 适合：探讨人性、科技、进化等深刻主题的单词"
+  // },
   {
-    "style": "Cybernetic organic, blending flesh and machinery, intricate details",
-    "desc": "赛博格有机体，血肉与机械融合，复杂细节 - 适合：探讨人性、科技、进化等深刻主题的单词"
-  }
+    "style": "Brutalist typography, raw concrete texture, bold geometric forms",
+    "desc": "粗野主义版式，原始混凝土质感，大胆几何形态 - 适合：力量感、工业、反装饰的单词"
+  },
+  {
+    "style": "Etching and engraving style, fine cross-hatching, classical detail",
+    "desc": "蚀刻版画风格，精细交叉排线，古典细节 - 适合：精致、古典、历史感强的单词"
+  },
+  {
+    "style": "Surrealist collage, dreamlike juxtaposition, vintage imagery",
+    "desc": "超现实主义拼贴，梦幻般的并置，复古图像 - 适合：潜意识、梦境、非逻辑组合的单词"
+  },
+  // {
+  //   "style": "Kinetic art, optical illusion, dynamic movement, moiré patterns",
+  //   "desc": "动态艺术，视错觉，动态运动，莫尔条纹 - 适合：运动、能量、视觉变幻的单词"
+  // },
+  {
+    "style": "Art Nouveau, flowing organic lines, floral motifs, elegant curves",
+    "desc": "新艺术运动，流动有机线条，花卉图案，优雅曲线 - 适合：自然、女性化、装饰性强的单词"
+  },
+  {
+    "style": "Pointillism, small distinct dots, optical color mixing",
+    "desc": "点彩派，小而独特的点，光学色彩混合 - 适合：细腻、光影、需要视觉混合的单词"
+  },
+  {
+    "style": "Chiaroscuro, strong contrast between light and dark, dramatic",
+    "desc": "明暗对照法，强烈光影对比，戏剧性 - 适合：冲突、张力、宗教或哲学主题的单词"
+  },
+  {
+    "style": "Dadaist, nonsensical, provocative, typographic experimentation",
+    "desc": "达达主义，荒谬不经，挑衅性，字体实验 - 适合：反传统、荒诞、具有挑战性的单词"
+  },
+  {
+    "style": "Futurism, dynamic motion, speed lines, technological enthusiasm",
+    "desc": "未来主义，动态运动，速度线，技术热情 - 适合：速度、进步、机械感的单词"
+  },
+  {
+    "style": "Pre-Raphaelite, detailed nature, vibrant colors, medieval revival",
+    "desc": "前拉斐尔派，细腻的自然描绘，鲜艳色彩，中世纪复兴 - 适合：浪漫、自然、中世纪主题的单词"
+  },
+  {
+    "style": "Constructivism, angular forms, red/black/white color scheme, industrial",
+    "desc": "构成主义，棱角分明的形式，红/黑/白配色，工业感 - 适合：结构、革命、工业美学的单词"
+  },
+  {
+    "style": "Outsider Art, naive, childlike, untrained aesthetic",
+    "desc": "局外人艺术，天真，童稚，未经训练的美学 - 适合：原始、直觉、反学院派的单词"
+  },
+  {
+    "style": "Superflat, manga/anime influenced, bold outlines, pop culture",
+    "desc": "超扁平风格，受漫画/动画影响，粗轮廓线，流行文化 - 适合：日本流行文化、二次元、平面化的单词"
+  },
+  {
+    "style": "Vaporwave, glitchy, 80s/90s nostalgia, digital marble statues",
+    "desc": "蒸汽波，故障感，80/90年代怀旧，数字大理石雕像 - 适合：互联网怀旧、消费主义批判的单词"
+  },
+  // {
+  //   "style": "Light painting, long exposure, trails of light in darkness",
+  //   "desc": "光绘摄影，长时间曝光，黑暗中的光迹 - 适合：时间、轨迹、瞬间与永恒主题的单词"
+  // },
+  {
+    "style": "Papercut, layered paper, intricate silhouettes, shadow play",
+    "desc": "剪纸艺术，分层纸张，复杂剪影，光影游戏 - 适合：精致、传统、民间艺术的单词"
+  },
+  // {
+  //   "style": "Holographic, iridescent, shifting colors, futuristic sheen",
+  //   "desc": "全息风格，虹彩，变换颜色，未来感光泽 - 适合：未来、科技、虚幻美丽的单词"
+  // },
+  {
+    "style": "Arte Povera, humble materials, raw and unfinished aesthetic",
+    "desc": "贫穷艺术，朴素材料，原始未完成美学 - 适合：物质性、简朴、概念艺术的单词"
+  },
+  {
+    "style": "Folk art, traditional patterns, handcrafted feel, cultural motifs",
+    "desc": "民间艺术，传统图案，手工艺感，文化元素 - 适合：民族、传统、手工艺相关的单词"
+  },
+  {
+    "style": "De Stijl, strict geometric abstraction, primary colors, grid-based",
+    "desc": "风格派，严格的几何抽象，三原色，基于网格 - 适合：纯粹抽象、结构、基本元素的单词"
+  }  
 ]
 
 const generateImageByAi = async (c, userId, word, phonetic, example, language, hasFreeQuota) => {
@@ -965,30 +1054,30 @@ const generateImageByAi = async (c, userId, word, phonetic, example, language, h
   let imageUrls = [];
   let llm = await getLlmConfig(c, 'dreamina', userId, hasFreeQuota);
   if (llm[1]) {
-    imageUrls = await generateImageByDreaminaAi(c, word, phonetic, example, language);
+    imageUrls = await generateImageByDreaminaAi(c, llm, word, phonetic, example, language);
   }
   if (!imageUrls || imageUrls.length == 0) {
     llm = await getLlmConfig(c, 'jimeng', userId, hasFreeQuota);
     if (llm[1]) {
       // 配置了jimeng
-      imageUrls = await generateImageByJiMengAi(c, word, phonetic, example, language);
+      imageUrls = await generateImageByJiMengAi(c, llm, word, phonetic, example, language);
     }
     if (!imageUrls || imageUrls.length == 0) {
       llm = await getLlmConfig(c, 'seedream', userId, hasFreeQuota);
       if (llm[1]) {
-        imageUrls = await generateImageBySeeDreamAi(c, word, phonetic, example, language);
+        imageUrls = await generateImageBySeeDreamAi(c, llm, word, phonetic, example, language);
       }
     }
   }
   return imageUrls;
 }
 
-const generateImageByDreaminaAi = async (c, word, phonetic, example, language) => {
+const generateImageByDreaminaAi = async (c, llm, word, phonetic, example, language) => {
   console.log(`Calling Dreamina AI for word: ${word} ${example}`);
 
-  const AI_API_KEY = c.env.DREAMINA_API_KEY;
-  const AI_API_ENDPOINT = c.env.DREAMINA_API_ENDPOINT;
-  const AI_API_MODEL = c.env.DREAMINA_API_MODEL;
+  const AI_API_ENDPOINT = llm[1];  
+  const AI_API_KEY = llm[2];
+  const AI_API_MODEL = llm[3];
 
   try {
     const randomIndex = Math.floor(Math.random() * posterStyle.length);
@@ -1100,13 +1189,14 @@ Style: ${style}`;
     return prompt;
 };
 
-const generateImageByJiMengAi = async (c, word, phonetic, example, language) => {
+const generateImageByJiMengAi = async (c, llm, word, phonetic, example, language) => {
   console.log(`Calling JiMeng AI for word: ${word} ${example}`);
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
 
-  const AI_API_KEY = c.env.JIMENG_API_KEY;
-  const AI_API_ENDPOINT = c.env.JIMENG_API_ENDPOINT;
+  const AI_API_ENDPOINT = llm[1];//c.env.JIMENG_API_ENDPOINT;  
+  const AI_API_KEY = llm[2];//c.env.JIMENG_API_KEY;
+  const AI_API_MODEL = llm[3];//c.env.JIMENG_API_MODEL;
 
   try {
     const randomIndex = Math.floor(Math.random() * posterStyle.length);
@@ -1116,8 +1206,10 @@ const generateImageByJiMengAi = async (c, word, phonetic, example, language) => 
     const prompt = example && generatePosterPromptWithExample(word, language, phonetic, example, style) || generatePosterPromptWithoutExample(word, language, phonetic, style);
 
         const jsonData = {
-          model: '',
+          model: AI_API_MODEL,
           stream: false,
+          resolution: "1k",
+          ratio: "9:16",
           messages:[
             {role: 'user', content: prompt}
           ]
@@ -1141,6 +1233,7 @@ const generateImageByJiMengAi = async (c, word, phonetic, example, language) => 
 
         const data = await response.json(); // No type assertion needed in JS
         // console.log(data);
+        console.log("Full response:", JSON.stringify(data));
 
         // 2. Check if the 'choices' array exists and is not empty
         if (!data.choices || data.choices.length === 0) {
@@ -1159,7 +1252,6 @@ const generateImageByJiMengAi = async (c, word, phonetic, example, language) => 
             return null; // Or throw an error
         }
 
-        console.log("Full response:", data);        
         // 4.
         const contents = data.choices[0].message.content;
         if (!contents || contents.length === 0) {
@@ -1185,12 +1277,12 @@ const generateImageByJiMengAi = async (c, word, phonetic, example, language) => 
 };
 
 // 豆包的
-const generateImageBySeeDreamAi = async (c, word, phonetic, example, language) => {
+const generateImageBySeeDreamAi = async (c, llm, word, phonetic, example, language) => {
   console.log(`Calling SeeDream AI for word: ${word} ${example}`);
 
-  const AI_API_KEY = c.env.SEEDREAM_API_KEY;
-  const AI_API_ENDPOINT = c.env.SEEDREAM_API_ENDPOINT;
-  const AI_API_MODEL = c.env.SEEDREAM_API_MODEL;
+  const AI_API_ENDPOINT = llm[1]; //c.env.SEEDREAM_API_ENDPOINT;  
+  const AI_API_KEY = llm[2]; //c.env.SEEDREAM_API_KEY;
+  const AI_API_MODEL = llm[3];//c.env.SEEDREAM_API_MODEL;
 
   try {
     const randomIndex = Math.floor(Math.random() * posterStyle.length);
@@ -1791,12 +1883,12 @@ word.post('/imagize', async (c) => {
           //  .limit(1);
           // 如果图片是http开头，默认已经失效（即梦的图片），客户端会出现生成图片的按钮
           // 如果图片不是4张，重新生成一遍
-          if (images && images.length > 0 && images.filter(img => img.image_key.startsWith('http')).length == 0) {
-            // const imageUrls = images.map(img => img.image_key.startsWith('http') && img.image_key || `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
-            const imageUrls = images.map(img => `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
+          // if (images && images.length > 0 && images.filter(img => img.image_key.startsWith('http')).length == 0) {
+          //   // const imageUrls = images.map(img => img.image_key.startsWith('http') && img.image_key || `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
+          //   const imageUrls = images.map(img => `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`)
 
-            return c.json({imageUrls: imageUrls}, 200);
-          }
+          //   return c.json({imageUrls: imageUrls}, 200);
+          // }
     
       } else {
         // If no exact match, try prefix match
@@ -1866,7 +1958,7 @@ word.post('/imagize', async (c) => {
   let imageUrls = await generateImageByAi(c, userId, wordToGenerate, phonetic, exampleToGenerate, language, hasFreeQuota);
   // let imageUrls = await generateImageByDreaminaAi(c, wordToGenerate, phonetic, exampleToGenerate, language);
 
-  // console.log(imageUrls);
+  console.log(imageUrls);
 
   // const imageUrls = ['https://p3-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/c0efd5fd4a414fbaab1232df5e876d6b~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=sGXKNhKHkj%2F2msIbhAQtcLlGNXk%3D&format=.jpeg', 
   //   'https://p9-dreamina-sign.byteimg.com/tos-cn-i-tb4s082cfz/3bc050392177442ebed27dc883891b7a~tplv-tb4s082cfz-aigc_resize:0:0.jpeg?lk3s=43402efa&x-expires=1749600000&x-signature=uipvjRhc40XXAMDhIBEeO%2BEuit4%3D&format=.jpeg', 
@@ -1910,11 +2002,30 @@ word.post('/imagize', async (c) => {
 
     console.log(`AI image received, inserting into R2. ${mimeType}`);
 
-    // 删除所有图片
-    try {
-      await db.delete(schema.images).where(eq(schema.images.word_id, existingWord.id));
-    } catch (dbError) {
-      console.error(`Database transaction failed for delete images "${existingWord.word_text}":`, dbError);
+    // 删除所有图片，重新生成
+    const imageRecords = await db.select({
+      image_key: schema.images.image_key,
+    })
+        .from(schema.images)
+        .where(eq(schema.images.word_id, existingWord.id));
+
+    let imageReserveds = imageRecords.map(r => r.image_key)
+    if (force) {
+      for (const objectKey of imageReserveds) {
+        if (objectKey) {
+          await c.env.WORDBENTO_R2.delete(objectKey);
+          console.log(`R2 Object "${objectKey}" has been deleted successfully.`);
+        } 
+      }
+      // 清空
+      imageReserveds = [];
+            
+      try {
+        await db.delete(schema.images).where(eq(schema.images.word_id, existingWord.id));
+      } catch (dbError) {
+        console.error(`Database transaction failed for delete images "${existingWord.word_text}":`, dbError);
+      }
+      // 删除所有实际文件
     }
 
     // 2025/12/11 不保存成功下载到本地的数据
@@ -1996,7 +2107,9 @@ word.post('/imagize', async (c) => {
 
   // Promise.all 会等待所有 Promise 完成，无论它们是成功还是解析为包含错误的对象
   const results = await Promise.all(allResultsPromises);
-  const savedImageUrls = results.filter(data => data !== null);
+  const savedImageUrls = results.filter(data => data !== null).concat(imageReserveds.map(r => `${c.env.VITE_BASE_URL}/api/word/image/${r}`));
+
+  // 还需要加上原来的
 
   if (savedImageUrls && savedImageUrls.length > 0) {
     return c.json({imageUrls: savedImageUrls}, 200);
@@ -2270,6 +2383,7 @@ word.post('/today', async (c) => {
       gte(schema.word_views.created_at, startStr),
       lte(schema.word_views.created_at, endStr)
     ))
+    .orderBy(desc(schema.word_views.id))
     .limit(50);
 
     const existsIds = existsWordViews.map(d => d.word_id)
@@ -2462,13 +2576,16 @@ word.post('/sequence', async (c) => {
             examples = "\n\n" + newWord.content.examples.en.map((example, index) => `${index + 1}. ${example}`).join("\n");
 
           }
-          // let affixes = ''
-          // if (newWord.content && newWord.content.affixes && newWord.content.affixes.zh) {
-          //   affixes = "\n\n----\n\n" + newWord.content.affixes.zh
-          // }
+          let affixesZh = ''
+          if (newWord.content && newWord.content.affixes && newWord.content.affixes.zh) {
+            affixesZh = `\n\n${newWord.content.affixes.zh}`
+          }
+          let etymologyZh = ''
+          if (newWord.content && newWord.content.etymology && newWord.content.etymology.zh) {
+            etymologyZh = `\n\n${newWord.content.etymology.zh}`
+          }          
 
-          // newWord.text = `${newWord.word}\n${newWord.phonetic}, ${newWord.meaning}`;
-          newWord.text = `${newWord.word} ${newWord.phonetic}${definition}${etymology}${examples}\n\n${existingWord.meaning}`;
+          newWord.text = `${newWord.word} ${newWord.phonetic}${definition}${etymology}${examples}\n\n${existingWord.meaning}${etymologyZh}${affixesZh}`;
           return newWord;
       }));
 

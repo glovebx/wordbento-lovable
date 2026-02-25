@@ -17,6 +17,7 @@ class WordbentoTranslator {
   init() {        
     // // 监听 URL 变化，这是解决 SPA 问题的关键
     // this.startUrlObserver();
+    console.log('Wordbento单词AI助手插件初始化中...');
 
     // 等待页面加载完成
     if (document.readyState === 'loading') {

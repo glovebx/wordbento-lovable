@@ -1,5 +1,5 @@
 
-import React, { RefObject } from 'react';
+import React, { RefObject, useState, useCallback } from 'react';
 import { 
   FileText, 
   Atom, 
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from '@/lib/utils';
+import { useGenerateImages } from '@/hooks/use-generate-images';
 
 interface WordGridProps {
   word: WordDataType;
@@ -71,6 +72,21 @@ const WordGrid: React.FC<WordGridProps> = ({
 
   const { isAuthenticated } = useAuth();  
   const isMobile = useIsMobile();
+  // Image generation state managed here and passed down to WordImageDisplay
+  const { generateImages, isGeneratingImages, generationError } = useGenerateImages();
+  const [generatedImageUrls, setGeneratedImageUrls] = useState<string[] | undefined>(undefined);
+
+  const requestGenerateImages = useCallback(async (wordText: string, example: string, force: boolean) => {
+    // Trigger generation via hook and store results for child
+    const urls = await generateImages(wordText, example, force);
+    if (urls && urls.length > 0) {
+      setGeneratedImageUrls(urls);
+      onImagesGenerated(wordText);
+    }
+    return urls;
+  }, [generateImages, onImagesGenerated]);
+
+  // NOTE: GridCard triggers generation via passed `requestGenerateImages` prop (bound below)
   // Safely access definition content
   const definitionContent = word.content.definition;
 
@@ -250,6 +266,10 @@ const WordGrid: React.FC<WordGridProps> = ({
         onImagesGenerated={onImagesGenerated}
         onShowImageDialogChange={onShowImageDialogChange} // <-- Pass the callback
         onShowExampleDialogChange={onShowExampleDialogChange} // <-- Pass the callback      
+        requestGenerateImages={requestGenerateImages}
+        generatedImageUrls={generatedImageUrls}
+        isGenerating={isGeneratingImages}
+        generationError={generationError}
       />
 
       <div className="bento-grid">
@@ -396,6 +416,13 @@ const WordGrid: React.FC<WordGridProps> = ({
           icon={<Newspaper className="h-5 w-5 text-yellow-600" />}
           className="bg-bento-story"
           size="lg"
+          requestGenerateImages={async (example: string, force: boolean) => {
+            const trending_story = `${example}\n根据上述台词和解释，创造一张电影海报，风格要接近这段文字中提到的作品，海报上要突出台词。\n图片标题：${word.word_text}\n注意：文字尽可能清晰，阅读体验要好`;
+            await requestGenerateImages(word.word_text, trending_story, force);
+          }}
+          generatedImageUrls={generatedImageUrls}
+          isGenerating={isGeneratingImages}
+          generationError={generationError}
         />)}
       </div>
     </div>

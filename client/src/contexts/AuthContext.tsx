@@ -74,6 +74,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('AuthContext: User state changed. Current user:', user, 'isAuthenticated:', !!user);
   }, [user]); // This effect runs whenever 'user' state changes
 
+  // Listen for global sessionExpired event (emitted by axios interceptor) to clear client state
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      console.warn('AuthContext: sessionExpired event received — clearing client auth state.');
+      setUser(null);
+      setBookmarks([]);
+      setIsSessionLoading(false);
+    };
+
+    window.addEventListener('sessionExpired', handleSessionExpired as EventListener);
+    return () => {
+      window.removeEventListener('sessionExpired', handleSessionExpired as EventListener);
+    };
+  }, []);
+
   const login = async (username: string, password: string): Promise<boolean> => {
     console.log("AuthContext: Attempting login...");
     try {
