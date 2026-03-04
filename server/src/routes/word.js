@@ -910,10 +910,10 @@ const posterStyle =
     "style": "Woodcut print style, bold lines, high contrast, textured paper",
     "desc": "木刻版画风格，线条粗犷，高对比度，带纹理纸张 - 适合：有力、古老、有警示或寓言意味的单词"
   },
-  {
-    "style": "Soft pastel drawing, chalky texture, dreamy and muted colors",
-    "desc": "柔和粉彩画，粉质感纹理，梦幻柔和的色彩 - 适合：温柔、梦幻、童年回忆相关的单词"
-  },
+  // {
+  //   "style": "Soft pastel drawing, chalky texture, dreamy and muted colors",
+  //   "desc": "柔和粉彩画，粉质感纹理，梦幻柔和的色彩 - 适合：温柔、梦幻、童年回忆相关的单词"
+  // },
   // {
   //   "style": "Ukiyo-e style, flat areas of color, strong outlines, classic Japanese art",
   //   "desc": "浮世绘风格，平涂色彩，强烈的轮廓线，经典日本艺术 - 适合：日文单词，或与东方文化、自然景观相关的词汇"
@@ -930,10 +930,10 @@ const posterStyle =
     "style": "Neo-pop art, bold outlines, saturated colors, halftone patterns",
     "desc": "新波普艺术，粗轮廓线，高饱和色彩，网点图案 - 适合：流行、时尚、富有活力甚至带点反叛的单词"
   },
-  {
-    "style": "Bauhaus design, geometric shapes, primary colors, clean typography",
-    "desc": "包豪斯设计，几何图形，三原色，干净的版式 - 适合：与设计、结构、理性相关的单词"
-  },
+  // {
+  //   "style": "Bauhaus design, geometric shapes, primary colors, clean typography",
+  //   "desc": "包豪斯设计，几何图形，三原色，干净的版式 - 适合：与设计、结构、理性相关的单词"
+  // },
   {
     "style": "Art Deco, geometric patterns, metallic accents, elegant and sleek",
     "desc": "装饰风艺术，几何图案，金属质感，优雅流畅 - 适合：奢华、精致、充满“爵士时代”风情的单词"
@@ -1146,12 +1146,19 @@ const generatePosterPromptWithExample = (
         style = "modern minimalist poster, high quality, cinematic lighting, visually striking";
     }  
   // 基础提示词模板
-  let prompt = `Conceptual poster design for ${language} word: "${word}". main title: "${word}", subtitle: "${pronunciation}". 
-  The entire scene should visually interpret and embody the meaning and mood of the sentence: "${exampleSentence}". 
-  Use a layout that integrates the text seamlessly into the image. The title "${word}" should be large, bold, and artistic at the top. 
-  The pronunciation "${pronunciation}" should be smaller and elegantly placed below the title. 
-  The full sentence "${exampleSentence}" should be incorporated as a design element within the scene, It is crucial that the text remains highly legible—ensure clear fonts, strong contrast with the background, and an appropriate size/layout that prioritizes readability.
-  Style: ${style}`;
+  // let prompt = `Conceptual poster design for ${language} word: "${word}". main title: "${word}", subtitle: "${pronunciation}". 
+  // The entire scene should visually interpret and embody the meaning and mood of the sentence: "${exampleSentence}". 
+  // Use a layout that integrates the text seamlessly into the image. The title "${word}" should be large, bold, and artistic at the top. 
+  // The pronunciation "${pronunciation}" should be smaller and elegantly placed below the title. 
+  // The full sentence "${exampleSentence}" should be incorporated as a design element within the scene, It is crucial that the text remains highly legible—ensure clear fonts, strong contrast with the background, and an appropriate size/layout that prioritizes readability.
+  // Style: ${style}`;
+  let prompt = `Conceptual poster for ${language} word "${word}".
+Main title: "${word}" (large, bold, artistic, top).
+Subtitle: "${pronunciation}" (smaller, elegant, below title).
+Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}" (e.g., characters, objects, environment).
+Integrate all text (title, subtitle, sentence) seamlessly into the scene.
+Crucial: sentence must be highly legible — clear fonts, strong contrast, optimal placement.
+Style: ${style}.`;
   
   // 添加额外指令（如果有）
   if (additionalInstructions) {
@@ -1173,13 +1180,19 @@ const generatePosterPromptWithoutExample = (
         style = "modern minimalist poster, high quality, cinematic lighting, visually striking";
     }
     
-    let prompt = `Conceptual poster design for ${language} word: "${word}".
-The entire composition must be a visual definition and embodiment of the word's core meaning and essence.
-The main title "${word}" should be large, bold, and artistically integrated as the focal point.
-Directly below it, elegantly display the pronunciation: "${pronunciation}".
-The style and imagery of the entire poster should intuitively communicate the feeling and concept of "${word}"
-to someone who doesn't know the language. Avoid literal clichés, strive for a clever and evocative visual metaphor.
-Style: ${style}`;
+//     let prompt = `Conceptual poster design for ${language} word: "${word}".
+// The entire composition must be a visual definition and embodiment of the word's core meaning and essence.
+// The main title "${word}" should be large, bold, and artistically integrated as the focal point.
+// Directly below it, elegantly display the pronunciation: "${pronunciation}".
+// The style and imagery of the entire poster should intuitively communicate the feeling and concept of "${word}"
+// to someone who doesn't know the language. Avoid literal clichés, strive for a clever and evocative visual metaphor.
+// Style: ${style}`;
+    let prompt = `Conceptual poster for ${language} word "${word}": 
+    visually define its essence. 
+    Title "${word}" large/bold as focal point; 
+    pronunciation "${pronunciation}" below elegantly. 
+    Imagery conveys concept intuitively to non-speakers via evocative metaphor (avoid literal clichés). 
+    Style: ${style}.`;
     
     // 添加额外指令（如果有）
     if (additionalInstructions) {

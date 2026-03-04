@@ -369,6 +369,7 @@ class WordBentoClient:
         for i, word in enumerate(words, 1):
             word_text = word.get('word_text', '未知单词')
             word_slug = word.get('word', word_text)  # 使用word字段作为slug，备用word_text
+            phonetic = word.get('phonetic', '')
             image_urls = word.get('imageUrls', [])
             description = word.get('text', word_text);
             
@@ -383,7 +384,7 @@ class WordBentoClient:
             local_image_paths.extend(word_image_paths)
 
             contents = {
-                'title': f"单词打卡: {word_slug}",
+                'title': f"单词打卡: {word_slug} {phonetic}",
                 'description': description,
                 'images': local_image_paths,
                 'tags': ['单词打卡', '每日单词', '英语学习', '英语单词速记', '英语词汇', '单词记忆法', '日常英语']

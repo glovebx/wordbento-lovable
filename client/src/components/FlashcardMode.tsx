@@ -37,6 +37,8 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userInput, setUserInput] = useState('');
+  // Keep a ref of the last user input to restore if it's accidentally cleared
+  const lastUserInputRef = useRef<string>('');
   const [attempts, setAttempts] = useState(0);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [isMarkedForReview, setIsMarkedForReview] = useState(false);
@@ -72,6 +74,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         setUserInput(transcript);
+        lastUserInputRef.current = transcript;
         setIsRecording(false);
       };
 
@@ -159,6 +162,14 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     }
   }, [wordData, isLoading]);
 
+  // Restore userInput from ref if it was unexpectedly cleared while answer marked correct
+  useEffect(() => {
+    if (userInput === '' && lastUserInputRef.current) {
+      // restore previous input
+      setUserInput(lastUserInputRef.current);
+    }
+  }, [userInput]);
+
   const randomNext = () => {
     if (!wordData.imageUrls || wordData.imageUrls.length === 0) {
         console.warn("没有图片可供选择。");
@@ -183,6 +194,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     setIsCorrect(isAnswerCorrect);
     
     if (isAnswerCorrect) {
+      lastUserInputRef.current = '';
       toast({
         title: "回答正确！",
         description: "自动切换到下一个单词",
@@ -253,8 +265,8 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const imageAspectRatio = isMobile ? (3 / 3) : (3 / 2);
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex flex-col items-center space-y-8">
+    <div className="container mx-auto px-4 py-2 max-w-6xl">
+      <div className="flex flex-col items-center space-y-6">
         {/* Status Bar */}
         <div className="flex items-center justify-center gap-4">
           {isMarkedForReview && (
@@ -275,7 +287,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
         </div>
 
         {/* Image with Navigation */}
-        <div className="relative flex items-center justify-center w-full px-4 sm:max-w-4xl sm:mx-auto"> 
+        <div className="relative flex items-center justify-center w-full px-4 lg:max-w-6xl sm:max-w-4xl sm:mx-auto"> 
           {/* Previous Button */}
           <Button 
             variant="outline"
@@ -288,7 +300,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           </Button>
 
           {/* Image Card */}
-          <Card className="w-full sm:max-w-2xl sm:mx-16">
+          <Card className="w-full lg:max-w-5xl sm:max-w-2xl sm:mx-16">
             <CardContent className="p-2">
               {isLoading ? (
                 <div className="flex items-center justify-center h-64">
@@ -371,10 +383,10 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           </div>
           
           <div className="flex gap-2">
-            <Input
+                <Input
               ref={answerInputRef} // Attach the ref to the Input component
               value={userInput}
-              onChange={(e) => setUserInput(e.target.value)}
+              onChange={(e) => { setUserInput(e.target.value); lastUserInputRef.current = e.target.value; }}
               onKeyPress={handleKeyPress}
               placeholder="输入单词..."
               disabled={isCorrect === true || attempts >= maxAttempts || isRecording} 
