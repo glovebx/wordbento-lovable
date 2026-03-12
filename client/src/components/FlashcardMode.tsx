@@ -155,12 +155,12 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     fetchImage();
   }, [wordData, fetchAndCacheWord, onWordChanged, toast]);
 
-  // Effect to focus the input field when wordData changes
-  useEffect(() => {
-    if (answerInputRef.current && !isLoading) {
-      answerInputRef.current.focus();
-    }
-  }, [wordData, isLoading]);
+  // // Effect to focus the input field when wordData changes
+  // useEffect(() => {
+  //   if (answerInputRef.current && !isLoading) {
+  //     answerInputRef.current.focus();
+  //   }
+  // }, [wordData, isLoading]);
 
   // Restore userInput from ref if it was unexpectedly cleared while answer marked correct
   useEffect(() => {

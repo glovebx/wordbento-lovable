@@ -160,7 +160,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       setImageUrls(generatedImageUrls);
       onImagesGenerated(word.word_text);
     }
-  }, [generatedImageUrls, onImagesGenerated, word.word_text]);
+  }, [generatedImageUrls, onImagesGenerated]);
 
 
   // Determine if we should show the "Generate Images" button
