@@ -13,10 +13,10 @@ CREATE TABLE IF NOT EXISTS users (
     uuid TEXT UNIQUE
 );
 
--- 插入初始的 'public' 用户
--- 使用 INSERT OR IGNORE 可以避免在多次应用 schema 时重复插入
-INSERT OR IGNORE INTO users (id, username, email, password, role, salt, uuid)
-VALUES (0, 'public', 'wordbento.public@metaerp.ai', 'placeholder_password', 'public', 'placeholder_salt', '00000000-0000-0000-0000-000000000000');
+-- -- 插入初始的 'public' 用户
+-- -- 使用 INSERT OR IGNORE 可以避免在多次应用 schema 时重复插入
+-- INSERT OR IGNORE INTO users (id, username, email, password, role, salt, uuid)
+-- VALUES (0, 'public', 'wordbento.public@metaerp.ai', 'placeholder_password', 'public', 'placeholder_salt', '00000000-0000-0000-0000-000000000000');
 
 -- words 表：存储单词的基本信息 (保持不变)
 CREATE TABLE IF NOT EXISTS words (
