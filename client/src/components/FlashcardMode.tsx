@@ -1,3 +1,5 @@
+/// <reference types="@types/dom-speech-recognition" />
+
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle, XCircle, Mic, Info } from 'lucide-react'; // Import Info icon for details
 import { Button } from '@/components/ui/button';
@@ -9,15 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { NavigationMode, useWordCache } from '@/hooks/use-word-cache';
 import { WordDataType } from '@/types/wordTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
-
-
-// Explicitly declare global interfaces for Web Speech API
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}
 
 interface FlashcardModeProps {
   wordData: WordDataType;
@@ -61,24 +54,24 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
   // Effect to initialize Speech Recognition API
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    if (SpeechRecognition) {
+    if (SpeechRecognitionAPI) {
       setSpeechRecognitionAvailable(true);
 
-      const recognition = new SpeechRecognition();
+      const recognition = new SpeechRecognitionAPI();
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = 'en-US'; // Setting language to English (United States)
 
-      recognition.onresult = (event) => {
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = event.results[0][0].transcript;
         setUserInput(transcript);
         lastUserInputRef.current = transcript;
         setIsRecording(false);
       };
 
-      recognition.onerror = (event) => {
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
         toast({
           title: "语音输入失败",
@@ -130,7 +123,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           return;
         }
         
-        const data = await fetchAndCacheWord('', NavigationMode.Search, true);
+        const data = await fetchAndCacheWord(wordData.word_text, NavigationMode.Search, true);
 
         if (data && typeof data !== 'string') {
             onWordChanged(data);
@@ -188,6 +181,48 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     setImageUrl(newImageUrl);
     console.log("已切换到新的图片:", newImageUrl);
   }
+
+
+  // --- New useEffect for Keyboard Navigation ---
+  useEffect(() => {
+      const handleKeyDown = (event: KeyboardEvent) => {
+          // Check if a dialog is currently open
+          if (isLoading) { // <-- Check dialog states
+              console.log("Word is loading, keyboard navigation disabled.");
+              return; // Exit the handler if any dialog is open
+          }
+          // Check if the user is currently typing in an input field
+          // Get the active element
+          const activeElement = document.activeElement;
+          // Check if the active element is an input or textarea
+          const isTyping = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+
+          // If the user is typing AND the key is an arrow key, allow default behavior (cursor movement)
+          if (isTyping) {
+              // Do nothing, let the browser handle the cursor movement within the input
+              return;
+          }
+
+          // Handle arrow key presses
+          if (event.key === 'v') {
+              event.preventDefault();
+              setShowDetails(prev => !prev);
+          } else if (event.key === 'n') {
+            event.preventDefault();
+            // 切换图片
+            randomNext();
+          }
+      };
+
+      // Add the event listener to the window
+      window.addEventListener('keydown', handleKeyDown);
+
+      // Clean up the event listener when the component unmounts
+      return () => {
+          window.removeEventListener('keydown', handleKeyDown);
+      };
+  }, [isLoading, setShowDetails, randomNext]); // Dependencies: loading states and navigation handlers
+  // --- End New useEffect for Keyboard Navigation ---  
 
   const checkAnswer = (valueToCheck: string = userInput) => {
     const isAnswerCorrect = valueToCheck.toLowerCase().trim() === wordData.word_text.toLowerCase();
@@ -351,25 +386,27 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                 {showDetails ? '隐藏详细' : '显示详细'}
             </Button>
 
-            {showDetails && (
-                <div className="text-center p-3 bg-muted rounded-lg w-full max-w-sm animate-fade-in">
-                    {wordData.phonetic && (
-                        <p className="text-lg font-semibold text-gray-800 mb-1">
-                            /{wordData.phonetic}/
-                        </p>
-                    )}
-                    {wordData.meaning && (
-                        <p className="text-base text-gray-700">
-                            {wordData.meaning}
-                        </p>
-                    )}
-                    {(!wordData.phonetic && !wordData.meaning) && (
-                        <p className="text-sm text-muted-foreground">
-                            暂无详细信息
-                        </p>
-                    )}
-                </div>
-            )}
+            <div className="text-center p-3 bg-muted rounded-lg w-full max-w-sm animate-fade-in">
+                {wordData.phonetic && (
+                    <p className="text-lg font-semibold text-gray-800 mb-1">
+                        /{wordData.phonetic}/
+                    </p>
+                )}
+              {showDetails && (
+                  <div>
+                      {wordData.meaning && (
+                          <p className="text-base text-gray-700">
+                              {wordData.meaning}
+                          </p>
+                      )}
+                      {(!wordData.meaning) && (
+                          <p className="text-sm text-muted-foreground">
+                              暂无详细信息
+                          </p>
+                      )}
+                  </div>
+              )}
+            </div>            
         </div>
 
 

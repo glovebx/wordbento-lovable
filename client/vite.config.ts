@@ -28,116 +28,73 @@ export default defineConfig(({ mode }) => ({
   // 添加 build 配置
   build: {
     rollupOptions: {
-      // external: ['fs'], // 告诉 Rollup 忽略 fs 模块
       output: {
-        manualChunks: {
+        manualChunks(id: string) {
           // 核心框架库
-          react: [
-            'react',
-            'react-dom',
-            'react-router-dom',
-            'react-error-boundary'
-          ],
+          if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom') || id.includes('react-error-boundary')) {
+            return 'react';
+          }
           
           // Radix UI 组件库
-          radix: [
-            '@radix-ui/react-accordion',
-            '@radix-ui/react-alert-dialog',
-            '@radix-ui/react-aspect-ratio',
-            '@radix-ui/react-avatar',
-            '@radix-ui/react-checkbox',
-            '@radix-ui/react-collapsible',
-            '@radix-ui/react-context-menu',
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-hover-card',
-            '@radix-ui/react-label',
-            '@radix-ui/react-menubar',
-            '@radix-ui/react-navigation-menu',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-progress',
-            '@radix-ui/react-radio-group',
-            '@radix-ui/react-scroll-area',
-            '@radix-ui/react-select',
-            '@radix-ui/react-separator',
-            '@radix-ui/react-slider',
-            '@radix-ui/react-slot',
-            '@radix-ui/react-switch',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-toast',
-            '@radix-ui/react-toggle',
-            '@radix-ui/react-toggle-group',
-            '@radix-ui/react-tooltip',
-            'cmdk',
-            'vaul'
-          ],
+          if (id.includes('@radix-ui/') || id.includes('cmdk') || id.includes('vaul')) {
+            return 'radix';
+          }
           
           // 表单处理
-          forms: [
-            'react-hook-form',
-            '@hookform/resolvers',
-            'zod',
-            'input-otp',
-            'react-select'
-          ],
+          if (id.includes('react-hook-form') || id.includes('@hookform/') || id.includes('zod') || id.includes('input-otp') || id.includes('react-select')) {
+            return 'forms';
+          }
           
           // 状态管理
-          state: [
-            '@tanstack/react-query'
-          ],
+          if (id.includes('@tanstack/react-query')) {
+            return 'state';
+          }
           
           // UI 组件 & 图标
-          ui: [
-            'lucide-react',
-            'react-icons',
-            'sonner',
-            'embla-carousel-react',
-            'react-loading-indicators',
-            'react-resizable-panels'
-          ],
+          if (id.includes('lucide-react') || id.includes('react-icons') || id.includes('sonner') || 
+              id.includes('embla-carousel-react') || id.includes('react-loading-indicators') || 
+              id.includes('react-resizable-panels')) {
+            return 'ui';
+          }
           
           // 工具库
-          utils: [
-            'axios',
-            'class-variance-authority',
-            'clsx',
-            'date-fns',
-            'html-to-image',
-            'html2canvas',
-            'lodash',
-            'lodash-es',
-            'tailwind-merge'
-          ],
+          if (id.includes('axios') || id.includes('class-variance-authority') || id.includes('clsx') || 
+              id.includes('date-fns') || id.includes('html-to-image') || id.includes('html2canvas') || 
+              id.includes('lodash') || id.includes('tailwind-merge')) {
+            return 'utils';
+          }
           
           // 主题 & 样式
-          theme: [
-            'next-themes',
-            'tailwindcss-animate'
-          ],
+          if (id.includes('next-themes') || id.includes('tailwindcss-animate')) {
+            return 'theme';
+          }
           
           // 日期处理
-          date: [
-            'react-day-picker'
-          ],
+          if (id.includes('react-day-picker')) {
+            return 'date';
+          }
           
           // 图表库
-          charts: [
-            'recharts'
-          ],
+          if (id.includes('recharts')) {
+            return 'charts';
+          }
           
           // Tailwind 相关
-          tailwind: [
-            '@tailwindcss/container-queries',
-            '@tailwindcss/forms',
-            // '@tailwindcss/postcss'
-          ],
+          if (id.includes('@tailwindcss/')) {
+            return 'tailwind';
+          }
           
           // 安全 & 调试
-          security: [
-            '@fvilers/disable-react-devtools'
-          ]
+          if (id.includes('@fvilers/disable-react-devtools')) {
+            return 'security';
+          }
+          
+          // 其他 node_modules 放入 vendor
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
         },
       },
     },
-  }  
+  }
 }));

@@ -27,7 +27,7 @@ interface GridCardProps {
   /**
    * 由上层容器传入的已生成图片 URL 列表
    */
-  generatedImageUrls?: string[];
+  // generatedImageUrls?: string[];
   /**
    * 上层容器是否正在生成图片（用于禁用按钮和显示 loading）
    */
@@ -46,7 +46,7 @@ const GridCard: React.FC<GridCardProps> = ({
   className,
   size = 'md',
   requestGenerateImages,
-  generatedImageUrls,
+  // generatedImageUrls,
   isGenerating,
   generationError,
 }) => {

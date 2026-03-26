@@ -4,8 +4,8 @@ import { drizzle } from 'drizzle-orm/d1';
 import auth from './routes/auth.js';
 import test from './routes/test.js';
 import main from './routes/main.js';
-import word from './routes/word.js';
-import analyze from './routes/analyze.js';
+import word from './routes/word/api.js';
+import analyze from './routes/analyzer/api.js';
 import upload from './routes/upload.js';
 import llm from './routes/llm.js';
 import profile from './routes/profile.js';
@@ -14,7 +14,11 @@ import {
   getCookie
 } from 'hono/cookie'
 
+import { errorHandler } from './middleware/errorHandler.js';
+
 const app = new Hono();
+
+app.onError(errorHandler);
 
 // Global Logging Middleware
 app.use('*', async (c, next) => {
@@ -67,7 +71,7 @@ app.use('/api/*', async (c, next) => {
     accessToken = accessToken.split(' ')[1];
   }
 
-  console.log(`Wordbento-Auth-Key ${accessToken}`)
+
 
   if (!sessionId && !accessToken) {
     if (!publicButPrivateRoutes.some(route => c.req.path.startsWith(route))) {
@@ -102,7 +106,7 @@ app.route('/api/upload', upload);
 app.route('/api/analyze', analyze);
 app.route('/api/llm', llm);
 app.route('/api/profile', profile);
-app.route('/ws/analyze', analyze);
+
 // app.route('/api/rss', rss);
 
 // Minimal Test Route for KV

@@ -12,30 +12,30 @@
   },
   "dependencies": {
     "@andresaya/edge-tts": "^1.8.0",
-    "@libsql/client": "^0.15.15",
+    "@libsql/client": "^0.17.2",
     "@tsndr/cloudflare-worker-jwt": "^3.2.1",
-    "better-sqlite3": "12.5.0",
+    "better-sqlite3": "12.8.0",
     "cookie": "^1.1.1",
     "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
+    "cors": "^2.8.6",
     "djwt": "^2.0.0",
-    "dotenv": "^17.2.3",
-    "hono": "^4.11.1",
-    "jsonrepair": "^3.13.1",
+    "dotenv": "^17.3.1",
+    "hono": "^4.12.9",
+    "jsonrepair": "^3.13.3",
     "langs": "^2.0.0",
-    "mariadb": "^3.4.5",
-    "nanoid": "^5.1.6"
+    "mariadb": "^3.5.2",
+    "nanoid": "^5.1.7"
   },
   "devDependencies": {
-    "@cloudflare/puppeteer": "^1.0.4",
-    "@playwright/test": "^1.57.0",
-    "@types/node": "^25.0.2",
+    "@cloudflare/puppeteer": "^1.0.6",
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.5.0",
     "concurrently": "^9.2.1",
-    "drizzle-kit": "^0.31.8",
+    "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.1",
-    "esbuild": "^0.27.1",
+    "esbuild": "^0.27.4",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "wrangler": "^4.54.0"
+    "typescript": "^6.0.2",
+    "wrangler": "^4.77.0"
   }
 }

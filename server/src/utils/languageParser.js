@@ -151,3 +151,60 @@ export function removeQuotes(str) {
     // 如果没有被引号包裹，返回原字符串
     return str;
 }
+
+/**
+ * Helper function to check if a string looks like a JSON object or array.
+ * It performs a basic check by verifying if the string starts and ends with
+ * curly braces {} or square brackets [].
+ *
+ * @param {string} str The string to check.
+ * @returns {boolean} True if the string looks like JSON, false otherwise.
+ */
+export const isLikelyJsonString = (str) => {
+  if (typeof str !== 'string' || str.length === 0) {
+      return false;
+  }
+  const trimmedStr = str.trim();
+  return (trimmedStr.startsWith('{') && trimmedStr.endsWith('}')) ||
+         (trimmedStr.startsWith('[') && trimmedStr.endsWith(']'));
+};
+
+
+export const cleanAiJsonResponse = (rawResponse) => {
+  if (!rawResponse || typeof rawResponse !== 'string') {
+    return null;
+  }
+
+  const trimmedResponse = rawResponse.trim();
+
+  // --- Modified Regex ---
+  // Regex to find content within the FIRST ```json ... ``` or ``` ... ``` fence.
+  // Uses a non-greedy match (.*?) and the 's' flag to match newlines.
+  // Removed the negative lookahead to match the first occurrence.
+  // Added \s* after (?:json\s*)? to match zero or more whitespace characters (including newline).
+  const codeBlockRegex = /```(?:json\s*)?\s*(.*?)```/s; // Match ```json or ```, zero or more whitespace, non-greedy content, ```
+
+  const match = trimmedResponse.match(codeBlockRegex);
+
+  if (match && match[1]) {
+    // match[1] contains the captured group, which is the content inside the fences
+    const extractedContent = match[1].trim();
+    console.log("Extracted content from code block:", extractedContent);
+
+    // Optional: Perform a basic check if the extracted content looks like JSON
+    // (Starts with { or [ and ends with } or ])
+    if (isLikelyJsonString(extractedContent)) {
+        return extractedContent;
+    } else {
+        console.warn("Extracted content does not look like JSON structure:", extractedContent);
+        // Depending on strictness, you might return extractedContent anyway,
+        // or return null. Let's return null if it doesn't look like JSON structure.
+        return null;
+    }
+
+  } else {
+    console.warn("No suitable markdown code block found in the response.");
+    // If no code block is found, return null
+    return null;
+  }  
+};

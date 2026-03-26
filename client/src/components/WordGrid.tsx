@@ -420,7 +420,7 @@ const WordGrid: React.FC<WordGridProps> = ({
             const trending_story = `${example}\n根据上述台词和解释，创造一张电影海报，风格要接近这段文字中提到的作品，海报上要突出台词。\n图片标题：${word.word_text}\n注意：文字尽可能清晰，阅读体验要好`;
             await requestGenerateImages(word.word_text, trending_story, force);
           }}
-          generatedImageUrls={generatedImageUrls}
+          // generatedImageUrls={generatedImageUrls}
           isGenerating={isGeneratingImages}
           generationError={generationError}
         />)}
