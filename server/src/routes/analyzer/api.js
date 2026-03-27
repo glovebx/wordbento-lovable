@@ -269,7 +269,8 @@ analyze.post('/update', async (c) => {
 analyze.get('/history', async (c) => {
   const user = c.get('user');
   if (!user) {
-    return c.json({ message: 'Forbidden' }, 403);
+    // return c.json({ message: 'Forbidden' }, 403);
+    return c.json([], 200);
   }
 
   const limit = parseInt(c.req.query('limit') || 4, 10);

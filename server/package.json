@@ -8,13 +8,16 @@
     "build": "esbuild src/index.js --bundle --outfile=dist/index.js --platform=node --format=esm",
     "serve": "node server.js",
     "generate:migration": "drizzle-kit generate --schema src/db/schema.ts --dialect sqlite",
-    "push:migration": "drizzle-kit push --db ./drizzle/sqlite.db"
+    "push:migration": "drizzle-kit push --db ./drizzle/sqlite.db",
+    "sync:once": "node scripts/sync.mjs",
+    "sync:incremental": "node scripts/sync.mjs",
+    "sync:r2": "node scripts/sync_r2.mjs"
   },
   "dependencies": {
     "@andresaya/edge-tts": "^1.8.0",
     "@libsql/client": "^0.17.2",
     "@tsndr/cloudflare-worker-jwt": "^3.2.1",
-    "better-sqlite3": "12.8.0",
+    "better-sqlite3": "^12.8.0",
     "cookie": "^1.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -24,7 +27,8 @@
     "jsonrepair": "^3.13.3",
     "langs": "^2.0.0",
     "mariadb": "^3.5.2",
-    "nanoid": "^5.1.7"
+    "nanoid": "^5.1.7",
+    "undici": "^7.24.6"
   },
   "devDependencies": {
     "@cloudflare/puppeteer": "^1.0.6",

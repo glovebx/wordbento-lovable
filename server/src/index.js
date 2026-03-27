@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { drizzle } from 'drizzle-orm/d1';
 import auth from './routes/auth.js';
 import test from './routes/test.js';
 import main from './routes/main.js';
@@ -9,7 +8,6 @@ import analyze from './routes/analyzer/api.js';
 import upload from './routes/upload.js';
 import llm from './routes/llm.js';
 import profile from './routes/profile.js';
-// import rss from './routes/rss.js';
 import {
   getCookie
 } from 'hono/cookie'

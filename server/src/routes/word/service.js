@@ -293,7 +293,7 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
             const objectKey = `${nanoid(10)}.jpeg`;
             await c.env.WORDBENTO_R2.put(objectKey, imageBinaryData.data, { contentType: 'image/jpeg' });
             await db.insert(schema.images).values({ word_id: existingWord[0].id, image_key: objectKey, prompt: example.trim() });
-            return `${c.env.VITE_BASE_URL}/api/word/image/${objectKey}`;
+            return `${c.env.VITE_IMG_URL}/${objectKey}`;
         }));
         return savedImageUrls;
     }
@@ -388,7 +388,7 @@ const formatDbResultToWordResponse = (c, word, contentRecords, imageRecords) => 
         }
     });
 
-    const imageUrls = (imageRecords && imageRecords.length > 0) && imageRecords.map(img => img.image_key.startsWith('http') ? img.image_key : `${c.env.VITE_BASE_URL}/api/word/image/${img.image_key}`) || [];
+    const imageUrls = (imageRecords && imageRecords.length > 0) && imageRecords.map(img => img.image_key.startsWith('http') ? img.image_key : `${c.env.VITE_IMG_URL}/${img.image_key}`) || [];
 
     return {
         id: word.id,

@@ -10,6 +10,7 @@ test.py
 today.py
 *.json
 
+server/scripts/
 downloaded_images/
 
 # dependencies
@@ -43,6 +44,7 @@ yarn-error.log*
 # local env files
 .env*.local
 .env*.development
+.env*.production
 
 # vercel
 .vercel

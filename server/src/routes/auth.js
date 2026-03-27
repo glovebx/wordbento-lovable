@@ -84,7 +84,7 @@ auth.post('/login', async (c) => {
 
   // Determine environment and cookie settings
   const isProduction = process.env.NODE_ENV === 'production';
-  const cookieDomain = isProduction ? '.toopost.us' : undefined;
+  const cookieDomain = isProduction ? '.metaerp.ai' : undefined;
   const sameSite = isProduction ? 'None' : 'Lax';
   const secure = isProduction;
 

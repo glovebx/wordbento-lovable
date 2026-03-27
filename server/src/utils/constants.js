@@ -166,5 +166,21 @@ export const posterStyle = [
   {
     "style": "De Stijl, strict geometric abstraction, primary colors, grid-based",
     "desc": "风格派，严格的几何抽象，三原色，基于网格 - 适合：纯粹抽象、结构、基本元素的单词"
+  },
+  {
+    "style": "Retro pop art style, 1970s magazine aesthetic, flat design with thick black outlines, cream beige background, Salmon pink #FF6B6B, sky blue #4ECDC4, mustard yellow #FFD93D, mint green #6BCB77 accents, Geometric decorations: quarter circles, concentric rings, star bursts, Professional presentation design",
+    "desc": "Retro Pop Art (复古波普)"
+  },
+  {
+    "style": "Neo-brutalism style, raw design, Cream background, Bold primary colors: red #FF4D4D, blue #4D94FF, yellow #FFD93D, Thick 4px black outlines, hard shadows, Brutalist frames, bold typography, Stark contrast",
+    "desc": "个性表达、艺术展示"
+  },
+  {
+    "style": "Swiss international style, brutalist graphic design, Light gray background, High saturation colors: blue #007AFF, green #00994D, yellow #FFF066, purple #9966FF, pink #FF3399, orange #FF8800, Asymmetric composition",
+    "desc": "专业设计、高端展示"
+  },
+  {
+    "style": "Y2K pixel retro, 1990s aesthetic, Dark background with noise texture, Bright colors: yellow #FFD700, orange #FF8C00, green #4A7C4E, Pixel art computer icons, CRT monitor graphics, Isometric tech illustrations, Vintage 1990s design",
+    "desc": "怀旧主题、创意内容"
   }
 ];
