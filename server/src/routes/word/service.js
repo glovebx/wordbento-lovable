@@ -1,9 +1,9 @@
 
 import { and, eq, inArray, gt, lt, gte, lte, isNull, asc, desc } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../../db/schema';
 import { sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import Jimp from 'jimp';
 import { isQuoted, removeQuotes } from '../../utils/languageParser';
 import LanguageUtils from '../../utils/languageUtils';
 import { toSqliteUtcString } from '../../utils/dateUtils';
@@ -185,6 +185,42 @@ export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
 
 };
 
+const MAX_IMAGE_SIZE = 300 * 1024; // 300KB
+
+async function compressImageBuffer(buffer) {
+    if (buffer.byteLength <= MAX_IMAGE_SIZE) {
+        return buffer; // No need to compress
+    }
+
+    try {
+        console.log(`Image size (${(buffer.byteLength / 1024).toFixed(2)} KB) exceeds limit, attempting to compress...`);
+        const image = await Jimp.read(buffer);
+        let quality = 90;
+        let lastCompressedBuffer = null;
+
+        for (let q = quality; q >= 10; q -= 10) {
+            const compressedBuffer = await image.quality(q).getBufferAsync(Jimp.MIME_JPEG);
+            lastCompressedBuffer = compressedBuffer;
+            console.log(`  - Trying quality ${q}, size: ${(compressedBuffer.length / 1024).toFixed(2)} KB`);
+
+            if (compressedBuffer.length <= MAX_IMAGE_SIZE) {
+                console.log(`  - Compression successful.`);
+                return compressedBuffer;
+            }
+        }
+
+        if (lastCompressedBuffer) {
+            console.log(`  - [Warning] Could not compress below target size. Using last compressed result.`);
+            return lastCompressedBuffer;
+        }
+
+    } catch (error) {
+        console.error("Image compression with Jimp failed:", error);
+    }
+
+    return buffer; // Fallback, Return original buffer on failure
+}
+
 const getWordDetails = async (c, db, word) => {
   const [contentRecords, imageRecords] = await Promise.all([
     db.select().from(schema.word_content).where(eq(schema.word_content.word_id, word.id)),
@@ -291,7 +327,8 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
 
         const savedImageUrls = await Promise.all(allImageResults.filter(img => img.data).map(async (imageBinaryData) => {
             const objectKey = `${nanoid(10)}.jpeg`;
-            await c.env.WORDBENTO_R2.put(objectKey, imageBinaryData.data, { contentType: 'image/jpeg' });
+            const compressedData = await compressImageBuffer(imageBinaryData.data);
+            await c.env.WORDBENTO_R2.put(objectKey, compressedData, { contentType: 'image/jpeg' });
             await db.insert(schema.images).values({ word_id: existingWord[0].id, image_key: objectKey, prompt: example.trim() });
             return `${c.env.VITE_IMG_URL}/${objectKey}`;
         }));

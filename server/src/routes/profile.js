@@ -3,6 +3,8 @@ import { drizzle } from 'drizzle-orm/d1';
 // The schema object itself is usually defined in a separate file and imported for drizzle initialization
 import * as schema from '../db/schema'; // Keep schema import for drizzle initialization
 import { sql, eq, and, desc } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
+import { generateSalt, hashPassword, verifyPassword, bufferToHex, hexToBuffer } from '../utils/passwords';
+
 
 const profile = new Hono();
 
@@ -99,5 +101,74 @@ profile.post('/token/renew', async (c) => {
       return c.json({ message: 'Failed to update access token.' }, 500);
   }
 });
+
+profile.post('/change-password', async (c) => {
+  const user = c.get('user');
+  if (!user || !user.id) {
+    return c.json({ message: 'Unauthorized: User not found in session.' }, 401);
+  }
+
+  const { currentPassword, newPassword, confirmPassword } = await c.req.json();
+
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return c.json({ message: 'All password fields are required.' }, 400);
+  }
+
+  if (newPassword !== confirmPassword) {
+    return c.json({ message: 'New password and confirmation do not match.' }, 400);
+  }
+
+  if (newPassword.length < 6) { // Example validation
+    return c.json({ message: 'New password must be at least 6 characters long.' }, 400);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+
+  try {
+    // 1. Fetch the current user from the database
+    const existingUser = await db.select({
+        password: schema.users.password,
+        salt: schema.users.salt
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, user.id))
+      .limit(1);
+
+    if (existingUser.length === 0) {
+      return c.json({ message: 'User not found in database.' }, 404);
+    }
+
+    const storedUserData = existingUser[0];
+
+    // 2. Verify the current password
+    const salt = hexToBuffer(storedUserData.salt);
+    const isPasswordValid = await verifyPassword(currentPassword, storedUserData.password, salt);
+
+    if (!isPasswordValid) {
+      return c.json({ message: 'Incorrect current password.' }, 403);
+    }
+
+    // 3. Hash the new password
+    const newSalt = generateSalt();
+    const newHashedPassword = await hashPassword(newPassword, newSalt);
+    const newSaltHex = bufferToHex(newSalt);
+
+    // 4. Update the password in the database
+    await db.update(schema.users)
+      .set({
+        password: newHashedPassword,
+        salt: newSaltHex,
+        updated_at: sql`CURRENT_TIMESTAMP`
+      })
+      .where(eq(schema.users.id, user.id));
+
+    return c.json({ message: 'Password updated successfully.' }, 200);
+
+  } catch (error) {
+    console.error("Failed to change password:", error);
+    return c.json({ message: 'An internal error occurred while changing the password.' }, 500);
+  }
+});
+
 
 export default profile;
