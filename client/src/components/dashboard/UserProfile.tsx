@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { LanguageSettings } from "@/components/profile/LanguageSettings";
 import { ApiSettings } from "@/components/profile/ApiSettings";
@@ -11,6 +12,8 @@ import { ApiSettings } from "@/components/profile/ApiSettings";
 import { useLlms, Llm, SaveLlmData } from '@/hooks/use-llm'; // 假设 use-llms 路径正确
 import { useProfile } from '@/hooks/use-profile'; // 假设 use-llms 路径正确
 import { AccessTokenSettings } from "../profile/AccessTokenSettings";
+import { ChangePasswordSettings } from "../profile/ChangePasswordSettings";
+import axios from 'axios';
 
 // --- 类型定义 ---
 
@@ -278,6 +281,8 @@ const UserProfile = () => {
         isSaving: false
     });
 
+    const [isSavingPassword, setIsSavingPassword] = useState(false);
+
     // --- EFFECT: 合并后端数据到前端状态 ---
     useEffect(() => {
         if (!isLlmsLoading && recentLlms.length > 0) {
@@ -364,6 +369,42 @@ const UserProfile = () => {
         }
     }, [apiConfigs, saveLlm]); // 依赖 apiConfigs 以获取 ID
 
+    const handleChangePassword = async (currentPassword: string, newPassword: string, confirmPassword: string) => {
+        if (newPassword !== confirmPassword) {
+            toast({
+                title: "Error",
+                description: "New password and confirmation do not match.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        setIsSavingPassword(true);
+        try {
+            const response = await axios.post("/api/profile/change-password", {
+                currentPassword,
+                newPassword,
+                confirmPassword,
+            });
+
+            if (response.status === 200) {
+                toast({
+                    title: "Success",
+                    description: "Password updated successfully.",
+                });
+            }
+        } catch (error: any) {
+            const errorMessage = error.response?.data?.message || "An unknown error occurred.";
+            toast({
+                title: "Error Changing Password",
+                description: errorMessage,
+                variant: "destructive",
+            });
+        } finally {
+            setIsSavingPassword(false);
+        }
+    };
+
     // 渲染时判断是否正在初始加载 LLMs
     const isInitialLoading = isLlmsLoading && recentLlms.length === 0;
 
@@ -378,62 +419,85 @@ const UserProfile = () => {
                 </Button>
             </div>
             
-            <div className="space-y-16 mt-12">
-                <div id="language-section" className="scroll-mt-12">
-                    <LanguageSettings 
-                        nativeLanguage={languageSettings.nativeLanguage}
-                        setNativeLanguage={(lang) => setLanguageSettings(prev => ({ ...prev, nativeLanguage: lang }))}
-                        targetLanguage={languageSettings.targetLanguage}
-                        setTargetLanguage={(lang) => setLanguageSettings(prev => ({ ...prev, targetLanguage: lang }))}
-                        onSave={handleSaveLanguageSettings}
-                        isSaving={languageSettings.isSaving}
-                    />
+            <div className="flex items-center justify-between space-y-2 mb-8">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+                    <p className="text-muted-foreground">
+                        Manage your account settings and set up API preferences.
+                    </p>
                 </div>
-
-                <div id="access-token-section" className="scroll-mt-12">
-                    <AccessTokenSettings 
-                        accessToken={recentProfile?.access_token}
-                        onTokenRefresh={handleAccessTokenSettings}
-                        isSaving={isTokenRefreshing}
-                    />
-                </div>
-
-                {/* 加载提示 */}
-                {isInitialLoading && (
-                    <p className="text-gray-500">Loading API configurations...</p>
-                )}
-                
-                {/* API 设置列表 */}
-                {!isInitialLoading && initialApis.map(api => {
-                    const currentConfig = apiConfigs[api.platform];
-                    if (!currentConfig) return null; // 确保配置已加载
-                    
-                    return (
-                        <div key={api.platform} id={`${api.platform}-section`} className="scroll-mt-12">
-                            <ApiSettings 
-                                title={api.title}
-                                endpoint={currentConfig.endpoint}
-                                setEndpoint={(val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], endpoint: val } }))}
-                                apiKey={currentConfig.apiKey}
-                                setApiKey={(val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], apiKey: val } }))}
-                                endpointId={`${api.platform}-endpoint`}
-                                apiKeyId={`${api.platform}-api-key`}
-                                onSave={(endpoint, apiKey, model, active) => handleSaveApiSettings(api.platform, { endpoint, apiKey, model, active })}
-                                // 使用 useLlms 的 isSaving 状态
-                                isSaving={isLlmSaving || isSaving[api.platform]} 
-                                
-                                isModelRequired={api.isModelRequired}
-                                model={currentConfig.model}
-                                setModel={api.isModelRequired ? (val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], model: val } })) : undefined}
-                                active={currentConfig.active}
-                                setActive={(val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], active: val } }))}
-                                modelId={`${api.platform}-model`}
-                                activeId={`${api.platform}-active`}
+            </div>
+            <Tabs defaultValue="general" className="space-y-4">
+                <TabsList>
+                    <TabsTrigger value="general">常规</TabsTrigger>
+                    <TabsTrigger value="security">安全</TabsTrigger>
+                    <TabsTrigger value="api">API 设置</TabsTrigger>
+                </TabsList>
+                <TabsContent value="general" className="space-y-4">
+                    <div id="language-section" className="scroll-mt-12 pt-4">
+                        <LanguageSettings 
+                            nativeLanguage={languageSettings.nativeLanguage}
+                            setNativeLanguage={(lang) => setLanguageSettings(prev => ({ ...prev, nativeLanguage: lang }))}
+                            targetLanguage={languageSettings.targetLanguage}
+                            setTargetLanguage={(lang) => setLanguageSettings(prev => ({ ...prev, targetLanguage: lang }))}
+                            onSave={handleSaveLanguageSettings}
+                            isSaving={languageSettings.isSaving}
+                        />
+                    </div>
+                </TabsContent>
+                <TabsContent value="security" className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                        <div id="access-token-section" className="scroll-mt-12">
+                            <AccessTokenSettings 
+                                accessToken={recentProfile?.access_token}
+                                onTokenRefresh={handleAccessTokenSettings}
+                                isSaving={isTokenRefreshing}
                             />
                         </div>
-                    );
-                })}
-            </div>
+                        <div id="change-password-section" className="scroll-mt-12">
+                            <ChangePasswordSettings 
+                                onSave={handleChangePassword}
+                                isSaving={isSavingPassword}
+                            />
+                        </div>
+                    </div>
+                </TabsContent>
+                <TabsContent value="api" className="space-y-4">
+                    {isInitialLoading && (
+                        <p className="text-gray-500 pt-4">Loading API configurations...</p>
+                    )}
+                    
+                    <div className="space-y-8 pt-4">
+                    {!isInitialLoading && initialApis.map(api => {
+                        const currentConfig = apiConfigs[api.platform];
+                        if (!currentConfig) return null; // 确保配置已加载
+                        
+                        return (
+                            <div key={api.platform} id={`${api.platform}-section`} className="scroll-mt-12">
+                                <ApiSettings 
+                                    title={api.title}
+                                    endpoint={currentConfig.endpoint}
+                                    setEndpoint={(val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], endpoint: val } }))}
+                                    apiKey={currentConfig.apiKey}
+                                    setApiKey={(val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], apiKey: val } }))}
+                                    endpointId={`${api.platform}-endpoint`}
+                                    apiKeyId={`${api.platform}-api-key`}
+                                    onSave={(endpoint, apiKey, model, active) => handleSaveApiSettings(api.platform, { endpoint, apiKey, model, active })}
+                                    isSaving={isLlmSaving || isSaving[api.platform]} 
+                                    isModelRequired={api.isModelRequired}
+                                    model={currentConfig.model}
+                                    setModel={api.isModelRequired ? (val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], model: val } })) : undefined}
+                                    active={currentConfig.active}
+                                    setActive={(val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], active: val } }))}
+                                    modelId={`${api.platform}-model`}
+                                    activeId={`${api.platform}-active`}
+                                />
+                            </div>
+                        );
+                    })}
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 };

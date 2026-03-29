@@ -135,6 +135,7 @@ const Index = () => {
 
       if (data && typeof data !== 'string') {
           setWordData(data); // 设置获取到的单词数据 (fetchAndCacheWord 已处理缓存)
+          setCurrentWord(data.word_text);
           setError(null); // 确保没有错误
       } else {
           // fetchAndCacheWord 返回 null 意味着获取失败（网络错误或 API 返回非 OK）
