@@ -92,7 +92,7 @@ const Index = () => {
   // --- End new states ---
 
   // 调用自定义 Hook 获取缓存相关的状态和函数
-  const { wordCache, fetchAndCacheWord, addToCache, removeFromCache } = useWordCache();
+  const { wordCache, fetchAndCacheWord, addToCache, removeFromCache, prefetch } = useWordCache();
  
   // --- New States for Dialog Open Status ---
   const [isImageDialogShowing, setIsImageDialogShowing] = useState(false); // <-- New state
@@ -149,6 +149,13 @@ const Index = () => {
         //    setWordData(null); // 确保数据为 null
       }
       setIsWordLoading(false); // 无论成功或失败，主加载结束
+
+      // Prefetch after state has been updated
+      if (data && typeof data !== 'string') {
+          const mustHaveImage = viewMode === 'flashcard';
+          prefetch(data.word_text, NavigationMode.Next, mustHaveImage);
+        //   prefetch(data.word_text, NavigationMode.Previous, mustHaveImage);
+      }
     };
 
     fetchCurrentWord(currentWord);
@@ -157,6 +164,17 @@ const Index = () => {
     // return () => { ... };
 
   }, [currentWord, toast, fetchAndCacheWord]); // 依赖 currentWord, toast, 和 fetchAndCacheWord (hook 返回的函数)
+
+//   // --- Prefetching useEffect ---
+//   useEffect(() => {
+//     if (wordData && prefetch) {
+//       // Prefetch the next and previous words in the background
+//       console.log(`Prefetching neighbors for ${wordData.word_text}`);
+//       const mustHaveImage = viewMode === 'flashcard';
+//       prefetch(wordData.word_text, NavigationMode.Next, mustHaveImage);
+//     //   prefetch(wordData.word_text, NavigationMode.Previous);
+//     }
+//   }, [wordData, prefetch]); // This effect runs whenever wordData changes
 
 //   useEffect(() => {
 

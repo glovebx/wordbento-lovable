@@ -52,6 +52,12 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   // NEW: State to control visibility of word details (phonetic and meaning)
   const [showDetails, setShowDetails] = useState(false);
 
+  // 点击上下按钮切换时
+  const [isSwitching, setIsSwitching] = useState(false);  
+
+  // NEW: State to trigger image fetch
+  const [imageRequestCounter, setImageRequestCounter] = useState(0);
+
   // Effect to initialize Speech Recognition API
   useEffect(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -106,47 +112,56 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
   // Effect for fetching image data for the word
   useEffect(() => {
-    setImageUrl(null);
-    setIsLoading(true);
-    setUserInput('');
-    setAttempts(0);
     setIsCorrect(null);
     setIsMarkedForReview(false);
-    setShowDetails(false); // NEW: Reset showDetails when word changes
+    setShowDetails(false);
+
+    // Trigger image fetch if needed
+    if (!wordData.imageUrls || wordData.imageUrls.length === 0) {
+        setImageRequestCounter(prev => prev + 1);
+    } else {
+        setImageUrl(wordData.imageUrls[0]);
+        setIsSwitching(false);
+    }
+  }, [wordData]);
+
+  // Effect for fetching image data, triggered by imageRequestCounter
+  useEffect(() => {
+    if (imageRequestCounter === 0) return;
 
     const fetchImage = async () => {
-      try {
-        if (wordData.imageUrls && wordData.imageUrls.length > 0) {
-          setImageUrl(wordData.imageUrls[0]);
-          console.log('Word already has image URLs, aborting new image request.');
-          setIsLoading(false);
-          return;
-        }
-        
-        const data = await fetchAndCacheWord(wordData.word_text, NavigationMode.Search, true);
-
-        if (data && typeof data !== 'string') {
-            onWordChanged(data);
-            if (data.imageUrls && data.imageUrls.length > 0) {
-                setImageUrl(data.imageUrls[0]);
+        setIsLoading(true);
+        try {
+            const data = await fetchAndCacheWord(wordData.word_text, NavigationMode.Search, true);
+            if (data && typeof data !== 'string') {
+                onWordChanged(data);
+                if (data.imageUrls && data.imageUrls.length > 0) {
+                    setImageUrl(data.imageUrls[0]);
+                }
+            } else {
+                toast({ title: "获取单词详情失败", description: `抱歉，无法加载单词。`, variant: "destructive" });
             }
-        } else {
-            toast({
-              title: "获取单词详情失败",
-              description: `抱歉，无法加载单词。`,
-              variant: "destructive",
-            });
+        } catch (error) {
+            console.error('Error fetching image:', error);
+            setImageUrl(null);
+        } finally {
+            setIsSwitching(false);
+            setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error fetching image:', error);
-        setImageUrl(null);
-      } finally {
-        setIsLoading(false);
-      }
     };
 
     fetchImage();
-  }, [wordData, fetchAndCacheWord, onWordChanged, toast]);
+  }, [imageRequestCounter, fetchAndCacheWord, onWordChanged, toast]);
+
+  // // --- Prefetching useEffect ---
+  // useEffect(() => {
+  //   if (wordData && prefetch) {
+  //     // Prefetch the next and previous words in the background
+  //     console.log(`Prefetching neighbors for ${wordData.word_text}`);
+  //     prefetch(wordData.word_text, NavigationMode.Next, true);
+  //   //   prefetch(wordData.word_text, NavigationMode.Previous);
+  //   }
+  // }, [wordData, prefetch]); // This effect runs whenever wordData changes
 
   // // Effect to focus the input field when wordData changes
   // useEffect(() => {
@@ -327,7 +342,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           <Button 
             variant="outline"
             size="icon"
-            onClick={onPrevious}
+            onClick={() => {setIsSwitching(true); onPrevious();}}
             className="absolute left-0 sm:left-4 z-10 hover:bg-muted" 
             title="上一个单词"
           >
@@ -337,7 +352,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           {/* Image Card */}
           <Card className="w-full lg:max-w-5xl sm:max-w-2xl sm:mx-16">
             <CardContent className="p-2">
-              {isLoading ? (
+              {(isLoading || isSwitching) ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
                     <div className="animate-pulse bg-muted rounded-lg w-full h-48 mb-4"></div>
@@ -365,7 +380,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           <Button 
             variant="outline"
             size="icon"
-            onClick={onNext}
+            onClick={() => {setIsSwitching(true); onNext();}}
             className="absolute right-0 sm:right-4 z-10 hover:bg-muted"
             title="下一个单词"
           >

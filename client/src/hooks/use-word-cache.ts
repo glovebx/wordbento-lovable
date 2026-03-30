@@ -48,6 +48,7 @@ export const useWordCache = () => {
   // useRef 创建的值在组件的整个生命周期中是持久的，不会在重新渲染时丢失
   const wordCacheRef = useRef<Map<string, WordDataType>>(new Map());
   const cacheOrderRef = useRef<string[]>([]); // 用于追踪缓存键的顺序，实现简单的LRU（最近最少使用）策略
+  const cacheOrderPrefetchRef = useRef<string[]>([]); // 用于追踪缓存键的顺序，实现简单的LRU（最近最少使用）策略
 
   const removeFromCache = useCallback((slug: string) => {
       const cache = wordCacheRef.current;
@@ -91,6 +92,24 @@ export const useWordCache = () => {
 
   }, []); // 此函数不依赖组件的状态或props，只依赖 useRef 创建的稳定引用，故依赖数组为空
 
+  // Helper function to add/update cache and manage size
+  // 使用 useCallback 确保函数引用稳定，避免不必要的重新创建
+  const addToPrefetchCache = useCallback((slug: string) => {
+      const order = cacheOrderPrefetchRef.current;
+
+      // 如果 item 已经存在于缓存中，先从顺序数组中移除其旧位置
+      const existingIndex = order.indexOf(slug);
+      if (existingIndex > -1) {
+          order.splice(existingIndex, 1); // 从原位置移除
+      } else if (order.length >= MAX_CACHE_SIZE) {
+          // 缓存已满且是新项，移除最老的（位于顺序数组开头）
+          order.shift(); // 移除并获取数组第一个元素 (FIFO/简单LRU)
+      }
+
+      // 添加/更新数据到缓存，并将其 slug 添加到顺序数组末尾（使其成为最近使用的）
+      order.push(slug);
+  }, []); // 此函数不依赖组件的状态或props，只依赖 useRef 创建的稳定引用，故依赖数组为空
+
   // Helper function to check cache or fetch data from API, then add to cache
   // 这个函数是核心，负责检查缓存，如果未命中则从 API 获取，成功后添加到缓存
   const fetchAndCacheWord = useCallback(async (slug: string, mode = NavigationMode.Search, mhi: boolean = false): Promise<WordDataType | string | null> => {
@@ -109,17 +128,44 @@ export const useWordCache = () => {
           return cache.get(slug)!; // 返回缓存数据 (使用非空断言，因为 has() 已检查存在性)
       }
 
+      let nextSlug = slug;      
+      // 如果是翻页，从 cacheOrderPrefetchRef 获取试试
+      if (mode !== NavigationMode.Search && cacheOrderPrefetchRef.current.includes(slug)) {
+        // console.log(`Cache hit for ${slug} in prefetch cache`); // Optional logging
+        // 如果缓存命中，更新其在顺序数组中的位置到末尾 (LRU)
+        const orderPrefetch = cacheOrderPrefetchRef.current;
+        const index = orderPrefetch.indexOf(slug);
+        let hasNext = true;
+        if (index > -1) {
+          if (mode === NavigationMode.Next && index < orderPrefetch.length) {
+            nextSlug = orderPrefetch[index + 1];
+          } else if (index > 0) {
+            nextSlug = orderPrefetch[index - 1];
+          } else {
+            // 没有找到，还是需要去服务器端
+            hasNext = false;
+          }
+          if (hasNext) {
+            const nextIndex = orderPrefetch.indexOf(nextSlug);
+            if (nextIndex > -1 && cache.has(nextSlug)) {
+              return cache.get(nextSlug)!; // 返回缓存数据 (使用非空断言，因为 has() 已检查存在性)
+            }
+          }
+        }
+      }
+
       // console.log(`Cache miss for ${slug}, fetching...`); // Optional logging
       // 2. 缓存未命中，从 API 获取数据
       try {
         //   const response = await fetch(`/api/word/${slug}`);
-        const response = await axiosPrivate.post('/api/word/search', JSON.stringify({ slug: slug, mode: mode, mhi: mhi }));
+        const response = await axiosPrivate.post('/api/word/search', JSON.stringify({ slug: nextSlug, mode: mode, mhi: mhi }));
         console.log('Response headers:', response.headers);
         console.log('Response body:', response.data);
 
         if (response.data?.content) {
             const data = response.data as WordDataType
             // console.log('User authenticated:', response.data.word);
+            addToPrefetchCache(data.word_text); // Add to prefetch cache
             addToCache(data.word_text, data); // 将获取到的数据添加到缓存
             return data; // 返回获取到的数据
         } else {
@@ -136,11 +182,36 @@ export const useWordCache = () => {
       }
   }, [addToCache]); // fetchAndCacheWord 依赖于 addToCache 函数
 
+  const prefetch = useCallback(async (slug: string, mode: NavigationMode, mhi: boolean = false) => {
+    // const cache = wordCacheRef.current;
+
+    // If slug is empty or already in cache, do nothing.
+    // if (!slug || cache.has(slug)) {
+    if (!slug) {
+      return;
+    }
+
+    // Fetch from API (fire and forget)
+    try {
+      const response = await axiosPrivate.post('/api/word/search', JSON.stringify({ slug: slug, mode: mode, mhi: mhi }));
+      
+      if (response.data?.content) {
+        const data = response.data as WordDataType;
+        addToPrefetchCache(data.word_text); // Add to prefetch cache
+        addToCache(data.word_text, data); // Add to cache
+      }
+    } catch (err) {
+      // For prefetching, we can fail silently and just log the error.
+      console.error(`Prefetch failed for "${slug}":`, err);
+    }
+  }, [addToCache]);
+
   // Hook 返回组件需要用到的缓存相关功能
   return {
     wordCache: wordCacheRef.current, // 返回缓存 Map 实例，供组件直接进行 contains 检查和 get 操作
     fetchAndCacheWord, // 返回获取并缓存单词的函数
     removeFromCache,
     addToCache, // 返回添加到缓存的函数，以防组件在别处获取数据后想手动添加到缓存（例如初始加载或搜索成功后）
+    prefetch, // 导出 prefetch 方法
   };
 };
