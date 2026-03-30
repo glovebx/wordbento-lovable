@@ -49,7 +49,7 @@ const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-10 bg-background border-b shadow-sm">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="text-xl font-bold">Word-Bento 单词学习</div>
+          <div className="text-xl font-bold">4s背单词</div>
 
           <div className="flex items-center gap-2">
             {/* View Mode Toggle */}
