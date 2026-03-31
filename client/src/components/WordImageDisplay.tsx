@@ -221,6 +221,8 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
                         src={url}
                         alt={`Image ${index + 1} representing the word "${word.word_text}"`}
                         className="object-cover w-full h-full"
+                        loading="lazy"
+                        decoding="async"                        
                       />
                     </AspectRatio>
                   </div>

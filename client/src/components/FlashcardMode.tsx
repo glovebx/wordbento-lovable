@@ -178,24 +178,27 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     }
   }, [userInput]);
 
-  const randomNext = () => {
-    if (!wordData.imageUrls || wordData.imageUrls.length === 0) {
-        console.warn("没有图片可供选择。");
+  const cycleImage = () => {
+    if (!wordData.imageUrls || wordData.imageUrls.length <= 1) {
+        console.warn("No other images to cycle through.");
         return;
     }
 
-    const availableImages = wordData.imageUrls.filter(url => url !== imageUrl);
+    const currentIndex = wordData.imageUrls.findIndex(url => url === imageUrl);
 
-    if (availableImages.length === 0) {
-      console.warn("没有其他不同的图片可供选择。");
-      return;
+    // If the current image isn't found (which shouldn't happen), start from the first one.
+    if (currentIndex === -1) {
+        setImageUrl(wordData.imageUrls[0]);
+        return;
     }
 
-    const randomIndex = Math.floor(Math.random() * availableImages.length);
-    const newImageUrl = availableImages[randomIndex];
+    // Calculate the next index, wrapping around to the beginning if at the end.
+    const nextIndex = (currentIndex + 1) % wordData.imageUrls.length;
+    const newImageUrl = wordData.imageUrls[nextIndex];
+
     setImageUrl(newImageUrl);
-    console.log("已切换到新的图片:", newImageUrl);
-  }
+    console.log("Cycled to next image:", newImageUrl);
+  };
 
 
   // --- New useEffect for Keyboard Navigation ---
@@ -225,7 +228,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           } else if (event.key === 'n') {
             event.preventDefault();
             // 切换图片
-            randomNext();
+            cycleImage();
           }
       };
 
@@ -236,7 +239,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
       return () => {
           window.removeEventListener('keydown', handleKeyDown);
       };
-  }, [isLoading, setShowDetails, randomNext]); // Dependencies: loading states and navigation handlers
+  }, [isLoading, setShowDetails, cycleImage]); // Dependencies: loading states and navigation handlers
   // --- End New useEffect for Keyboard Navigation ---  
 
   const checkAnswer = (valueToCheck: string = userInput) => {
@@ -364,7 +367,9 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                   <img 
                     src={imageUrl} 
                     alt="单词图片"
-                    onClick={randomNext}
+                    onClick={cycleImage}
+                    loading="lazy"
+                    decoding="async"
                     className="object-contain w-full h-full cursor-pointer"
                   />
                 </AspectRatio>
