@@ -25,7 +25,7 @@ export const AccessTokenSettings = ({
     if (navigator.clipboard && window.isSecureContext) {
       try {
         await navigator.clipboard.writeText(accessToken);
-        console.log('复制成功!');
+        // console.log('复制成功!');
         setCopyStatus("success");
         // 2秒后重置状态
         setTimeout(() => setCopyStatus("idle"), 2000);
@@ -55,7 +55,7 @@ export const AccessTokenSettings = ({
       document.body.removeChild(textArea); // 清理DOM
 
       if (successful) {
-        console.log('复制成功 (降级方案)!');
+        // console.log('复制成功 (降级方案)!');
         setCopyStatus("success");
         // 2秒后重置状态
         setTimeout(() => setCopyStatus("idle"), 2000);      

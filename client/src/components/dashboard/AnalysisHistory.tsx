@@ -40,7 +40,7 @@ const AnalysisHistory = () => {
 
     try {
       const response = await axiosPrivate.get<ResourceWithAttachments>(`/api/analyze/detail/${resourceId}`);
-      console.log('Fetched resource details for editing:', response.data);
+      // console.log('Fetched resource details for editing:', response.data);
       setEditingResource(response.data);
     } catch (error) {
       console.error('Failed to fetch resource details for editing:', error);
@@ -62,13 +62,13 @@ const AnalysisHistory = () => {
   const handleReSyncResource = async (resourceId: number) => {
     setIsSyncing(true);
     try {
-      console.log('ReSync resource:', resourceId);
+      // console.log('ReSync resource:', resourceId);
       await axiosPrivate.put(`/api/analyze/resync/${resourceId}`);
       toast({ title: "同步成功", description: "资源信息已更新。" });
 
       fetchAnalysisHistory(currentPage, itemsPerPage);
       const response = await axiosPrivate.get<ResourceWithAttachments>(`/api/analyze/detail/${resourceId}`);
-      console.log('Fetched resource details for editing:', response.data);
+      // console.log('Fetched resource details for editing:', response.data);
       setEditingResource(response.data);
     } catch (error) {
       console.error('Failed to resync resource:', error);
@@ -85,7 +85,7 @@ const AnalysisHistory = () => {
   const handleSaveResource = async (updatedData: Partial<ResourceWithAttachments>) => {
     try {
       if (updatedData.id) {
-        console.log('Updating resource:', updatedData);
+        // console.log('Updating resource:', updatedData);
         // toast({ title: "更新成功", description: "资源信息已更新。" });
       } else {
         // console.log('Creating new resource:', updatedData);
@@ -120,7 +120,7 @@ const AnalysisHistory = () => {
   };
 
   const handleDeleteResource = async (resourceId: number) => {
-    console.log('Deleting resource:', resourceId);
+    // console.log('Deleting resource:', resourceId);
     try {
       await axiosPrivate.delete(`/api/analyze/detail/${resourceId}`);
       toast({

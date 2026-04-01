@@ -11,7 +11,7 @@ if (!baseURL) {
   // or handle this case gracefully to prevent subsequent API calls from failing.
 } else {
   // Log the base URL for debugging only if it's set
-  console.log("API Base URL:", baseURL);
+  // console.log("API Base URL:", baseURL);
 }
 
 

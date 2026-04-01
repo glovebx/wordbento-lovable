@@ -104,7 +104,7 @@ const TtsPronunciationButton: React.FC<TtsPronunciationButtonProps> = ({
       const cachedBase64Audio = audioCacheRef.current.get(word);
       if (cachedBase64Audio) {
         const cachedAudioBuffer = base64ToArrayBuffer(cachedBase64Audio);
-        console.log(`Cache hit for word: ${word}. Playing from cache.`);
+        // console.log(`Cache hit for word: ${word}. Playing from cache.`);
         await playAudioBuffer(cachedAudioBuffer);
         return; // Exit after playing from cache
       }
@@ -134,7 +134,7 @@ const TtsPronunciationButton: React.FC<TtsPronunciationButtonProps> = ({
 
       // New: Store the fetched audio buffer in cache
       audioCacheRef.current.set(word, base64Audio);
-      console.log(`Audio for word: ${word} cached.`);
+      // console.log(`Audio for word: ${word} cached.`);
 
       // Convert the Base64 string to an ArrayBuffer
       const audioBuffer = base64ToArrayBuffer(base64Audio);

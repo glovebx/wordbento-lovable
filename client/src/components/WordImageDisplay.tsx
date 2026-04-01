@@ -127,7 +127,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       }
       setShowExampleDialog(true);
     } else {
-      console.log("No examples found or examples not in expected array format, generating image with word only.");
+      // console.log("No examples found or examples not in expected array format, generating image with word only.");
       if (typeof requestGenerateImages === 'function') {
         requestGenerateImages(word.word_text, '', true);
       }
@@ -145,7 +145,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       setShowExampleDialog(false); // Close the example selection dialog
       setSelectedExample(null); // Reset selected example state
 
-      console.log(`Generating image for word "${word.word_text}" with example: "${selectedExample}"`);
+      // console.log(`Generating image for word "${word.word_text}" with example: "${selectedExample}"`);
 
       if (typeof requestGenerateImages === 'function') {
         requestGenerateImages(word.word_text, selectedExample, true);
@@ -155,7 +155,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   // When parent passes generatedImageUrls, update internal imageUrls and notify via onImagesGenerated
   useEffect(() => {
     if (generatedImageUrls && Array.isArray(generatedImageUrls) && generatedImageUrls.length > 0) {
-      console.log(generatedImageUrls);
+      // console.log(generatedImageUrls);
       
       setImageUrls(generatedImageUrls);
       onImagesGenerated(word.word_text);

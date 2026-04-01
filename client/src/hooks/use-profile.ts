@@ -73,14 +73,14 @@ export const useProfile = (isAuthenticated: boolean) => {
   const renewAccessToken = useCallback(async (): Promise<boolean> => {
     setIsSaving(true);
     setSaveError(null); 
-    console.log('Hook: Attempting to renew Profile data:');
+    // console.log('Hook: Attempting to renew Profile data:');
 
     try {
       // Axios 自动序列化 JS 对象为 JSON，无需手动 JSON.stringify
       const response = await axiosPrivate.post('/api/profile/token/renew', {}); 
 
       if (response.status === 200 || response.status === 201) {
-        console.log("Hook: Access token renewing successful.");
+        // console.log("Hook: Access token renewing successful.");
         
         // **优化点：保存成功后刷新列表**
         await fetchProfile(); 

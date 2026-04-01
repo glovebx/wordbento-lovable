@@ -35,7 +35,7 @@ export const useAnalysisTask = () => {
   // Function to clean up WebSocket connection
   const closeWebSocket = useCallback(() => {
     if (wsRef.current) {
-      console.log(`Closing WebSocket for task ID: ${taskId}`);
+      // console.log(`Closing WebSocket for task ID: ${taskId}`);
       try {
         wsRef.current.close();
       } catch (e: any) {
@@ -57,7 +57,7 @@ export const useAnalysisTask = () => {
     const currentWs = wsRef.current; // Capture the current value of the ref for cleanup
     return () => {
       if (currentWs) {
-          console.log(`Cleanup effect: Closing WebSocket for task ID: ${taskId}`); // Log taskId during cleanup
+          // console.log(`Cleanup effect: Closing WebSocket for task ID: ${taskId}`); // Log taskId during cleanup
           currentWs.close();
       }
     };
@@ -84,7 +84,7 @@ export const useAnalysisTask = () => {
         const submittedTask = submissionResponse.data;
         if (submittedTask?.uuid) {
           const newTaskId = submittedTask.uuid;
-          console.log(`Analysis task submitted successfully. Task ID: ${newTaskId}`);
+          // console.log(`Analysis task submitted successfully. Task ID: ${newTaskId}`);
           setTaskId(newTaskId); // Store the task ID
           setTaskStatus('connecting'); // Indicate that we are attempting to connect WS
 
@@ -102,19 +102,19 @@ export const useAnalysisTask = () => {
           }
           // Assuming the WebSocket path is relative to the base URL
           const wsUrl = `${wsProtocol}://${new URL(backendBaseUrl || '').host}/ws/analyze/${newTaskId}`;
-          console.log(`Attempting to connect to WebSocket at: ${wsUrl}`);
+          // console.log(`Attempting to connect to WebSocket at: ${wsUrl}`);
 
           wsRef.current = new WebSocket(wsUrl);
 
           // 3. Set up WebSocket event listeners
           wsRef.current.onopen = () => {
-            console.log(`WebSocket connection opened for task ID: ${newTaskId}`);
+            // console.log(`WebSocket connection opened for task ID: ${newTaskId}`);
             setTaskStatus('polling'); // Connection successful, now polling
             setIsLoading(true); // Keep loading while polling
           };
 
           wsRef.current.onmessage = (event) => {
-            console.log(`WebSocket message received for task ID ${newTaskId}:`, event.data);
+            // console.log(`WebSocket message received for task ID ${newTaskId}:`, event.data);
             try {
               const update: AnalysisStatusUpdate = JSON.parse(event.data); // Parse the status update
               if (update.status === 'pending' || update.status === 'processing') {
@@ -126,7 +126,7 @@ export const useAnalysisTask = () => {
               if (update.message !== undefined) setStatusMessage(update.message); // Update message
 
               if (update.status === 'completed') {
-                console.log(`Task ID ${newTaskId} completed. Result:`, update.result);
+                // console.log(`Task ID ${newTaskId} completed. Result:`, update.result);
                 // result是json
                 // const parsedResult: AnalysisResult = update.result ? JSON.parse(update.result as string) : null;
                 setTaskResult(update.result || null); // Store the final result
@@ -165,7 +165,7 @@ export const useAnalysisTask = () => {
           };
 
           wsRef.current.onclose = (event) => {
-            console.log(`WebSocket connection closed for task ID ${newTaskId}. Code: ${event.code}, Reason: ${event.reason}`);
+            // console.log(`WebSocket connection closed for task ID ${newTaskId}. Code: ${event.code}, Reason: ${event.reason}`);
             // If the status is not already completed or failed, assume failure due to unexpected close
             if (taskStatus !== 'completed' && taskStatus !== 'failed') {
                  console.warn(`WebSocket closed unexpectedly for task ID ${newTaskId}.`);
@@ -204,13 +204,13 @@ export const useAnalysisTask = () => {
   // Optional: Function to cancel the ongoing task (requires backend support)
   const cancelAnalysis = useCallback(async () => {
       if (taskId && (taskStatus === 'submitting' || taskStatus === 'connecting' || taskStatus === 'polling')) {
-          console.log(`Attempting to cancel task ID: ${taskId}`);
+          // console.log(`Attempting to cancel task ID: ${taskId}`);
           setIsLoading(true); // Keep loading while canceling
           setStatusMessage('Canceling task...');
           try {
               // Assuming a DELETE endpoint like /api/analyze/:taskId/cancel
               await axiosPrivate.delete(`/api/analyze/${taskId}/cancel`);
-              console.log(`Cancel request sent for task ID: ${taskId}`);
+              // console.log(`Cancel request sent for task ID: ${taskId}`);
               // Backend should ideally send a 'failed' status update via WS after receiving cancel request
               // If not, you might need to handle the state transition client-side after the DELETE request succeeds
               // setTaskStatus('failed'); // Or a 'canceling' status if you have one

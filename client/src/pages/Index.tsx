@@ -104,7 +104,7 @@ const Index = () => {
 
           // If the target is an INPUT or TEXTAREA, do NOT trigger handleSearch
           if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
-              console.log("Paste event occurred in an input/textarea. Ignoring global paste handler.");
+              // console.log("Paste event occurred in an input/textarea. Ignoring global paste handler.");
               return; // Exit the handler
           }
                   
@@ -122,7 +122,7 @@ const Index = () => {
               if (lettersOnlyRegex.test(text)) {
                 // Prevent the default paste action if you want to handle it exclusively
                 // event.preventDefault();
-                console.log("Pasted text detected:", text);
+                // console.log("Pasted text detected:", text);
                 // Call handleSearch with the pasted text
                 handleSearch(text);                
               }
@@ -143,7 +143,7 @@ const Index = () => {
       const handleKeyDown = (event: KeyboardEvent) => {
           // Check if a dialog is currently open
           if (isImageDialogShowing || isExampleDialogShowing) { // <-- Check dialog states
-              console.log("Dialog is open, keyboard navigation disabled.");
+              // console.log("Dialog is open, keyboard navigation disabled.");
               return; // Exit the handler if any dialog is open
           }
           // Check if the user is currently typing in an input field
@@ -196,7 +196,7 @@ const Index = () => {
   // Function to clear the analysis result state
   const handleClearAnalysisResult = useCallback(() => {
     setAnalysisResult(null);
-    console.log("Analysis result cleared.");
+    // console.log("Analysis result cleared.");
   }, []); // No dependencies needed as it just sets state to null
 
 // 主要的 useEffect：负责获取当前单词数据
@@ -246,7 +246,7 @@ const handleExportImage = useCallback(async () => {
         return;
     }
 
-    console.log("Attempting to capture bento grid element with html-to-image:", element);
+    // console.log("Attempting to capture bento grid element with html-to-image:", element);
 
     // 定义目标宽度，高度将根据内容动态计算
     const TARGET_WIDTH = 1080;
@@ -343,7 +343,7 @@ const handleExportImage = useCallback(async () => {
         
         // 计算动态高度
         const elementHeight = element.scrollHeight;
-        console.log(`Calculated dynamic height: ${elementHeight}px`);
+        // console.log(`Calculated dynamic height: ${elementHeight}px`);
         
         // 设置最终高度
         element.style.height = `${elementHeight}px`;
@@ -372,7 +372,7 @@ const handleExportImage = useCallback(async () => {
         link.click();
         document.body.removeChild(link);
 
-        console.log(`Successfully exported image as ${filename} with dynamic height: ${elementHeight}px`);
+        // console.log(`Successfully exported image as ${filename} with dynamic height: ${elementHeight}px`);
         toast({
             title: "导出成功",
             description: `已将内容导出为图片 "${filename}"。`,
@@ -410,7 +410,7 @@ const handleExportImage = useCallback(async () => {
             });
         }
         
-        console.log("Restored all styles after export.");
+        // console.log("Restored all styles after export.");
     }
 }, [bentoGridRef, wordData, toast]);
 

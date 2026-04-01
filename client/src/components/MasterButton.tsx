@@ -52,7 +52,7 @@ const MasterButton: React.FC<MasterButtonProps> = ({ wordId, onMasteredSuccess, 
         const response = await axiosPrivate.put(`/api/word/master/${wordId}`);
 
         if (response.status === 200) {
-          console.log(`Word ID ${wordId} marked as mastered.`);
+          // console.log(`Word ID ${wordId} marked as mastered.`);
           toast({
             title: "成功",
             description: "单词已标记为已记牢。",

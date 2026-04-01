@@ -43,7 +43,7 @@ export const useWordImages = (wordText: string) => {
       //   }
       // }
 
-      console.log(`Generating images for: ${word}`);
+      // console.log(`Generating images for: ${word}`);
       const payload = { instances: { prompt: `Generate an image related to the word "${word}"` }, parameters: { "sampleCount": 3 } };
       const apiKey = ""; // Canvas will provide this at runtime
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;

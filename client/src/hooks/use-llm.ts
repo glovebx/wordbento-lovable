@@ -196,14 +196,14 @@ export const useLlms = (isAuthenticated: boolean) => {
   const saveLlm = useCallback(async (llmData: SaveLlmData): Promise<boolean> => {
     setIsSaving(true);
     setSaveError(null); 
-    console.log(`Hook: Attempting to save llm data: ${llmData.endpoint}`);
+    // console.log(`Hook: Attempting to save llm data: ${llmData.endpoint}`);
 
     try {
       // Axios 自动序列化 JS 对象为 JSON，无需手动 JSON.stringify
       const response = await axiosPrivate.post('/api/llm/save', llmData); 
 
       if (response.status === 200 || response.status === 201) {
-        console.log("Hook: Llm saving successful.");
+        // console.log("Hook: Llm saving successful.");
         
         // **优化点：保存成功后刷新列表**
         await fetchLlms(); 

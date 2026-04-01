@@ -16,7 +16,7 @@ export const useHistoryData = () => {
     try {
       // 修改 API 请求，使用查询参数
       const response = await axiosPrivate.get(`/api/analyze/list/${limit}/${page}`);
-      console.log('History data response:', response.data);
+      // console.log('History data response:', response.data);
 
       if (response.data && Array.isArray(response.data.data)) {
         setResources(response.data.data);

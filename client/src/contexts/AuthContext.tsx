@@ -41,18 +41,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshSession = useCallback(async () => {
     setIsSessionLoading(true);
-    console.log("AuthContext: Initiating session fetch...");
+    // console.log("AuthContext: Initiating session fetch...");
     try {
       const response = await axiosPrivate.get('/api/auth/session');
-      console.log('AuthContext: Session fetch response status:', response.status);
-      console.log('AuthContext: Session fetch response data:', response.data);
+      // console.log('AuthContext: Session fetch response status:', response.status);
+      // console.log('AuthContext: Session fetch response data:', response.data);
 
       if (response.data?.user) {
         setUser(response.data.user as User);
-        console.log('AuthContext: User authenticated from session:', response.data.user);
+        // console.log('AuthContext: User authenticated from session:', response.data.user);
       } else {
         setUser(null);
-        console.log('AuthContext: No user data found in session.');
+        // console.log('AuthContext: No user data found in session.');
       }
     } catch (error) {
       console.error('AuthContext: Failed to fetch session:', error);
@@ -72,14 +72,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     sessionCheckHasRun.current = true; // Mark as run
 
-    console.log("AuthContext: Running initial session check useEffect.");
+    // console.log("AuthContext: Running initial session check useEffect.");
     refreshSession();
   }, [refreshSession]);
 
-  // New useEffect to log user state whenever it changes
-  useEffect(() => {
-    console.log('AuthContext: User state changed. Current user:', user, 'isAuthenticated:', !!user);
-  }, [user]); // This effect runs whenever 'user' state changes
+  // // New useEffect to log user state whenever it changes
+  // useEffect(() => {
+  //   // console.log('AuthContext: User state changed. Current user:', user, 'isAuthenticated:', !!user);
+  // }, [user]); // This effect runs whenever 'user' state changes
 
   // Listen for global sessionExpired event (emitted by axios interceptor) to clear client state
   useEffect(() => {
@@ -97,20 +97,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    console.log("AuthContext: Attempting login...");
+    // console.log("AuthContext: Attempting login...");
     try {
       const response = await axiosPrivate.post('/api/auth/login', JSON.stringify({ usernameOrEmail: username, password }));
-      console.log('AuthContext: Login API response status:', response.status);
-      console.log('AuthContext: Login API response data:', response.data);
+      // console.log('AuthContext: Login API response status:', response.status);
+      // console.log('AuthContext: Login API response data:', response.data);
 
       if (response.data?.user) {
         setUser(response.data.user as User);
-        console.log('AuthContext: Login successful, user set directly from login response.');
+        // console.log('AuthContext: Login successful, user set directly from login response.');
         // await refreshSession(); // Re-verify session after successful login
         return true;
       } else {
         setUser(null);
-        console.log('AuthContext: Login failed: No user data found in response.');
+        // console.log('AuthContext: Login failed: No user data found in response.');
         return false;
       }
     } catch (error) {
@@ -122,22 +122,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (username: string, email: string, password: string): Promise<boolean> => {
     if (username && password.length >= 6 && email.indexOf('@') > 0) {
-      console.log("AuthContext: Attempting registration...");
+      // console.log("AuthContext: Attempting registration...");
       try {
         // 放到服务器端处理
         // const uuid = crypto.randomUUID();
         const response = await axiosPrivate.post('/api/auth/register', JSON.stringify({ username, email, password }));
-        console.log('AuthContext: Register API response status:', response.status);
-        console.log('AuthContext: Register API response data:', response.data);
+        // console.log('AuthContext: Register API response status:', response.status);
+        // console.log('AuthContext: Register API response data:', response.data);
 
         if (response.data?.user) {
           setUser(response.data.user as User);
-          console.log('AuthContext: Registration successful, user set directly from register response.');
+          // console.log('AuthContext: Registration successful, user set directly from register response.');
           // await refreshSession(); // Re-verify session after successful registration
           return true;
         } else {
           setUser(null);
-          console.log('AuthContext: Registration failed: No user data found in response.');
+          // console.log('AuthContext: Registration failed: No user data found in response.');
           return false;
         }
       } catch (error) {
@@ -150,18 +150,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = async () => {
-    console.log("AuthContext: Attempting logout...");
+    // console.log("AuthContext: Attempting logout...");
     try {
-      const response = await axiosPrivate.post('/api/auth/logout');
-      console.log('AuthContext: Logout API response status:', response.status);
-      console.log('AuthContext: Logout API response data:', response.data);
-      console.log('AuthContext: Logout successful.');
+      // const response = 
+      await axiosPrivate.post('/api/auth/logout');
+      // console.log('AuthContext: Logout API response status:', response.status);
+      // console.log('AuthContext: Logout API response data:', response.data);
+      // console.log('AuthContext: Logout successful.');
     } catch (error) {
       console.error('AuthContext: Failed to logout:', error);
     } finally {
       setUser(null);
       setBookmarks([]);
-      console.log('AuthContext: User state cleared after logout.');
+      // console.log('AuthContext: User state cleared after logout.');
     }
   };
 

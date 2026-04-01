@@ -286,7 +286,7 @@ const UserProfile = () => {
     // --- EFFECT: 合并后端数据到前端状态 ---
     useEffect(() => {
         if (!isLlmsLoading && recentLlms.length > 0) {
-            console.log("LLMs loaded, merging state:", recentLlms);
+            // console.log("LLMs loaded, merging state:", recentLlms);
             const [mergedConfigs, initialSavingState] = mergeConfigAndInitState(initialApis, recentLlms);
             setApiConfigs(mergedConfigs);
             setIsSaving(initialSavingState); // 刷新 isSaving 状态
@@ -296,7 +296,7 @@ const UserProfile = () => {
 
     const handleSaveLanguageSettings = async () => {
         setLanguageSettings(prev => ({ ...prev, isSaving: true }));
-        console.log("Saving Language Settings:", languageSettings);
+        // console.log("Saving Language Settings:", languageSettings);
         // 模拟 API 调用
         await new Promise(resolve => setTimeout(resolve, 1000));
         setLanguageSettings(prev => ({ ...prev, isSaving: false }));

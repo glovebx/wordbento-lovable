@@ -77,7 +77,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
         // Copy other relevant properties if needed
       });
       // hasResourceSnapshotInitialized.current = true;
-      console.log("Initial resource snapshot taken:", resource);
+      // console.log("Initial resource snapshot taken:", resource);
     }
   }, [resource]); // Dependency: resource prop
 
@@ -247,7 +247,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
         dataToSave.content = formData.content;
       }
 
-      console.log(`${initialResourceSnapshot?.examType} = ${formData.examType};`)
+      // console.log(`${initialResourceSnapshot?.examType} = ${formData.examType};`)
       if (formData.examType !== initialResourceSnapshot?.examType) {
         dataToSave.examType = formData.examType;
       }

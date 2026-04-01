@@ -106,7 +106,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
       const lettersOnlyRegex = /^[\p{L}]+$/u;
 
       if (lettersOnlyRegex.test(trimmedContent)) {
-        console.log(`Detected single word "${trimmedContent}" in URL field. Calling onWordSearch.`);
+        // console.log(`Detected single word "${trimmedContent}" in URL field. Calling onWordSearch.`);
         onWordSearch(trimmedContent);
         return;
       }

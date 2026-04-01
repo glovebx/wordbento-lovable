@@ -25,6 +25,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const isMobile = useIsMobile();
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   // const [isLoading, setIsLoading] = useState(false);
   const [userInput, setUserInput] = useState('');
   // Keep a ref of the last user input to restore if it's accidentally cleared
@@ -46,12 +47,32 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
   // NEW: State to control visibility of word details (phonetic and meaning)
   const [showDetails, setShowDetails] = useState(false);
+    const [touchStartX, setTouchStartX] = useState(0);
+    const [touchEndX, setTouchEndX] = useState(0);
 
   // 点击上下按钮切换时
   const [isSwitching, setIsSwitching] = useState(false);  
 
-  // // NEW: State to trigger image fetch
-  // const [imageRequestCounter, setImageRequestCounter] = useState(0);
+    const handleImageTouchStart = (e: React.TouchEvent) => {
+        setTouchStartX(e.targetTouches[0].clientX);
+    };
+
+    const handleImageTouchMove = (e: React.TouchEvent) => {
+        setTouchEndX(e.targetTouches[0].clientX);
+    };
+
+    const handleImageTouchEnd = () => {
+        if (touchStartX > 0 && touchEndX > 0) {
+            if (touchStartX - touchEndX > 50) { // Swipe Left
+                cycleImage(); // This function only cycles forward
+            }
+            // Swipe right could be implemented if cycleImage is updated to handle direction
+        }
+        setTouchStartX(0);
+        setTouchEndX(0);
+    };
+
+
 
   // Effect to initialize Speech Recognition API
   useEffect(() => {
@@ -116,9 +137,11 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
         // setImageRequestCounter(prev => prev + 1);
         // 没有图片
         setImageUrl(null);
+        setCurrentImageIndex(0);
         setIsSwitching(false);
     } else {
         setImageUrl(wordData.imageUrls[0]);
+        setCurrentImageIndex(0);
         setIsSwitching(false);
     }
   }, [wordData]);
@@ -160,20 +183,13 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
         return;
     }
 
-    const currentIndex = wordData.imageUrls.findIndex(url => url === imageUrl);
-
-    // If the current image isn't found (which shouldn't happen), start from the first one.
-    if (currentIndex === -1) {
-        setImageUrl(wordData.imageUrls[0]);
-        return;
-    }
-
     // Calculate the next index, wrapping around to the beginning if at the end.
-    const nextIndex = (currentIndex + 1) % wordData.imageUrls.length;
+    const nextIndex = (currentImageIndex + 1) % wordData.imageUrls.length;
     const newImageUrl = wordData.imageUrls[nextIndex];
 
     setImageUrl(newImageUrl);
-    console.log("Cycled to next image:", newImageUrl);
+    setCurrentImageIndex(nextIndex);
+    // console.log("Cycled to next image:", newImageUrl);
   };
 
 
@@ -339,16 +355,34 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                   </div>
                 </div>
               ) : imageUrl ? (
-                <AspectRatio ratio={imageAspectRatio} className="bg-muted overflow-hidden rounded-lg">
-                  <img 
-                    src={imageUrl} 
-                    alt="单词图片"
-                    onClick={cycleImage}
-                    loading="lazy"
-                    decoding="async"
-                    className="object-contain w-full h-full cursor-pointer"
-                  />
-                </AspectRatio>
+                <>
+                  <AspectRatio
+                    ratio={imageAspectRatio}
+                    className="bg-muted overflow-hidden rounded-lg"
+                    onTouchStart={handleImageTouchStart}
+                    onTouchMove={handleImageTouchMove}
+                    onTouchEnd={handleImageTouchEnd}
+                  >
+                    <img 
+                      src={imageUrl} 
+                      alt={wordData.word_text}
+                      onClick={cycleImage}
+                      loading="lazy"
+                      decoding="async"
+                      className="object-contain w-full h-full cursor-pointer"
+                    />
+                  </AspectRatio>
+                  {wordData.imageUrls && wordData.imageUrls.length > 1 && (
+                    <div className="flex justify-center items-center pt-2 space-x-2">
+                      {wordData.imageUrls.map((_, index) => (
+                        <div
+                          key={index}
+                          className={`w-2 h-2 rounded-full transition-all duration-300 ${currentImageIndex === index ? 'bg-primary' : 'bg-muted-foreground'}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
                   <p className="text-muted-foreground">图片加载失败</p>
@@ -383,14 +417,14 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
             <div className="text-center p-3 bg-muted rounded-lg w-full max-w-sm animate-fade-in">
                 {wordData.phonetic && (
-                    <p className="text-lg font-semibold text-gray-800 mb-1">
+                    <p className="text-lg font-semibold text-foreground mb-1">
                         /{wordData.phonetic}/
                     </p>
                 )}
               {showDetails && (
                   <div>
                       {wordData.meaning && (
-                          <p className="text-base text-gray-700">
+                          <p className="text-base text-muted-foreground">
                               {wordData.meaning}
                           </p>
                       )}

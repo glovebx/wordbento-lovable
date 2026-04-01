@@ -22,7 +22,7 @@ export const useGenerateImages = () => {
   const generateImages = useCallback(async (wordText: string, example: string, force: boolean): Promise<string[] | null> => {
     setIsGeneratingImages(true);
     setGenerationError(null); // Clear previous errors
-    console.log(`Hook: Attempting to generate images for word: ${wordText}`);
+    // console.log(`Hook: Attempting to generate images for word: ${wordText}`);
 
     try {
       // Example API call (replace with your actual endpoint and payload)
@@ -30,7 +30,7 @@ export const useGenerateImages = () => {
       const response = await axiosPrivate.post('/api/word/imagize', JSON.stringify({ slug: wordText, example: example, force: force }));
 
       if (response.status === 200 && response.data?.imageUrls) {
-        console.log("Hook: Image generation successful. Received URLs:");
+        // console.log("Hook: Image generation successful. Received URLs:");
         // toast({
         //    title: "图片生成成功",
         //    description: `已为单词 "${wordText}" 生成图片。`,

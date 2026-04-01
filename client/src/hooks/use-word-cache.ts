@@ -53,7 +53,7 @@ export const useWordCache = () => {
     }, []);
 
     const fetchWord = useCallback(async (slug: string, mode: NavigationMode, mhi: boolean) => {
-        console.log(`[useWordCache] fetchWord called with slug: '${slug}', mode: ${mode}`);
+        // console.log(`[useWordCache] fetchWord called with slug: '${slug}', mode: ${mode}`);
         // CRITICAL: Reset task ID at the very beginning of a new fetch operation.
         setTaskId(null);
         setIsLoading(true);

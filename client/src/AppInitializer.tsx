@@ -24,9 +24,9 @@ const AppInitializer = () => { // Or integrate this logic directly into your App
         // based on your invitation code format (e.g., regex for length/characters).
         if (!potentialCode.includes('=')) {
              invitationCodeFromUrl = potentialCode;
-             console.log(`Potential invitation code found directly after ?: ${invitationCodeFromUrl}`);
+            //  console.log(`Potential invitation code found directly after ?: ${invitationCodeFromUrl}`);
         } else {
-             console.log(`Search string looks like a parameter: ${searchString}. Not treating as direct invitation code.`);
+            //  console.log(`Search string looks like a parameter: ${searchString}. Not treating as direct invitation code.`);
              // Optional: If you still want to support ?invite=CODE, you would add that logic here
              // const inviteParam = url.searchParams.get('invite');
              // if (inviteParam) {
@@ -35,14 +35,14 @@ const AppInitializer = () => { // Or integrate this logic directly into your App
              // }
         }
     } else {
-        console.log("No search string or only '?' found in URL.");
+        // console.log("No search string or only '?' found in URL.");
     }
     // --- End Modification ---
 
 
     if (invitationCodeFromUrl) {
       // If an invitation code is found in the URL
-      console.log(`Invitation code found in URL: ${invitationCodeFromUrl}`);
+      // console.log(`Invitation code found in URL: ${invitationCodeFromUrl}`);
 
       // Optional: Validate the code format if needed before storing
       // e.g., if your codes are always 6 uppercase letters/numbers
@@ -58,7 +58,7 @@ const AppInitializer = () => { // Or integrate this logic directly into your App
           // Store the invitation code in localStorage
           // This will overwrite any previously stored code from a different URL
           localStorage.setItem(INVITATION_CODE_STORAGE_KEY, invitationCodeFromUrl);
-          console.log(`Stored invitation code "${invitationCodeFromUrl}" in localStorage.`);
+          // console.log(`Stored invitation code "${invitationCodeFromUrl}" in localStorage.`);
 
           // Optional: Clean the URL to remove the search string
           // This prevents the code from being re-processed on subsequent page loads or refreshes
@@ -67,7 +67,7 @@ const AppInitializer = () => { // Or integrate this logic directly into your App
           // Set the search part to an empty string
           url.search = '';
           window.history.replaceState({}, document.title, url.toString());
-          console.log("Removed search string from URL.");
+          // console.log("Removed search string from URL.");
       }
 
 
@@ -75,11 +75,11 @@ const AppInitializer = () => { // Or integrate this logic directly into your App
       // If no invitation code is found in the URL, check if one is already stored
       const storedInvitationCode = localStorage.getItem(INVITATION_CODE_STORAGE_KEY);
       if (storedInvitationCode) {
-        console.log(`No invitation code in URL, but found one in localStorage: ${storedInvitationCode}`);
+        // console.log(`No invitation code in URL, but found one in localStorage: ${storedInvitationCode}`);
         // You might want to keep it, or clear it after a certain time, or clear it on successful registration.
         // For this flow, we keep it until registration.
       } else {
-        console.log("No invitation code found in URL or localStorage.");
+        // console.log("No invitation code found in URL or localStorage.");
       }
     }
 
