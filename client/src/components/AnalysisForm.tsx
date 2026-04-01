@@ -96,6 +96,11 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
       return;
     }
 
+    if (data.content.trim().length <= 2) {
+      // form.setError('content', { message: "内容不能为空。" });
+      return;
+    }
+
     if (data.sourceType === 'url') {
       const trimmedContent = data.content.trim();
       const lettersOnlyRegex = /^[\p{L}]+$/u;
@@ -112,9 +117,10 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchInput.trim()) {
-      onWordSearch(searchInput.trim());
+    if (searchInput.trim().length <= 2) {
+      return;
     }
+    onWordSearch(searchInput.trim());
   };
 
   const handleAnalysisManualResult = (submission: Submission) => {
@@ -156,7 +162,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                 className="pl-9"
               />
             </div>
-            <Button type="submit">搜索</Button>
+            <Button type="submit" disabled={searchInput.trim().length <= 2}>搜索</Button>
           </form>
         </TabsContent>
 
@@ -211,7 +217,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                   )}
                 />
 
-                <Button className="ml-auto" type="submit" disabled={isAnalysisLoading || isWordLoading}>
+                <Button className="ml-auto" type="submit" disabled={isAnalysisLoading || (form.watch('content') || '').trim().length <= 2}>
                   {isAnalysisLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

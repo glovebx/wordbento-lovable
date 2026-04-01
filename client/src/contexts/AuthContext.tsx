@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback, useRef } from 'react';
 import { axiosPrivate } from "@/lib/axios";
 
 interface User {
@@ -37,6 +37,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [isSessionLoading, setIsSessionLoading] = useState(true);
+  const sessionCheckHasRun = useRef(false); // Sentinel to prevent double-execution in Strict Mode
 
   const refreshSession = useCallback(async () => {
     setIsSessionLoading(true);
@@ -65,6 +66,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Fetch session on initial mount
   useEffect(() => {
+    if (sessionCheckHasRun.current) {
+      // If the check has already run (e.g., due to Strict Mode re-mount), do nothing.
+      return;
+    }
+    sessionCheckHasRun.current = true; // Mark as run
+
     console.log("AuthContext: Running initial session check useEffect.");
     refreshSession();
   }, [refreshSession]);

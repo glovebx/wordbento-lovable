@@ -1,217 +1,176 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { WordDataType } from '@/types/wordTypes';
 import { axiosPrivate } from "@/lib/axios";
 import { AxiosError } from "axios";
+import { useTaskSubscription } from './use-task-subscription';
 
-// // 定义获取到的单词数据的类型
-// // 建议将这个接口放在一个共享的文件中（如 src/types/wordTypes.ts）
-// // 如果已经有共享文件，请在这里进行导入
-// interface WordDataType {
-//   word_text: string;
-//   phonetic?: string;
-//   content: {
-//     [contentType: string]: {
-//       [languageCode: string]: string | string[] | null; // 允许内容为 null 或 undefined
-//     };
-//   };
-//   // ... 其他字段
-// }
-
-// 定义缓存的最大单词数量
+// ... (keep WordDataType and MAX_CACHE_SIZE as they are)
 const MAX_CACHE_SIZE = 20;
 
-/**
- * Defines the different modes for navigating between words.
- */
 export enum NavigationMode {
-    /**
-     * Represents a search operation (typically initiated by user input).
-     * Corresponds to mode 0.
-     */
     Search = 0,
-  
-    /**
-     * Represents navigating to the next word in a sequence.
-     * Corresponds to mode 1.
-     */
     Next = 1,
-  
-    /**
-     * Represents navigating to the previous word in a sequence.
-     * Corresponds to mode -1.
-     */
     Previous = -1,
-  }
+}
 
 export const useWordCache = () => {
-  // 使用 useRef 创建缓存 Map 和顺序数组
-  // useRef 创建的值在组件的整个生命周期中是持久的，不会在重新渲染时丢失
-  const wordCacheRef = useRef<Map<string, WordDataType>>(new Map());
-  const cacheOrderRef = useRef<string[]>([]); // 用于追踪缓存键的顺序，实现简单的LRU（最近最少使用）策略
-  const cacheOrderPrefetchRef = useRef<string[]>([]); // 用于追踪缓存键的顺序，实现简单的LRU（最近最少使用）策略
+    const wordCacheRef = useRef<Map<string, WordDataType>>(new Map());
+    const cacheOrderRef = useRef<string[]>([]);
+    const cachePrefetchRef = useRef<string[]>([]);
 
-  const removeFromCache = useCallback((slug: string) => {
-      const cache = wordCacheRef.current;
-      const order = cacheOrderRef.current;
+    const [currentWord, setCurrentWord] = useState<WordDataType | null>(null);
+    const [isMustHasImage, setIsMustHasImage] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [taskId, setTaskId] = useState<string | null>(null);
 
-      // 如果 item 已经存在于缓存中，先从顺序数组中移除其旧位置
-      const existingIndex = order.indexOf(slug);
-      if (existingIndex > -1) {
-          order.splice(existingIndex, 1); // 从原位置移除
-      }
-      if (cache.has(slug)) {
-        cache.delete(slug); // 从 Map 中删除
-      }
-  }, []);
+    const { taskResult } = useTaskSubscription(taskId);
 
-  // Helper function to add/update cache and manage size
-  // 使用 useCallback 确保函数引用稳定，避免不必要的重新创建
-  const addToCache = useCallback((slug: string, data: WordDataType) => {
-      const cache = wordCacheRef.current;
-      const order = cacheOrderRef.current;
 
-      // 如果 item 已经存在于缓存中，先从顺序数组中移除其旧位置
-      const existingIndex = order.indexOf(slug);
-      if (existingIndex > -1) {
-          order.splice(existingIndex, 1); // 从原位置移除
-      } else if (cache.size >= MAX_CACHE_SIZE) {
-          // 缓存已满且是新项，移除最老的（位于顺序数组开头）
-          const oldestSlug = order.shift(); // 移除并获取数组第一个元素 (FIFO/简单LRU)
-          if (oldestSlug && cache.has(oldestSlug)) {
-               cache.delete(oldestSlug); // 从 Map 中删除
-               // console.log(`Cache full, evicted: ${oldestSlug}`); // Optional logging
-          }
-      }
+    const addToCache = useCallback((slug: string, data: WordDataType) => {
+        const cache = wordCacheRef.current;
+        const order = cacheOrderRef.current;
+        if (order.includes(slug)) {
+            order.splice(order.indexOf(slug), 1);
+        }
+        if (cache.size >= MAX_CACHE_SIZE) {
+            const oldestSlug = order.shift();
+            if (oldestSlug) cache.delete(oldestSlug);
+        }
+        cache.set(slug, data);
+        order.push(slug);
+    }, []);
 
-      // 添加/更新数据到缓存，并将其 slug 添加到顺序数组末尾（使其成为最近使用的）
-      cache.set(slug, data);
-      order.push(slug);
+    const addToPrefetchCache = useCallback((slug: string) => {
+        const order = cachePrefetchRef.current;
+        if (order.includes(slug)) {
+            return;
+        }
+        if (order.length >= MAX_CACHE_SIZE) {
+            order.shift();
+        }
+        order.push(slug);
+    }, []);
 
-      // Optional: Log cache state for debugging
-      // console.log("Cache size:", cache.size, "Order:", order.join(', '));
+    const fetchWord = useCallback(async (slug: string, mode: NavigationMode, mhi: boolean) => {
+        console.log(`[useWordCache] fetchWord called with slug: '${slug}', mode: ${mode}`);
+        // CRITICAL: Reset task ID at the very beginning of a new fetch operation.
+        setTaskId(null);
+        setIsLoading(true);
+        setError(null);
 
-  }, []); // 此函数不依赖组件的状态或props，只依赖 useRef 创建的稳定引用，故依赖数组为空
+        const slug_to_search = slug.trim().toLowerCase();
+        setIsMustHasImage(mhi);
 
-  // Helper function to add/update cache and manage size
-  // 使用 useCallback 确保函数引用稳定，避免不必要的重新创建
-  const addToPrefetchCache = useCallback((slug: string) => {
-      const order = cacheOrderPrefetchRef.current;
+        // 1. Check cache first for search mode
+        if (mode === NavigationMode.Search && wordCacheRef.current.has(slug_to_search)) {
+            const cachedData = wordCacheRef.current.get(slug_to_search)!;
+            setCurrentWord(cachedData);
+            addToCache(slug_to_search, cachedData); // Update LRU
+            setIsLoading(false);
+            return;
+        }
 
-      // 如果 item 已经存在于缓存中，先从顺序数组中移除其旧位置
-      const existingIndex = order.indexOf(slug);
-      if (existingIndex > -1) {
-          order.splice(existingIndex, 1); // 从原位置移除
-      } else if (order.length >= MAX_CACHE_SIZE) {
-          // 缓存已满且是新项，移除最老的（位于顺序数组开头）
-          order.shift(); // 移除并获取数组第一个元素 (FIFO/简单LRU)
-      }
-
-      // 添加/更新数据到缓存，并将其 slug 添加到顺序数组末尾（使其成为最近使用的）
-      order.push(slug);
-  }, []); // 此函数不依赖组件的状态或props，只依赖 useRef 创建的稳定引用，故依赖数组为空
-
-  // Helper function to check cache or fetch data from API, then add to cache
-  // 这个函数是核心，负责检查缓存，如果未命中则从 API 获取，成功后添加到缓存
-  const fetchAndCacheWord = useCallback(async (slug: string, mode = NavigationMode.Search, mhi: boolean = false): Promise<WordDataType | string | null> => {
-      const cache = wordCacheRef.current;
-
-      // 1. 检查缓存
-      if (mode === NavigationMode.Search && slug.length > 0 && cache.has(slug) && !mhi) {
-          // console.log(`Cache hit for ${slug}`); // Optional logging
+        let nextSlug = slug_to_search;      
+        // 如果是翻页，从 cachePrefetchRef 获取试试
+        if (mode !== NavigationMode.Search && cachePrefetchRef.current.includes(slug_to_search)) {
+          // console.log(`Cache hit for ${slug_to_search} in prefetch cache`); // Optional logging
           // 如果缓存命中，更新其在顺序数组中的位置到末尾 (LRU)
-          const order = cacheOrderRef.current;
-          const index = order.indexOf(slug);
-           if (index > -1) {
-               order.splice(index, 1);
-               order.push(slug);
-           }
-          return cache.get(slug)!; // 返回缓存数据 (使用非空断言，因为 has() 已检查存在性)
-      }
-
-      let nextSlug = slug;      
-      // 如果是翻页，从 cacheOrderPrefetchRef 获取试试
-      if (mode !== NavigationMode.Search && cacheOrderPrefetchRef.current.includes(slug)) {
-        // console.log(`Cache hit for ${slug} in prefetch cache`); // Optional logging
-        // 如果缓存命中，更新其在顺序数组中的位置到末尾 (LRU)
-        const orderPrefetch = cacheOrderPrefetchRef.current;
-        const index = orderPrefetch.indexOf(slug);
-        let hasNext = true;
-        if (index > -1) {
-          if (mode === NavigationMode.Next && index < orderPrefetch.length) {
-            nextSlug = orderPrefetch[index + 1];
-          } else if (index > 0) {
-            nextSlug = orderPrefetch[index - 1];
-          } else {
-            // 没有找到，还是需要去服务器端
-            hasNext = false;
-          }
-          if (hasNext) {
-            const nextIndex = orderPrefetch.indexOf(nextSlug);
-            if (nextIndex > -1 && cache.has(nextSlug)) {
-              return cache.get(nextSlug)!; // 返回缓存数据 (使用非空断言，因为 has() 已检查存在性)
+          const prefetchRef = cachePrefetchRef.current;
+          const index = prefetchRef.indexOf(slug_to_search);
+          let hasNext = true;
+          if (index > -1) {
+            if (mode === NavigationMode.Next && index < prefetchRef.length) {
+              nextSlug = prefetchRef[index + 1];
+            } else if (index > 0) {
+              nextSlug = prefetchRef[index - 1];
+            } else {
+              // 没有找到，还是需要去服务器端
+              hasNext = false;
+            }
+            if (hasNext) {
+              const nextIndex = prefetchRef.indexOf(nextSlug);
+              if (nextIndex > -1 && wordCacheRef.current.has(nextSlug)) {
+                const cachedData = wordCacheRef.current.get(nextSlug)!; // 返回缓存数据 (使用非空断言，因为 has() 已检查存在性)
+                setCurrentWord(cachedData);
+                setIsLoading(false);
+                return;           
+              }
             }
           }
         }
-      }
 
-      // console.log(`Cache miss for ${slug}, fetching...`); // Optional logging
-      // 2. 缓存未命中，从 API 获取数据
-      try {
-        //   const response = await fetch(`/api/word/${slug}`);
-        const response = await axiosPrivate.post('/api/word/search', JSON.stringify({ slug: nextSlug, mode: mode, mhi: mhi }));
-        console.log('Response headers:', response.headers);
-        console.log('Response body:', response.data);
+        // 2. Fetch from API
+        try {
+            const response = await axiosPrivate.post('/api/word/search', { slug: nextSlug, mode, mhi });
 
-        if (response.data?.content) {
-            const data = response.data as WordDataType
-            // console.log('User authenticated:', response.data.word);
-            addToPrefetchCache(data.word_text); // Add to prefetch cache
-            addToCache(data.word_text, data); // 将获取到的数据添加到缓存
-            return data; // 返回获取到的数据
-        } else {
-          console.log('No user data found.');            
-          return null;
+            if (response.status === 202) {
+                // Word generation is pending
+                setTaskId(response.data.taskId);
+                // isLoading remains true, UI will be handled by taskResult effect
+            } else if (response.data?.content) {
+                // Word found
+                const data = response.data as WordDataType;
+                setCurrentWord(data);
+                addToCache(data.word_text, data);
+                setIsLoading(false);
+            } else {
+                // Should not happen with 200 OK, but as a fallback
+                setError(`'${slug_to_search}' not found.`);
+                setCurrentWord(null);
+                setIsLoading(false);
+            }
+        } catch (err) {
+            const message = err instanceof AxiosError ? err.response?.data?.message : 'An unknown error occurred.';
+            setError(message || 'Failed to fetch word.');
+            setCurrentWord(null);
+            setIsLoading(false);
         }
-      } catch (err) {
-          // 网络错误
-          console.error(`Network error fetching word "${slug}":`, err);
-          if (err instanceof AxiosError) {
-            return err?.response?.data?.message;
-          }
-          return null; // 获取失败返回 null
-      }
-  }, [addToCache]); // fetchAndCacheWord 依赖于 addToCache 函数
+    }, [addToCache]);
 
-  const prefetch = useCallback(async (slug: string, mode: NavigationMode, mhi: boolean = false) => {
-    // const cache = wordCacheRef.current;
+    // Effect to handle WebSocket results
+    useEffect(() => {
+        if (taskResult) {
+            if (taskResult.status === 'completed' && taskResult.data) {
+                setCurrentWord(taskResult.data);
+                addToCache(taskResult.data.word_text, taskResult.data);
+                setIsLoading(false);
+                setTaskId(null);
+            } else if (taskResult.status === 'failed') {
+                setError(taskResult.error || 'Failed to generate word.');
+                setCurrentWord(null);
+                setIsLoading(false);
+                setTaskId(null);
+            }
+        }
+    }, [taskResult, addToCache]);
 
-    // If slug is empty or already in cache, do nothing.
-    // if (!slug || cache.has(slug)) {
-    if (!slug) {
-      return;
-    }
+    // Effect for prefetching neighbor words
+    useEffect(() => {
+        if (currentWord && !taskId) {
+            const prefetchNeighbors = async () => {
+                // Prefetch next word
+                try {
+                    const response = await axiosPrivate.post('/api/word/search', { slug: currentWord.word_text, mode: NavigationMode.Next, mhi: isMustHasImage });
+                    if (response.data?.content) {
+                        addToCache(response.data.word_text, response.data);
+                        addToPrefetchCache(response.data.word_text);
+                    }
+                } catch (e) {
+                    console.error("Prefetch next failed:", e);
+                }
+            };
 
-    // Fetch from API (fire and forget)
-    try {
-      const response = await axiosPrivate.post('/api/word/search', JSON.stringify({ slug: slug, mode: mode, mhi: mhi }));
-      
-      if (response.data?.content) {
-        const data = response.data as WordDataType;
-        addToPrefetchCache(data.word_text); // Add to prefetch cache
-        addToCache(data.word_text, data); // Add to cache
-      }
-    } catch (err) {
-      // For prefetching, we can fail silently and just log the error.
-      console.error(`Prefetch failed for "${slug}":`, err);
-    }
-  }, [addToCache]);
+            prefetchNeighbors();
+        }
+    }, [currentWord, taskId, addToCache, isMustHasImage]);
 
-  // Hook 返回组件需要用到的缓存相关功能
-  return {
-    wordCache: wordCacheRef.current, // 返回缓存 Map 实例，供组件直接进行 contains 检查和 get 操作
-    fetchAndCacheWord, // 返回获取并缓存单词的函数
-    removeFromCache,
-    addToCache, // 返回添加到缓存的函数，以防组件在别处获取数据后想手动添加到缓存（例如初始加载或搜索成功后）
-    prefetch, // 导出 prefetch 方法
-  };
+    return {
+        currentWord,
+        isLoading,
+        error,
+        isGenerating: !!taskId,
+        queuePosition: taskResult?.queuePosition,
+        fetchWord,
+    };
 };

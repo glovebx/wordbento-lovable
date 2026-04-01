@@ -8,7 +8,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { NavigationMode, useWordCache } from '@/hooks/use-word-cache';
 import { WordDataType } from '@/types/wordTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -16,19 +15,17 @@ interface FlashcardModeProps {
   wordData: WordDataType;
   onNext: () => void;
   onPrevious: () => void;
-  onWordChanged: (word: WordDataType) => void;
 }
 
 const FlashcardMode: React.FC<FlashcardModeProps> = ({
   wordData,
   onNext,
   onPrevious,
-  onWordChanged
 }) => {
   const isMobile = useIsMobile();
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading, setIsLoading] = useState(false);
   const [userInput, setUserInput] = useState('');
   // Keep a ref of the last user input to restore if it's accidentally cleared
   const lastUserInputRef = useRef<string>('');
@@ -36,8 +33,6 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [isMarkedForReview, setIsMarkedForReview] = useState(false);
   const { toast } = useToast();
-
-  const { fetchAndCacheWord } = useWordCache();
 
   const maxAttempts = 3;
 
@@ -55,8 +50,8 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   // 点击上下按钮切换时
   const [isSwitching, setIsSwitching] = useState(false);  
 
-  // NEW: State to trigger image fetch
-  const [imageRequestCounter, setImageRequestCounter] = useState(0);
+  // // NEW: State to trigger image fetch
+  // const [imageRequestCounter, setImageRequestCounter] = useState(0);
 
   // Effect to initialize Speech Recognition API
   useEffect(() => {
@@ -118,57 +113,38 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
     // Trigger image fetch if needed
     if (!wordData.imageUrls || wordData.imageUrls.length === 0) {
-        setImageRequestCounter(prev => prev + 1);
+        // setImageRequestCounter(prev => prev + 1);
+        // 没有图片
+        setImageUrl(null);
+        setIsSwitching(false);
     } else {
         setImageUrl(wordData.imageUrls[0]);
         setIsSwitching(false);
     }
   }, [wordData]);
 
-  // Effect for fetching image data, triggered by imageRequestCounter
-  useEffect(() => {
-    if (imageRequestCounter === 0) return;
-
-    const fetchImage = async () => {
-        setIsLoading(true);
-        try {
-            const data = await fetchAndCacheWord(wordData.word_text, NavigationMode.Search, true);
-            if (data && typeof data !== 'string') {
-                onWordChanged(data);
-                if (data.imageUrls && data.imageUrls.length > 0) {
-                    setImageUrl(data.imageUrls[0]);
-                }
-            } else {
-                toast({ title: "获取单词详情失败", description: `抱歉，无法加载单词。`, variant: "destructive" });
-            }
-        } catch (error) {
-            console.error('Error fetching image:', error);
-            setImageUrl(null);
-        } finally {
-            setIsSwitching(false);
-            setIsLoading(false);
-        }
-    };
-
-    fetchImage();
-  }, [imageRequestCounter, fetchAndCacheWord, onWordChanged, toast]);
-
-  // // --- Prefetching useEffect ---
+  // // Effect for fetching image data, triggered by imageRequestCounter
   // useEffect(() => {
-  //   if (wordData && prefetch) {
-  //     // Prefetch the next and previous words in the background
-  //     console.log(`Prefetching neighbors for ${wordData.word_text}`);
-  //     prefetch(wordData.word_text, NavigationMode.Next, true);
-  //   //   prefetch(wordData.word_text, NavigationMode.Previous);
-  //   }
-  // }, [wordData, prefetch]); // This effect runs whenever wordData changes
+  //   if (imageRequestCounter === 0) return;
 
-  // // Effect to focus the input field when wordData changes
-  // useEffect(() => {
-  //   if (answerInputRef.current && !isLoading) {
-  //     answerInputRef.current.focus();
-  //   }
-  // }, [wordData, isLoading]);
+  //   const fetchImage = async () => {
+  //       setIsLoading(true);
+  //       try {
+  //           // This just triggers the fetch. The hook manages the state.
+  //           await fetchWord(wordData.word_text, NavigationMode.Search, true);
+  //       } catch (error) {
+  //           console.error('Error fetching image:', error);
+  //           setImageUrl(null); // Explicitly set image to null on error
+  //       } finally {
+  //           // The main useEffect listening to wordData will handle the rest.
+  //           setIsSwitching(false);
+  //           setIsLoading(false);
+  //       }
+  //   };
+
+  //   fetchImage();
+  //   // eslint-disable-next-line react-hooks/exhaustive-deps
+  // }, [imageRequestCounter]);
 
   // Restore userInput from ref if it was unexpectedly cleared while answer marked correct
   useEffect(() => {
@@ -205,10 +181,10 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
           // Check if a dialog is currently open
-          if (isLoading) { // <-- Check dialog states
-              console.log("Word is loading, keyboard navigation disabled.");
-              return; // Exit the handler if any dialog is open
-          }
+          // if (isLoading) { // <-- Check dialog states
+          //     console.log("Word is loading, keyboard navigation disabled.");
+          //     return; // Exit the handler if any dialog is open
+          // }
           // Check if the user is currently typing in an input field
           // Get the active element
           const activeElement = document.activeElement;
@@ -239,7 +215,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
       return () => {
           window.removeEventListener('keydown', handleKeyDown);
       };
-  }, [isLoading, setShowDetails, cycleImage]); // Dependencies: loading states and navigation handlers
+  }, [setShowDetails, cycleImage]); // Dependencies: loading states and navigation handlers
   // --- End New useEffect for Keyboard Navigation ---  
 
   const checkAnswer = (valueToCheck: string = userInput) => {
@@ -355,7 +331,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           {/* Image Card */}
           <Card className="w-full lg:max-w-5xl sm:max-w-2xl sm:mx-16">
             <CardContent className="p-2">
-              {(isLoading || isSwitching) ? (
+              {(isSwitching) ? (
                 <div className="flex items-center justify-center h-64">
                   <div className="text-center">
                     <div className="animate-pulse bg-muted rounded-lg w-full h-48 mb-4"></div>
@@ -400,7 +376,6 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                 size="sm"
                 onClick={() => setShowDetails(!showDetails)}
                 className="mt-4"
-                disabled={isLoading}
             >
                 <Info className="h-4 w-4 mr-2" />
                 {showDetails ? '隐藏详细' : '显示详细'}
