@@ -80,9 +80,9 @@ export const useWordCache = () => {
           const index = prefetchRef.indexOf(slug_to_search);
           let hasNext = true;
           if (index > -1) {
-            if (mode === NavigationMode.Next && index < prefetchRef.length) {
+            if (mode === NavigationMode.Next && (index + 1) < prefetchRef.length) {
               nextSlug = prefetchRef[index + 1];
-            } else if (index > 0) {
+            } else if (mode === NavigationMode.Previous && index > 0) {
               nextSlug = prefetchRef[index - 1];
             } else {
               // 没有找到，还是需要去服务器端
@@ -116,8 +116,8 @@ export const useWordCache = () => {
                 setIsLoading(false);
             } else {
                 // Should not happen with 200 OK, but as a fallback
-                setError(`'${slug_to_search}' not found.`);
-                setCurrentWord(null);
+                setError(mode === NavigationMode.Search ? `'${nextSlug}' not found.`: 'No word found.');
+                // setCurrentWord(null);
                 setIsLoading(false);
             }
         } catch (err) {

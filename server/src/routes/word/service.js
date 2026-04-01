@@ -10,6 +10,8 @@ import { toSqliteUtcString } from '../../utils/dateUtils';
 import { generateBentoByAi, generateImageByAi, repairAiResponseToJson } from './ai';
 import { checkAndConsumeFreeQuota } from '../../utils/security';
 import { NavigationMode } from '../../utils/constants';
+import { generateWordCard } from '../../utils/aiService';
+import { formatDbResultToWordResponse, log2WordViews } from '../../utils/dbUtils';
 
 /**
  * 应用归档过滤（排除已归档的单词）
@@ -111,10 +113,25 @@ async function getAdjacentWord(db, slug, mode, userId, mustHaveImage) {
   query = query.limit(1);  
 
     const nextIdResult = await query;
-    const nextId = nextIdResult[0].id || wordId;
-
+    if (nextIdResult.length > 0) {
+      const nextId = nextIdResult[0].id || wordId;
       // 4. Once we have a valid ID, fetch the full aggregated data.
       return getAggregatedWord(db, eq(schema.words.id, nextId));
+    }
+
+    return null;
+}
+
+async function getPrefixWordId(db, slug, userId) {
+    const prefix = slug + '%';
+    const result = await db.select({ id: schema.words.id })
+        .from(schema.words)
+        .where(sql`${schema.words.word_text} LIKE ${prefix}`)
+        .limit(1);
+    if (result.length > 0) {
+      return result[0].id;
+    }
+    return null;
 }
 
 /**
@@ -146,9 +163,9 @@ export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
         if (!wordDetails && !isSlugQuoted) {
             // This part is tricky with aggregation. A simple LIKE might fetch multiple words and mix their details.
             // For simplicity and performance, we'll fetch the ID first, then get the full details.
-            const prefixResult = await findPrefixMatch(db, { id: schema.words.id }, searchSlug, userId, mustHaveImage);
-            if (prefixResult) {
-                wordDetails = await getAggregatedWord(db, eq(schema.words.id, prefixResult.id));
+            const prefixId = await getPrefixWordId(db, searchSlug, userId);
+            if (prefixId) {
+                wordDetails = await getAggregatedWord(db, eq(schema.words.id, prefixId));
             }
         }
     }
@@ -176,7 +193,7 @@ export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
     return c.json({}, 200);
   }
 
-  // 需要生成新单词
+  // 如果执行到这里，说明是搜索模式，且数据库没有，需要调用AI生成
   if (!searchSlug) {
     return c.json({ message: 'Cannot generate data for empty slug.' }, 400);
   }
@@ -269,58 +286,7 @@ const getWordDetails = async (c, db, word) => {
   return formatDbResultToWordResponse(c, word, contentRecords, imageRecords);
 };
 
-const generateWordCard = async (c, db, userId, slug) => {
-    // if (!slug) {
-    //     return null;
-    // }
-    const searchSlug = slug.trim().toLowerCase();
-    const language = LanguageUtils.detectLanguage(searchSlug);
-    const isJapanese = language === 'japanese' || language === 'mixed';
 
-    let hasFreeQuota = false;
-    try {
-        hasFreeQuota = await checkAndConsumeFreeQuota(c, userId);
-    } catch (error) {
-        console.error(error.message);
-        throw error;
-    }
-
-    const aiResponse = await generateBentoByAi(c, userId, searchSlug, isJapanese, hasFreeQuota);
-    if (!aiResponse || !aiResponse[searchSlug]) {
-        return null;
-    }
-
-    const geminiData = aiResponse[searchSlug];
-    let newWord;
-    try {
-        const insertedWordResult = await db.insert(schema.words).values({
-            user_id: 0,
-            word_text: searchSlug,
-            phonetic: geminiData.phonetic || null,
-            meaning: geminiData.meaning || null,
-        }).returning().get();
-
-        if (!insertedWordResult) {
-            throw new Error("Failed to insert word.");
-        }
-        newWord = insertedWordResult;
-
-        const contentRecordsToInsert = mapGeminiToDbContent(newWord.id, geminiData);
-        if (contentRecordsToInsert.length > 0) {
-            await db.insert(schema.word_content).values(contentRecordsToInsert);
-        }
-
-        log2WordViews(db, userId, newWord.id);
-        const newlyInsertedContent = await db.select().from(schema.word_content).where(eq(schema.word_content.word_id, newWord.id));
-        return formatDbResultToWordResponse(c, newWord, newlyInsertedContent, []);
-    } catch (dbError) {
-        if (newWord) {
-            await db.delete(schema.words).where(eq(schema.words.id, newWord.id));
-        }
-        console.error("Database transaction failed:", dbError);
-        throw dbError;
-    }
-};
 
 export const generateWordImage = async (c, db, userId, slug, example, force) => {
     if (!slug) return null;
@@ -442,59 +408,7 @@ export const getSequenceWords = async (c, db, limit, maxWordsId) => {
     };
 };
 
-const log2WordViews = async (db, userId, wordId) => {
-    if (!userId || !wordId) return;
-    try {
-        await db.insert(schema.word_views).values({ user_id: userId, word_id: wordId });
-    } catch (error) {
-        console.error('Error logging word view:', error);
-    }
-};
 
-const formatDbResultToWordResponse = (c, word, contentRecords, imageRecords) => {
-    const content = {};
-    contentRecords.forEach(record => {
-        if (!content[record.content_type]) {
-            content[record.content_type] = {};
-        }
-        try {
-            const parsedContent = (record.content_type === 'examples' || record.content_type === 'forms') ? JSON.parse(record.content) : record.content;
-            content[record.content_type][record.language_code] = parsedContent;
-        } catch (e) {
-            content[record.content_type][record.language_code] = record.content;
-        }
-    });
-
-    const imageUrls = (imageRecords && imageRecords.length > 0) && imageRecords.map(img => img.image_key.startsWith('http') ? img.image_key : `${c.env.VITE_IMG_URL}/${img.image_key}`) || [];
-
-    return {
-        id: word.id,
-        word_text: word.word_text,
-        phonetic: word.phonetic,
-        meaning: word.meaning,
-        created_at: word.created_at,
-        content: content,
-        imageUrls: imageUrls,
-    };
-};
-
-const mapGeminiToDbContent = (word_id, geminiData) => {
-    const records = [];
-    for (const type in geminiData) {
-        if (type !== 'phonetic' && type !== 'meaning') {
-            const content = geminiData[type];
-            if (content) {
-                for (const lang in content) {
-                    if (lang !== 'icon') {
-                        const value = Array.isArray(content[lang]) ? JSON.stringify(content[lang]) : String(content[lang]);
-                        records.push({ word_id, content_type: type, language_code: lang, content: value, icon: content.icon || '' });
-                    }
-                }
-            }
-        }
-    }
-    return records;
-};
 
 const readImageBinaryStreams = async (imageUrls) => {
     const promises = imageUrls.map(async (url) => {

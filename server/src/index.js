@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { getCookie } from 'hono/cookie';
 import auth from './routes/auth.js';
 import test from './routes/test.js';
 import main from './routes/main.js';
@@ -8,10 +9,6 @@ import analyze from './routes/analyzer/api.js';
 import upload from './routes/upload.js';
 import llm from './routes/llm.js';
 import profile from './routes/profile.js';
-import {
-  getCookie
-} from 'hono/cookie'
-
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = new Hono();
@@ -37,6 +34,23 @@ app.use(
     credentials: true,
   })
 );
+
+// // WebSocket route for task status
+// // IMPORTANT: This must be defined BEFORE the authentication middleware that intercepts '/api/*'
+// app.get(
+//   '/api/ws/tasks/:taskId',
+//   upgradeWebSocket(async (c) => {
+//         const taskId = c.req.param('taskId');
+//         return {
+//           onOpen: (evt, ws) => {
+//             registerWebSocket(taskId, ws);
+//           },
+//       onError: (err) => {
+//         console.error(`WebSocket error for task ${taskId}:`, err);
+//       },
+//     };
+//   })
+// );
 
 // Public Routes
 const publicRoutes = ['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/word/image', '/api/word/tts', '/api/test/check-db', '/api/test-kv-direct', '/ws/analyze', '/api/analyze/audio', '/api/analyze/srt'];
@@ -69,8 +83,6 @@ app.use('/api/*', async (c, next) => {
     accessToken = accessToken.split(' ')[1];
   }
 
-
-
   if (!sessionId && !accessToken) {
     if (!publicButPrivateRoutes.some(route => c.req.path.startsWith(route))) {
       // console.warn('No session ID found in cookies.');
@@ -94,7 +106,6 @@ app.use('/api/*', async (c, next) => {
   }
 });
 
-
 // Mount Sub-Routers Correctly
 app.route('/api/auth', auth);
 app.route('/api/test', test);
@@ -107,23 +118,23 @@ app.route('/api/profile', profile);
 
 // app.route('/api/rss', rss);
 
-// Minimal Test Route for KV
-app.get('/api/test-kv-direct', async (c) => {
-  try {
-    const kvNamespace = c.env.WORDBENTO_KV;
-    if (!kvNamespace) {
-      console.error('WORDBENTO_KV is undefined or invalid.');
-      return c.json({ error: 'WORDBENTO_KV is undefined or invalid' }, 500);
-    }
+// // Minimal Test Route for KV
+// app.get('/api/test-kv-direct', async (c) => {
+//   try {
+//     const kvNamespace = c.env.WORDBENTO_KV;
+//     if (!kvNamespace) {
+//       console.error('WORDBENTO_KV is undefined or invalid.');
+//       return c.json({ error: 'WORDBENTO_KV is undefined or invalid' }, 500);
+//     }
 
-    // Attempt to get a test key
-    const value = await kvNamespace.get('test_key');
-    return c.json({ value });
-  } catch (err) {
-    console.error('Error accessing WORDBENTO_KV:', err);
-    return c.json({ error: 'Failed to access WORDBENTO_KV', details: err.message }, 500);
-  }
-});
+//     // Attempt to get a test key
+//     const value = await kvNamespace.get('test_key');
+//     return c.json({ value });
+//   } catch (err) {
+//     console.error('Error accessing WORDBENTO_KV:', err);
+//     return c.json({ error: 'Failed to access WORDBENTO_KV', details: err.message }, 500);
+//   }
+// });
 
 // Export the fetch handler with additional logging
 export default {
