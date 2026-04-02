@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import tailwindcss from '@tailwindcss/postcss'  // v4 方式
+import tailwindcss from '@tailwindcss/vite'  // v4 方式
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { componentTagger } from "lovable-tagger";
@@ -17,14 +17,10 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    tailwindcss(),  // ✅ 作为 Vite 插件
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
-  css: {
-    postcss: {
-      plugins: [tailwindcss()],
-    },
-  },  
   resolve: {
     alias: {
       "@": resolve(_dirname, "./src")
