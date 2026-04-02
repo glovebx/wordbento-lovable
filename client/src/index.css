@@ -1,127 +1,222 @@
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  :root {
-    --background: 210 40% 98%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 199 89% 48%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 199 89% 48%;
-
-    --radius: 0.75rem;
-
-    /* Bento colors - light mode */
-    --bento-definition: 195 100% 95%;
-    --bento-examples: 35 100% 95%;
-    --bento-etymology: 220 100% 97%;
-    --bento-affixes: 280 100% 97%;
-    --bento-history: 15 100% 95%;
-    --bento-forms: 150 100% 95%;
-    --bento-memory: 340 100% 97%;
-    --bento-story: 45 100% 95%;
-    --bento-pronunciation: 220 100% 97%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-
-    /* Bento colors - dark mode */
-    --bento-definition: 195 70% 15%;
-    --bento-examples: 35 70% 15%;
-    --bento-etymology: 220 70% 15%;
-    --bento-affixes: 280 70% 15%;
-    --bento-history: 15 70% 15%;
-    --bento-forms: 150 70% 15%;
-    --bento-memory: 340 70% 15%;
-    --bento-story: 45 70% 15%;
-    --bento-pronunciation: 220 70% 15%;
-  }
+@theme {
+  /* 颜色变量 - 使用 oklch 格式（v4 默认）或保留 hsl */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  
+  /* Bento 颜色 */
+  --color-bento-definition: hsl(var(--bento-definition));
+  --color-bento-examples: hsl(var(--bento-examples));
+  --color-bento-etymology: hsl(var(--bento-etymology));
+  --color-bento-affixes: hsl(var(--bento-affixes));
+  --color-bento-history: hsl(var(--bento-history));
+  --color-bento-forms: hsl(var(--bento-forms));
+  --color-bento-memory: hsl(var(--bento-memory));
+  --color-bento-story: hsl(var(--bento-story));
+  --color-bento-pronunciation: hsl(var(--bento-pronunciation));
+  
+  /* 圆角 */
+  --radius-default: var(--radius);
+  
+  /* 字体大小 */
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+  
+  /* 字重 */
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* 字间距 */
+  --tracking-tight: -0.025em;
 }
 
+/* CSS 变量定义 - :root 和 .dark */
+:root {
+  --background: 210 40% 98%;
+  --foreground: 222.2 84% 4.9%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+
+  --primary: 199 89% 48%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 199 89% 48%;
+
+  --radius: 0.75rem;
+
+  /* Bento colors - light mode */
+  --bento-definition: 195 100% 95%;
+  --bento-examples: 35 100% 95%;
+  --bento-etymology: 220 100% 97%;
+  --bento-affixes: 280 100% 97%;
+  --bento-history: 15 100% 95%;
+  --bento-forms: 150 100% 95%;
+  --bento-memory: 340 100% 97%;
+  --bento-story: 45 100% 95%;
+  --bento-pronunciation: 220 100% 97%;
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+
+  /* Bento colors - dark mode */
+  --bento-definition: 195 70% 15%;
+  --bento-examples: 35 70% 15%;
+  --bento-etymology: 220 70% 15%;
+  --bento-affixes: 280 70% 15%;
+  --bento-history: 15 70% 15%;
+  --bento-forms: 150 70% 15%;
+  --bento-memory: 340 70% 15%;
+  --bento-story: 45 70% 15%;
+  --bento-pronunciation: 220 70% 15%;
+}
+
+/* Base 层样式 */
 @layer base {
   * {
-    @apply border-border;
+    border-color: var(--color-border);
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
   }
 
   h1 {
-    @apply text-4xl font-bold tracking-tight;
+    font-size: var(--text-4xl);
+    line-height: var(--text-4xl--line-height);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: var(--tracking-tight);
   }
 
   h2 {
-    @apply text-3xl font-semibold tracking-tight;
+    font-size: var(--text-3xl);
+    line-height: var(--text-3xl--line-height);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-tight);
   }
 
   h3 {
-    @apply text-2xl font-semibold tracking-tight;
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-tight);
   }
 
   h4 {
-    @apply text-xl font-semibold tracking-tight;
+    font-size: var(--text-xl);
+    line-height: var(--text-xl--line-height);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--tracking-tight);
   }
 }
 
+/* Components 层样式 */
 @layer components {
   .bento-grid {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1rem;
+  }
+  
+  @media (min-width: 768px) {
+    .bento-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .bento-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 
   .bento-card {
-    @apply rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-200;
+    border-radius: var(--radius-default);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    overflow: hidden;
+    transition: box-shadow 200ms;
+  }
+  
+  .bento-card:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   }
 
   .wave-text span {

@@ -122,7 +122,7 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
     <>
       {/* 浮动轮播容器 */}
       <div
-        className="fixed z-[100] bg-gray-900 bg-opacity-95 rounded-lg shadow-2xl p-2 flex flex-col items-center justify-center"
+        className="fixed z-100 bg-gray-900 bg-opacity-95 rounded-lg shadow-2xl p-2 flex flex-col items-center justify-center"
         style={floatingCarouselStyle} // 应用计算后的样式
       >
         <Button
@@ -186,7 +186,7 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
         flex flex-col items-center justify-center
         bg-background /* Use Shadcn default background */
         p-1 /* Add padding around the content */
-        rounded-lg shadow-lg z-[101]
+        rounded-lg shadow-lg z-101
         ">
           {/* 为辅助功能添加 DialogTitle，视觉上隐藏 */}
           <DialogTitle className="sr-only">

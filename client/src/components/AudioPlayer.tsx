@@ -602,7 +602,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   if (!audioUrl) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-purple-800 to-indigo-900 text-white p-4 shadow-lg z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-linear-to-r from-purple-800 to-indigo-900 text-white p-4 shadow-lg z-50">
       <div className="container mx-auto flex flex-col md:flex-row items-center justify-between">
         <audio ref={audioRef} src={audioUrl} preload="auto" />
 
@@ -666,7 +666,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-grow w-full md:w-auto">
+        <div className="flex items-center gap-2 grow w-full md:w-auto">
           <span className="text-sm w-12 text-right">
             {formatTime(isSliderDragging ? tempSliderValue : currentTime)}
           </span>

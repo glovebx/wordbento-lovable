@@ -463,7 +463,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
         </DialogHeader>
         
         {/* Scrollable content area */}
-        <div className="flex-grow overflow-y-auto pr-2">
+        <div className="grow overflow-y-auto pr-2">
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="sourceType">资源类型</Label>
@@ -511,7 +511,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
                         setFormData(prev => ({ ...prev, content: e.target.value }))
                     }
                     placeholder="输入资源内容..."
-                    className="min-h-[100px] flex-grow" // flex-grow to make it take available space
+                    className="min-h-[100px] grow" // grow to make it take available space
                     readOnly={!isNewRecord}
                     disabled={!isNewRecord}
                     />
