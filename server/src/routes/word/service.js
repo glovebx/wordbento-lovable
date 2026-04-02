@@ -3,11 +3,11 @@ import { and, eq, inArray, gt, gte, lt, lte, isNull, asc, desc, sql as dsql, not
 import * as schema from '../../db/schema';
 import { sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import Jimp from 'jimp';
+import { Jimp } from 'jimp';
 import { isQuoted, removeQuotes } from '../../utils/languageParser';
 import LanguageUtils from '../../utils/languageUtils';
 import { toSqliteUtcString } from '../../utils/dateUtils';
-import { generateBentoByAi, generateImageByAi, repairAiResponseToJson } from './ai';
+import { generateImageByAi } from './ai';
 import { checkAndConsumeFreeQuota } from '../../utils/security';
 import { NavigationMode } from '../../utils/constants';
 import { generateWordCard } from '../../utils/aiService';
