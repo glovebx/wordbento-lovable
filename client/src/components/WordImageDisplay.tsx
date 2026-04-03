@@ -28,7 +28,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from './AuthModal';
 import { WordDataType } from '@/types/wordTypes';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react'; // Only Loader2 needed here for the main component
+import { Loader2, ArrowLeft, ArrowRight } from 'lucide-react'; // Only Loader2 needed here for the main component
+import { useIsMobile } from '@/hooks/use-mobile';
+import DraggableButton from './DraggableButton';
 
 // Import the new enlarged image carousel dialog component
 import EnlargedImageCarouselDialog from '@/components/EnlargedImageCarouselDialog';
@@ -40,6 +42,8 @@ interface WordImageDisplayProps {
   onImagesGenerated: (word: string) => void;
   onShowImageDialogChange?: (isOpen: boolean) => void;
   onShowExampleDialogChange?: (isOpen: boolean) => void;
+  onNext?: () => void;
+  onPrevious?: () => void;
   /**
    * 外部触发生成图片的请求处理器（上层容器应执行生成并通过 `generatedImageUrls` 回传结果）
    */
@@ -69,7 +73,10 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   generatedImageUrls,
   isGenerating,
   generationError,
+  onNext,
+  onPrevious,
 }) => {
+  const isMobile = useIsMobile();
   // State to control the visibility of the ENLARGED image dialog
   const [showEnlargedImageDialog, setShowEnlargedImageDialog] = useState(false);
   // State to store the index of the image clicked in the small carousel
@@ -207,7 +214,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
 
       {/* Small Image Carousel Section */}
       {showSmallCarousel && (
-        <div className="max-w-lg mx-auto mb-8">
+        <div className="max-w-lg mx-auto mb-8 relative">
           <Carousel className="w-full">
             <CarouselContent>
               {imageUrls.map((url, index) => (
@@ -229,10 +236,33 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
                 </CarouselItem>
               ))}
             </CarouselContent>
-            <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 z-10 export-hide" />
-            <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 z-10 export-hide" />
+            {imageUrls.length > 1 && (
+              <>
+                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
+                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
+              </>
+            )}
           </Carousel>
         </div>
+      )}
+
+      {isMobile && onNext && onPrevious && (
+        <>
+          <DraggableButton
+            storageKey="prev-word-pos"
+            initialPosition={{ x: 20, y: window.innerHeight / 2 - 30 }}
+            onClick={onPrevious}
+          >
+            <ArrowLeft className="h-6 w-6" />
+          </DraggableButton>
+          <DraggableButton
+            storageKey="next-word-pos"
+            initialPosition={{ x: window.innerWidth - 80, y: window.innerHeight / 2 - 30 }}
+            onClick={onNext}
+          >
+            <ArrowRight className="h-6 w-6" />
+          </DraggableButton>
+        </>
       )}
 
       {/* Enlarged Image Dialog - now a separate component */}

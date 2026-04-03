@@ -102,30 +102,6 @@ const WordGrid: React.FC<WordGridProps> = ({
             {/* For mobile, move buttons above/below the word */}
             {isMobile ? (
               <>
-                <div className="flex justify-center gap-8 w-full mb-2">
-                  <Button 
-                    disabled={isWordLoading}
-                    variant="outline"
-                    size="icon"
-                    onClick={onPrevious}
-                    className="hover:bg-muted export-hide"
-                    title="上一个单词"
-                  >
-                    <ArrowLeft className="h-6 w-6" />
-                  </Button>
-                  
-                  <Button 
-                    disabled={isWordLoading}
-                    variant="outline"
-                    size="icon"
-                    onClick={onNext}
-                    className="hover:bg-muted export-hide"
-                    title="下一个单词"
-                  >
-                    <ArrowRight className="h-6 w-6" />
-                  </Button>
-                </div>
-                
                 <div className="flex flex-col items-center">
                   <div className="flex items-center justify-center gap-2 mb-1">
                     <h1 className="text-5xl font-bold tracking-tight">
@@ -270,6 +246,8 @@ const WordGrid: React.FC<WordGridProps> = ({
         generatedImageUrls={generatedImageUrls}
         isGenerating={isGeneratingImages}
         generationError={generationError}
+        onNext={onNext} // Pass down the onNext handler
+        onPrevious={onPrevious} // Pass down the onPrevious handler
       />
 
       <div className="bento-grid">
