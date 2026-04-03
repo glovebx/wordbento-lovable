@@ -10,6 +10,14 @@ import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { WordDataType } from '@/types/wordTypes';
 import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import EnlargedImageCarouselDialog from '@/components/EnlargedImageCarouselDialog';
 
 interface FlashcardModeProps {
   wordData: WordDataType;
@@ -24,55 +32,31 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 }) => {
   const isMobile = useIsMobile();
 
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  // const [isLoading, setIsLoading] = useState(false);
   const [userInput, setUserInput] = useState('');
-  // Keep a ref of the last user input to restore if it's accidentally cleared
   const lastUserInputRef = useRef<string>('');
   const [attempts, setAttempts] = useState(0);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [isMarkedForReview, setIsMarkedForReview] = useState(false);
   const { toast } = useToast();
 
+  const [showEnlargedImageDialog, setShowEnlargedImageDialog] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+
   const maxAttempts = 3;
 
-  // Speech Recognition states and ref
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const [speechRecognitionAvailable, setSpeechRecognitionAvailable] = useState(false);
 
-  // Ref for the answer input field
   const answerInputRef = useRef<HTMLInputElement>(null);
 
-  // NEW: State to control visibility of word details (phonetic and meaning)
   const [showDetails, setShowDetails] = useState(false);
-    const [touchStartX, setTouchStartX] = useState(0);
-    const [touchEndX, setTouchEndX] = useState(0);
-
-  // 点击上下按钮切换时
   const [isSwitching, setIsSwitching] = useState(false);  
 
-    const handleImageTouchStart = (e: React.TouchEvent) => {
-        setTouchStartX(e.targetTouches[0].clientX);
-    };
-
-    const handleImageTouchMove = (e: React.TouchEvent) => {
-        setTouchEndX(e.targetTouches[0].clientX);
-    };
-
-    const handleImageTouchEnd = () => {
-        if (touchStartX > 0 && touchEndX > 0) {
-            if (touchStartX - touchEndX > 50) { // Swipe Left
-                cycleImage(); // This function only cycles forward
-            }
-            // Swipe right could be implemented if cycleImage is updated to handle direction
-        }
-        setTouchStartX(0);
-        setTouchEndX(0);
-    };
-
-
+  const handleImageClick = (index: number) => {
+    setSelectedImageIndex(index);
+    setShowEnlargedImageDialog(true);
+  };
 
   // Effect to initialize Speech Recognition API
   useEffect(() => {
@@ -126,48 +110,13 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     };
   }, [toast]);
 
-  // Effect for fetching image data for the word
+  // Effect for resetting state when word changes
   useEffect(() => {
     setIsCorrect(null);
     setIsMarkedForReview(false);
     setShowDetails(false);
-
-    // Trigger image fetch if needed
-    if (!wordData.imageUrls || wordData.imageUrls.length === 0) {
-        // setImageRequestCounter(prev => prev + 1);
-        // 没有图片
-        setImageUrl(null);
-        setCurrentImageIndex(0);
-        setIsSwitching(false);
-    } else {
-        setImageUrl(wordData.imageUrls[0]);
-        setCurrentImageIndex(0);
-        setIsSwitching(false);
-    }
+    setIsSwitching(false);
   }, [wordData]);
-
-  // // Effect for fetching image data, triggered by imageRequestCounter
-  // useEffect(() => {
-  //   if (imageRequestCounter === 0) return;
-
-  //   const fetchImage = async () => {
-  //       setIsLoading(true);
-  //       try {
-  //           // This just triggers the fetch. The hook manages the state.
-  //           await fetchWord(wordData.word_text, NavigationMode.Search, true);
-  //       } catch (error) {
-  //           console.error('Error fetching image:', error);
-  //           setImageUrl(null); // Explicitly set image to null on error
-  //       } finally {
-  //           // The main useEffect listening to wordData will handle the rest.
-  //           setIsSwitching(false);
-  //           setIsLoading(false);
-  //       }
-  //   };
-
-  //   fetchImage();
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [imageRequestCounter]);
 
   // Restore userInput from ref if it was unexpectedly cleared while answer marked correct
   useEffect(() => {
@@ -177,61 +126,28 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     }
   }, [userInput]);
 
-  const cycleImage = () => {
-    if (!wordData.imageUrls || wordData.imageUrls.length <= 1) {
-        console.warn("No other images to cycle through.");
-        return;
-    }
-
-    // Calculate the next index, wrapping around to the beginning if at the end.
-    const nextIndex = (currentImageIndex + 1) % wordData.imageUrls.length;
-    const newImageUrl = wordData.imageUrls[nextIndex];
-
-    setImageUrl(newImageUrl);
-    setCurrentImageIndex(nextIndex);
-    // console.log("Cycled to next image:", newImageUrl);
-  };
-
-
   // --- New useEffect for Keyboard Navigation ---
   useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
-          // Check if a dialog is currently open
-          // if (isLoading) { // <-- Check dialog states
-          //     console.log("Word is loading, keyboard navigation disabled.");
-          //     return; // Exit the handler if any dialog is open
-          // }
-          // Check if the user is currently typing in an input field
-          // Get the active element
           const activeElement = document.activeElement;
-          // Check if the active element is an input or textarea
           const isTyping = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
 
-          // If the user is typing AND the key is an arrow key, allow default behavior (cursor movement)
           if (isTyping) {
-              // Do nothing, let the browser handle the cursor movement within the input
               return;
           }
 
-          // Handle arrow key presses
           if (event.key === 'v') {
               event.preventDefault();
               setShowDetails(prev => !prev);
-          } else if (event.key === 'n') {
-            event.preventDefault();
-            // 切换图片
-            cycleImage();
           }
       };
 
-      // Add the event listener to the window
       window.addEventListener('keydown', handleKeyDown);
 
-      // Clean up the event listener when the component unmounts
       return () => {
           window.removeEventListener('keydown', handleKeyDown);
       };
-  }, [setShowDetails, cycleImage]); // Dependencies: loading states and navigation handlers
+  }, [setShowDetails]); // Dependencies: loading states and navigation handlers
   // --- End New useEffect for Keyboard Navigation ---  
 
   const checkAnswer = (valueToCheck: string = userInput) => {
@@ -347,46 +263,46 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           {/* Image Card */}
           <Card className="w-full lg:max-w-5xl sm:max-w-2xl sm:mx-16">
             <CardContent className="p-2">
-              {(isSwitching) ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="text-center">
-                    <div className="animate-pulse bg-muted rounded-lg w-full h-48 mb-4"></div>
-                    <p className="text-muted-foreground">加载图片中...</p>
+              {isSwitching ? (
+                <AspectRatio ratio={imageAspectRatio} className="bg-muted rounded-lg">
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground">加载中...</p>
                   </div>
-                </div>
-              ) : imageUrl ? (
-                <>
-                  <AspectRatio
-                    ratio={imageAspectRatio}
-                    className="bg-muted overflow-hidden rounded-lg"
-                    onTouchStart={handleImageTouchStart}
-                    onTouchMove={handleImageTouchMove}
-                    onTouchEnd={handleImageTouchEnd}
-                  >
-                    <img 
-                      src={imageUrl} 
-                      alt={wordData.word_text}
-                      onClick={cycleImage}
-                      loading="lazy"
-                      decoding="async"
-                      className="object-contain w-full h-full cursor-pointer"
-                    />
-                  </AspectRatio>
-                  {wordData.imageUrls && wordData.imageUrls.length > 1 && (
-                    <div className="flex justify-center items-center pt-2 space-x-2">
-                      {wordData.imageUrls.map((_, index) => (
-                        <div
-                          key={index}
-                          className={`w-2 h-2 rounded-full transition-all duration-300 ${currentImageIndex === index ? 'bg-primary' : 'bg-muted-foreground'}`}
-                        />
-                      ))}
-                    </div>
+                </AspectRatio>
+              ) : wordData.imageUrls && wordData.imageUrls.length > 0 ? (
+                <Carousel className="w-full">
+                  <CarouselContent>
+                    {wordData.imageUrls.map((url, index) => (
+                      <CarouselItem key={index}>
+                        <AspectRatio
+                          ratio={imageAspectRatio}
+                          className="bg-muted overflow-hidden rounded-lg cursor-pointer"
+                          onClick={() => handleImageClick(index)}
+                        >
+                          <img 
+                            src={url} 
+                            alt={`${wordData.word_text} - Image ${index + 1}`}
+                            loading="lazy"
+                            decoding="async"
+                            className="object-contain w-full h-full"
+                          />
+                        </AspectRatio>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  {wordData.imageUrls.length > 1 && (
+                    <>
+                      <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
+                      <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
+                    </>
                   )}
-                </>
+                </Carousel>
               ) : (
-                <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
-                  <p className="text-muted-foreground">图片加载失败</p>
-                </div>
+                <AspectRatio ratio={imageAspectRatio} className="bg-muted rounded-lg">
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground">无可用图片</p>
+                  </div>
+                </AspectRatio>
               )}
             </CardContent>
           </Card>
@@ -496,6 +412,17 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           )
         )}
       </div>
+
+      {/* Enlarged Image Dialog */}
+      {showEnlargedImageDialog && (
+        <EnlargedImageCarouselDialog
+          open={showEnlargedImageDialog}
+          onOpenChange={setShowEnlargedImageDialog}
+          imageUrls={wordData.imageUrls || []}
+          wordText={wordData.word_text}
+          initialIndex={selectedImageIndex}
+        />
+      )}
     </div>
   );
 };
