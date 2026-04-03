@@ -20,6 +20,7 @@ export const useWordCache = () => {
 
     const [currentWord, setCurrentWord] = useState<WordDataType | null>(null);
     const [isMustHasImage, setIsMustHasImage] = useState(false);
+    const [pageMode, setPageMode] = useState<NavigationMode>(NavigationMode.Search);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [taskId, setTaskId] = useState<string | null>(null);
@@ -52,6 +53,31 @@ export const useWordCache = () => {
         order.push(slug);
     }, []);
 
+    const prependToPrefetchCache = useCallback((slug: string, previousSlug: string) => {
+        const order = cachePrefetchRef.current;
+        if (order.includes(previousSlug)) {
+            return;
+        }
+        if (order.length >= MAX_CACHE_SIZE) {
+            const removedElement = order.pop(); // Per your suggestion, remove the last element
+
+            if (removedElement === slug) {
+                // If the removed item was the current slug, add the new previousSlug to the end.
+                order.push(previousSlug);
+                return; // Exit here
+            }
+        }
+
+        const slugIndex = order.indexOf(slug);
+        if (slugIndex !== -1) {
+            // If slug is still in the cache, insert before it.
+            order.splice(slugIndex, 0, previousSlug);
+        } else {
+            // Fallback: If slug is not found (and wasn't the popped one), add to the front.
+            order.unshift(previousSlug);
+        }
+    }, []);
+
     const fetchWord = useCallback(async (slug: string, mode: NavigationMode, mhi: boolean) => {
         // console.log(`[useWordCache] fetchWord called with slug: '${slug}', mode: ${mode}`);
         // CRITICAL: Reset task ID at the very beginning of a new fetch operation.
@@ -61,6 +87,7 @@ export const useWordCache = () => {
 
         const slug_to_search = slug.trim().toLowerCase();
         setIsMustHasImage(mhi);
+        setPageMode(mode);
 
         // 1. Check cache first for search mode
         if (mode === NavigationMode.Search && wordCacheRef.current.has(slug_to_search)) {
@@ -154,7 +181,12 @@ export const useWordCache = () => {
                     const response = await axiosPrivate.post('/api/word/search', { slug: currentWord.word_text, mode: NavigationMode.Next, mhi: isMustHasImage });
                     if (response.data?.content) {
                         addToCache(response.data.word_text, response.data);
-                        addToPrefetchCache(response.data.word_text);
+                        if (pageMode === NavigationMode.Next) {
+                            addToPrefetchCache(response.data.word_text);
+                        } else {
+                            // 插入到当前这个单词的前面
+                            prependToPrefetchCache(response.data.word_text, currentWord.word_text);
+                        }
                     }
                 } catch (e) {
                     console.error("Prefetch next failed:", e);
@@ -163,7 +195,7 @@ export const useWordCache = () => {
 
             prefetchNeighbors();
         }
-    }, [currentWord, taskId, addToCache, isMustHasImage]);
+    }, [currentWord, taskId, addToCache, isMustHasImage, pageMode, prependToPrefetchCache]);
 
     return {
         currentWord,
