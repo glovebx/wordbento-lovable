@@ -13,7 +13,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { User, Grid, BookOpen } from 'lucide-react';
+import { User, Grid, BookOpen, Download, Share } from 'lucide-react';
+import { usePwaInstall } from '@/hooks/use-pwa-install';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 // Import the useNavigate hook from react-router-dom
 import { useNavigate } from 'react-router-dom';
 
@@ -26,9 +34,14 @@ const Header: React.FC<HeaderProps> = ({
   viewMode,
   onViewModeChange  
 }) => {
-  // const [searchInput, setSearchInput] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+  const { 
+    promptInstall, 
+    showInstallButton,
+    showIOSTutorial, 
+    setShowIOSTutorial 
+  } = usePwaInstall();
 
   // Get the navigate function from react-router-dom
   const navigate = useNavigate();
@@ -66,6 +79,18 @@ const Header: React.FC<HeaderProps> = ({
 
             <ThemeToggle />
             
+            {showInstallButton && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={promptInstall}
+                className="hidden sm:inline-flex items-center"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                <span>安装应用</span>
+              </Button>
+            )}
+
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -96,6 +121,22 @@ const Header: React.FC<HeaderProps> = ({
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
       />
+
+      <Dialog open={showIOSTutorial} onOpenChange={setShowIOSTutorial}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>在 iOS 上安装应用</DialogTitle>
+            <DialogDescription className="pt-4">
+              <div className="space-y-4 text-left">
+                <p>1. 在 Safari 浏览器中打开此网站。</p>
+                <p>2. 点击屏幕底部的“分享” <Share className="h-4 w-4 inline-block mx-1" /> 图标。</p>
+                <p>3. 在分享菜单中，向上滑动并选择“添加到主屏幕”。</p>
+                <p>4. 点击“添加”即可完成。</p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 };

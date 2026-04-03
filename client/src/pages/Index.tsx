@@ -460,7 +460,7 @@ const handleExportImage = useCallback(async () => {
 
       // Main content rendering
       return (
-           <main className="flex-1">
+           <main className="flex-1 overflow-y-auto">
             {viewMode === 'grid' ? (
                 <>
                   <AnalysisForm 

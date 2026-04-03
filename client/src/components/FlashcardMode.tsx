@@ -1,7 +1,7 @@
 /// <reference types="@types/dom-speech-recognition" />
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle, XCircle, Mic, Info } from 'lucide-react'; // Import Info icon for details
+import { ArrowLeft, ArrowRight, CheckCircle, XCircle, /*Mic,*/ Info } from 'lucide-react'; // Import Info icon for details
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -47,7 +47,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const [speechRecognitionAvailable, setSpeechRecognitionAvailable] = useState(false);
+  // const [speechRecognitionAvailable, setSpeechRecognitionAvailable] = useState(false);
 
   const answerInputRef = useRef<HTMLInputElement>(null);
 
@@ -64,7 +64,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (SpeechRecognitionAPI) {
-      setSpeechRecognitionAvailable(true);
+      // setSpeechRecognitionAvailable(true);
 
       const recognition = new SpeechRecognitionAPI();
       recognition.continuous = false;
@@ -96,7 +96,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
     } else {
       console.warn('Speech Recognition API not supported in this browser.');
-      setSpeechRecognitionAvailable(false);
+      // setSpeechRecognitionAvailable(false);
       toast({
         title: "语音输入不可用",
         description: "您的浏览器不支持Web Speech API。请尝试Chrome或Edge浏览器。",
@@ -197,32 +197,32 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     }
   };
 
-  const handleTouchStart = () => {
-    if (speechRecognitionAvailable && recognitionRef.current && !isRecording) {
-      setIsRecording(true);
-      recognitionRef.current.start();
-      toast({
-        title: "开始录音",
-        description: "请对着麦克风说话...",
-      });
-    } else if (!speechRecognitionAvailable) {
-      toast({
-        title: "不支持语音输入",
-        description: "您的浏览器不支持Web Speech API，请尝试其他浏览器。",
-        variant: "destructive",
-      });
-    }
-  };
+  // const handleTouchStart = () => {
+  //   if (speechRecognitionAvailable && recognitionRef.current && !isRecording) {
+  //     setIsRecording(true);
+  //     recognitionRef.current.start();
+  //     toast({
+  //       title: "开始录音",
+  //       description: "请对着麦克风说话...",
+  //     });
+  //   } else if (!speechRecognitionAvailable) {
+  //     toast({
+  //       title: "不支持语音输入",
+  //       description: "您的浏览器不支持Web Speech API，请尝试其他浏览器。",
+  //       variant: "destructive",
+  //     });
+  //   }
+  // };
 
-  const handleTouchEnd = () => {
-    if (speechRecognitionAvailable && recognitionRef.current && isRecording) {
-      recognitionRef.current.stop();
-      toast({
-        title: "录音结束",
-        description: "正在识别中...",
-      });
-    }
-  };
+  // const handleTouchEnd = () => {
+  //   if (speechRecognitionAvailable && recognitionRef.current && isRecording) {
+  //     recognitionRef.current.stop();
+  //     toast({
+  //       title: "录音结束",
+  //       description: "正在识别中...",
+  //     });
+  //   }
+  // };
 
   const imageAspectRatio = isMobile ? (3 / 3) : (3 / 2);
 
@@ -397,7 +397,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           </div>
 
           {/* Microphone Button for Mobile Only */}
-          {isMobile && (
+          {/* {isMobile && (
             speechRecognitionAvailable ? (
               <Button
                 size="lg"
@@ -414,7 +414,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                 抱歉，您的浏览器不支持语音输入功能。
               </p>
             )
-          )}
+          )} */}
         </div>
 
         {/* Enlarged Image Dialog */}

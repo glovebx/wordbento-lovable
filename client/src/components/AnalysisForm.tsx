@@ -175,7 +175,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-4xl mx-auto px-4 mb-8 mt-4">
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="flex flex-wrap items-baseline gap-4">
                 <FormField
                   control={form.control}
                   name="sourceType"
