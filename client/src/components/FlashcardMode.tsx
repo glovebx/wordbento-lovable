@@ -18,6 +18,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import EnlargedImageCarouselDialog from '@/components/EnlargedImageCarouselDialog';
+import DraggableButton from './DraggableButton';
 
 interface FlashcardModeProps {
   wordData: WordDataType;
@@ -226,204 +227,227 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const imageAspectRatio = isMobile ? (3 / 3) : (3 / 2);
 
   return (
-    <div className="container mx-auto px-4 py-2 max-w-6xl">
-      <div className="flex flex-col items-center space-y-6">
-        {/* Status Bar */}
-        <div className="flex items-center justify-center gap-4">
-          {isMarkedForReview && (
-            <Badge variant="destructive">重点记忆</Badge>
-          )}
-          {isCorrect === true && (
-            <Badge variant="default" className="bg-green-500">
-              <CheckCircle className="h-4 w-4 mr-1" />
-              正确
-            </Badge>
-          )}
-          {isCorrect === false && (
-            <Badge variant="destructive">
-              <XCircle className="h-4 w-4 mr-1" />
-              错误 ({attempts}/{maxAttempts})
-            </Badge>
-          )}
-        </div>
+    <>
+      <div className="container mx-auto px-4 py-2 max-w-6xl">
+        <div className="flex flex-col items-center space-y-6">
+          {/* Status Bar */}
+          <div className="flex items-center justify-center gap-4">
+            {isMarkedForReview && (
+              <Badge variant="destructive">重点记忆</Badge>
+            )}
+            {isCorrect === true && (
+              <Badge variant="default" className="bg-green-500">
+                <CheckCircle className="h-4 w-4 mr-1" />
+                正确
+              </Badge>
+            )}
+            {isCorrect === false && (
+              <Badge variant="destructive">
+                <XCircle className="h-4 w-4 mr-1" />
+                错误 ({attempts}/{maxAttempts})
+              </Badge>
+            )}
+          </div>
 
-        {/* Image with Navigation */}
-        <div className="relative flex items-center justify-center w-full px-4 lg:max-w-6xl sm:max-w-4xl sm:mx-auto"> 
-          {/* Previous Button */}
-          <Button 
-            variant="outline"
-            size="icon"
-            onClick={() => {setIsSwitching(true); onPrevious();}}
-            className="absolute left-0 sm:left-4 z-10 hover:bg-muted" 
-            title="上一个单词"
-          >
-            <ArrowLeft className="h-6 w-6" />
-          </Button>
+          {/* Image with Navigation */}
+          <div className="relative flex items-center justify-center w-full px-4 lg:max-w-6xl sm:max-w-4xl sm:mx-auto"> 
+            {/* Previous/Next Buttons for Desktop */}
+            {!isMobile && (
+              <>
+                <Button 
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {setIsSwitching(true); onPrevious();}}
+                  className="absolute left-0 sm:left-4 z-10 hover:bg-muted" 
+                  title="上一个单词"
+                >
+                  <ArrowLeft className="h-6 w-6" />
+                </Button>
+                <Button 
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {setIsSwitching(true); onNext();}}
+                  className="absolute right-0 sm:right-4 z-10 hover:bg-muted"
+                  title="下一个单词"
+                >
+                  <ArrowRight className="h-6 w-6" />
+                </Button>
+              </>
+            )}
 
-          {/* Image Card */}
-          <Card className="w-full lg:max-w-5xl sm:max-w-2xl sm:mx-16">
-            <CardContent className="p-2">
-              {isSwitching ? (
-                <AspectRatio ratio={imageAspectRatio} className="bg-muted rounded-lg">
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-muted-foreground">加载中...</p>
-                  </div>
-                </AspectRatio>
-              ) : wordData.imageUrls && wordData.imageUrls.length > 0 ? (
-                <Carousel className="w-full">
-                  <CarouselContent>
-                    {wordData.imageUrls.map((url, index) => (
-                      <CarouselItem key={index}>
-                        <AspectRatio
-                          ratio={imageAspectRatio}
-                          className="bg-muted overflow-hidden rounded-lg cursor-pointer"
-                          onClick={() => handleImageClick(index)}
-                        >
-                          <img 
-                            src={url} 
-                            alt={`${wordData.word_text} - Image ${index + 1}`}
-                            loading="lazy"
-                            decoding="async"
-                            className="object-contain w-full h-full"
-                          />
-                        </AspectRatio>
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  {wordData.imageUrls.length > 1 && (
-                    <>
-                      <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
-                      <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
-                    </>
-                  )}
-                </Carousel>
-              ) : (
-                <AspectRatio ratio={imageAspectRatio} className="bg-muted rounded-lg">
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-muted-foreground">无可用图片</p>
-                  </div>
-                </AspectRatio>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Next Button */}
-          <Button 
-            variant="outline"
-            size="icon"
-            onClick={() => {setIsSwitching(true); onNext();}}
-            className="absolute right-0 sm:right-4 z-10 hover:bg-muted"
-            title="下一个单词"
-          >
-            <ArrowRight className="h-6 w-6" />
-          </Button>
-        </div>
-
-        {/* NEW: "详细" button and details section */}
-        <div className="w-full max-w-md flex flex-col items-center space-y-4">
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDetails(!showDetails)}
-                className="mt-4"
-            >
-                <Info className="h-4 w-4 mr-2" />
-                {showDetails ? '隐藏详细' : '显示详细'}
-            </Button>
-
-            <div className="text-center p-3 bg-muted rounded-lg w-full max-w-sm animate-fade-in">
-                {wordData.phonetic && (
-                    <p className="text-lg font-semibold text-foreground mb-1">
-                        /{wordData.phonetic}/
-                    </p>
+            {/* Image Card */}
+            <Card className="w-full lg:max-w-5xl sm:max-w-2xl sm:mx-16">
+              <CardContent className="p-2">
+                {isSwitching ? (
+                  <AspectRatio ratio={imageAspectRatio} className="bg-muted rounded-lg">
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-muted-foreground">加载中...</p>
+                    </div>
+                  </AspectRatio>
+                ) : wordData.imageUrls && wordData.imageUrls.length > 0 ? (
+                  <Carousel className="w-full">
+                    <CarouselContent>
+                      {wordData.imageUrls.map((url, index) => (
+                        <CarouselItem key={index}>
+                          <AspectRatio
+                            ratio={imageAspectRatio}
+                            className="bg-muted overflow-hidden rounded-lg cursor-pointer"
+                            onClick={() => handleImageClick(index)}
+                          >
+                            <img 
+                              src={url} 
+                              alt={`${wordData.word_text} - Image ${index + 1}`}
+                              loading="lazy"
+                              decoding="async"
+                              className="object-contain w-full h-full"
+                            />
+                          </AspectRatio>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    {wordData.imageUrls.length > 1 && (
+                      <>
+                        <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
+                        <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
+                      </>
+                    )}
+                  </Carousel>
+                ) : (
+                  <AspectRatio ratio={imageAspectRatio} className="bg-muted rounded-lg">
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-muted-foreground">无可用图片</p>
+                    </div>
+                  </AspectRatio>
                 )}
-              {showDetails && (
-                  <div>
-                      {wordData.meaning && (
-                          <p className="text-base text-muted-foreground">
-                              {wordData.meaning}
-                          </p>
-                      )}
-                      {(!wordData.meaning) && (
-                          <p className="text-sm text-muted-foreground">
-                              暂无详细信息
-                          </p>
-                      )}
-                  </div>
-              )}
-            </div>            
-        </div>
-
-
-        {/* Input Section */}
-        <div className="w-full max-w-sm space-y-4">
-          <div className="text-center">
-            <p className="text-lg font-medium mb-2">请输入该图片对应的单词</p>
-            <p className="text-sm text-muted-foreground">
-              剩余尝试次数: {maxAttempts - attempts}
-            </p>
-          </div>
-          
-          <div className="flex gap-2">
-                <Input
-              ref={answerInputRef} // Attach the ref to the Input component
-              value={userInput}
-              onChange={(e) => { setUserInput(e.target.value); lastUserInputRef.current = e.target.value; }}
-              onKeyPress={handleKeyPress}
-              placeholder="输入单词..."
-              disabled={isCorrect === true || attempts >= maxAttempts || isRecording} 
-              className="flex-1"
-            />
-            <Button
-              onClick={() => checkAnswer()}
-              disabled={!userInput.trim() || isCorrect === true || attempts >= maxAttempts || isRecording} 
-            >
-              确认
-            </Button>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Hint after first wrong attempt */}
-          {attempts > 0 && attempts < maxAttempts && !isCorrect && (
-            <div className="text-center p-3 bg-muted rounded-lg">
+          {/* NEW: "详细" button and details section */}
+          <div className="w-full max-w-md flex flex-col items-center space-y-4">
+              <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDetails(!showDetails)}
+                  className="mt-4"
+              >
+                  <Info className="h-4 w-4 mr-2" />
+                  {showDetails ? '隐藏详细' : '显示详细'}
+              </Button>
+
+              <div className="text-center p-3 bg-muted rounded-lg w-full max-w-sm animate-fade-in">
+                  {wordData.phonetic && (
+                      <p className="text-lg font-semibold text-foreground mb-1">
+                          /{wordData.phonetic}/
+                      </p>
+                  )}
+                {showDetails && (
+                    <div>
+                        {wordData.meaning && (
+                            <p className="text-base text-muted-foreground">
+                                {wordData.meaning}
+                            </p>
+                        )}
+                        {(!wordData.meaning) && (
+                            <p className="text-sm text-muted-foreground">
+                                暂无详细信息
+                            </p>
+                        )}
+                    </div>
+                )}
+              </div>            
+          </div>
+
+
+          {/* Input Section */}
+          <div className="w-full max-w-sm space-y-4">
+            <div className="text-center">
+              <p className="text-lg font-medium mb-2">请输入该图片对应的单词</p>
               <p className="text-sm text-muted-foreground">
-                提示: 单词长度为 {wordData.word_text.length} 个字母
+                剩余尝试次数: {maxAttempts - attempts}
               </p>
             </div>
+            
+            <div className="flex gap-2">
+                  <Input
+                ref={answerInputRef} // Attach the ref to the Input component
+                value={userInput}
+                onChange={(e) => { setUserInput(e.target.value); lastUserInputRef.current = e.target.value; }}
+                onKeyPress={handleKeyPress}
+                placeholder="输入单词..."
+                disabled={isCorrect === true || attempts >= maxAttempts || isRecording} 
+                className="flex-1"
+              />
+              <Button
+                onClick={() => checkAnswer()}
+                disabled={!userInput.trim() || isCorrect === true || attempts >= maxAttempts || isRecording} 
+              >
+                确认
+              </Button>
+            </div>
+
+            {/* Hint after first wrong attempt */}
+            {attempts > 0 && attempts < maxAttempts && !isCorrect && (
+              <div className="text-center p-3 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  提示: 单词长度为 {wordData.word_text.length} 个字母
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Microphone Button for Mobile Only */}
+          {isMobile && (
+            speechRecognitionAvailable ? (
+              <Button
+                size="lg"
+                className={`w-full max-w-xs h-16 rounded-full flex items-center justify-center space-x-2 text-lg font-bold mt-8
+                  ${isRecording ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-primary hover:bg-primary/90'}`}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
+                <Mic className="h-8 w-8" />
+                <span>{isRecording ? '正在录音...' : '按住说话'}</span>
+              </Button>
+            ) : (
+              <p className="text-sm text-red-500 mt-4 text-center">
+                抱歉，您的浏览器不支持语音输入功能。
+              </p>
+            )
           )}
         </div>
 
-        {/* Microphone Button for Mobile Only */}
-        {isMobile && (
-          speechRecognitionAvailable ? (
-            <Button
-              size="lg"
-              className={`w-full max-w-xs h-16 rounded-full flex items-center justify-center space-x-2 text-lg font-bold mt-8
-                ${isRecording ? 'bg-red-500 hover:bg-red-600 animate-pulse' : 'bg-primary hover:bg-primary/90'}`}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-            >
-              <Mic className="h-8 w-8" />
-              <span>{isRecording ? '正在录音...' : '按住说话'}</span>
-            </Button>
-          ) : (
-            <p className="text-sm text-red-500 mt-4 text-center">
-              抱歉，您的浏览器不支持语音输入功能。
-            </p>
-          )
-        )}
+        {/* Enlarged Image Dialog */}
+        {showEnlargedImageDialog && (
+          <EnlargedImageCarouselDialog
+            open={showEnlargedImageDialog}
+            onOpenChange={setShowEnlargedImageDialog}
+            imageUrls={wordData.imageUrls || []}
+            wordText={wordData.word_text}
+            initialIndex={selectedImageIndex}/>
+          )}
       </div>
 
-      {/* Enlarged Image Dialog */}
-      {showEnlargedImageDialog && (
-        <EnlargedImageCarouselDialog
-          open={showEnlargedImageDialog}
-          onOpenChange={setShowEnlargedImageDialog}
-          imageUrls={wordData.imageUrls || []}
-          wordText={wordData.word_text}
-          initialIndex={selectedImageIndex}
-        />
+      {/* Draggable Buttons for Mobile */}
+      {isMobile && (
+        <>
+          <DraggableButton
+            storageKey="prev-button-pos"
+            initialPosition={{ x: 20, y: window.innerHeight / 2 - 30 }}
+            onClick={() => {setIsSwitching(true); onPrevious();}}
+          >
+            <ArrowLeft className="h-6 w-6" />
+          </DraggableButton>
+          <DraggableButton
+            storageKey="next-button-pos"
+            initialPosition={{ x: window.innerWidth - 80, y: window.innerHeight / 2 - 30 }}
+            onClick={() => {setIsSwitching(true); onNext();}}
+          >
+            <ArrowRight className="h-6 w-6" />
+          </DraggableButton>
+        </>
       )}
-    </div>
+    </>
   );
 };
 
