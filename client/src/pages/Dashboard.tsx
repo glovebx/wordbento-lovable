@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Navigate } from "react-router-dom";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProfileSidebar } from "@/components/dashboard/MenuSidebar";
 import AnalysisHistory from "@/components/dashboard/AnalysisHistory";
@@ -9,9 +10,10 @@ import LearningStats from "@/components/dashboard/LearningStats"; // Import the 
 import { MobileNavigation } from "@/components/dashboard/MobileNavigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
+import LoadingFallback from "@/components/LoadingFallback";
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isSessionLoading } = useAuth();
   const [activeSection, setActiveSection] = useState<"learningStats" | "profile" | "history" | "wordHistory" | "wordManagement">("learningStats");
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const isMobile = useIsMobile();
@@ -19,6 +21,14 @@ const Dashboard = () => {
   const handleSelectSection = useCallback((section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => {
     setActiveSection(section);
   }, []);
+
+  if (isSessionLoading) {
+    return <LoadingFallback message="Authenticating..." />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -53,7 +63,7 @@ const Dashboard = () => {
         <div className="flex min-h-svh w-full">
           {!isMobile && (
             <ProfileSidebar
-              username={user?.username}
+              user={user}
               avatarSrc={avatarSrc}
               activeSection={activeSection}
               onSelectSection={handleSelectSection}
@@ -65,6 +75,8 @@ const Dashboard = () => {
           <SidebarInset>
             {isMobile && (
               <MobileNavigation 
+                user={user}
+                avatarSrc={avatarSrc}              
                 activeSection={activeSection} 
                 onSelectSection={handleSelectSection} 
               />

@@ -86,14 +86,20 @@ import {
 import { ProfileSidebar } from "@/components/dashboard/MenuSidebar";
 import { useState } from "react";
 
-interface MobileNavigationProps {
-  activeSection: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement";
-  onSelectSection: (section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => void;
-  username?: string | null;
-  avatarSrc?: string | null;
+interface User {
+  uuid: string;
+  username: string;
+  role: string;
 }
 
-export const MobileNavigation = ({ activeSection, onSelectSection, username, avatarSrc }: MobileNavigationProps) => {
+interface MobileNavigationProps {
+  user: User | null; // Changed to accept the full user object
+  avatarSrc?: string | null;  
+  activeSection: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement";
+  onSelectSection: (section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => void;
+}
+
+export const MobileNavigation = ({ activeSection, onSelectSection, user, avatarSrc }: MobileNavigationProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSelectSectionAndClose = (section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => {
@@ -124,7 +130,7 @@ export const MobileNavigation = ({ activeSection, onSelectSection, username, ava
           
           <div className="relative pt-12 pb-4 h-full"> {/* 留出顶部空间给关闭按钮 */}
             <ProfileSidebar 
-              username={username}
+              user={user}
               avatarSrc={avatarSrc}
               activeSection={activeSection}
               onSelectSection={handleSelectSectionAndClose} // 传递新的处理函数

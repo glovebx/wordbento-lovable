@@ -24,7 +24,10 @@ export const useLearningStats = () => {
   const { toast } = useToast();
 
   const fetchStats = useCallback(async (days: 7 | 15 | 30) => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setIsLoading(false); // If not authenticated, ensure loading is false.
+      return;
+    }
 
     setIsLoading(true);
     setError(null);

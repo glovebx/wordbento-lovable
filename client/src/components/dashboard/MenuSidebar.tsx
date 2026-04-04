@@ -1,17 +1,22 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  User,
+  User as UserIcon, // Renamed to avoid conflict with User type
   History,
   PlusCircle,
   ShieldCheck,
   BarChart2
 } from "lucide-react";
-import { useAuth } from '@/contexts/AuthContext';
+
+interface User {
+  uuid: string;
+  username: string;
+  role: string;
+}
 
 interface ProfileSidebarProps {
-  username?: string | null;
+  user: User | null; // Changed to accept the full user object
   avatarSrc?: string | null;
   activeSection: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement";
   onSelectSection: (section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => void;
@@ -20,14 +25,13 @@ interface ProfileSidebarProps {
 }
 
 export const ProfileSidebar = ({
-  username,
+  user,
   avatarSrc,
   activeSection,
   onSelectSection,
   onAvatarUpload,
   variant,
 }: ProfileSidebarProps) => {
-  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAvatarClick = () => {
@@ -36,36 +40,41 @@ export const ProfileSidebar = ({
     }
   };
 
-  const baseMenuItems = [
-    {
-      id: "learningStats",
-      title: "学习统计",
-      icon: <BarChart2 className="h-4 w-4" />,
-    },
-    {
-      id: "wordHistory",
-      title: "浏览历史",
-      icon: <History className="h-4 w-4" />,
-    },    
-    {
-      id: "history",
-      title: "解析历史",
-      icon: <History className="h-4 w-4" />,
-    },
-    {
-      id: "profile",
-      title: "安全设置",
-      icon: <User className="h-4 w-4" />,
-    },
-  ];
+  const menuItems = useMemo(() => {
+    const baseMenuItems = [
+      {
+        id: "learningStats",
+        title: "学习统计",
+        icon: <BarChart2 className="h-4 w-4" />,
+      },
+      {
+        id: "wordHistory",
+        title: "浏览历史",
+        icon: <History className="h-4 w-4" />,
+      },    
+      {
+        id: "history",
+        title: "解析历史",
+        icon: <History className="h-4 w-4" />,
+      },
+      {
+        id: "profile",
+        title: "安全设置",
+        icon: <UserIcon className="h-4 w-4" />,
+      },
+    ];
 
-  const adminMenuItem = {
-    id: "wordManagement",
-    title: "单词管理",
-    icon: <ShieldCheck className="h-4 w-4" />,
-  };
+    const adminMenuItem = {
+      id: "wordManagement",
+      title: "单词管理",
+      icon: <ShieldCheck className="h-4 w-4" />,
+    };
 
-  const menuItems = user?.role === 'admin' ? [...baseMenuItems, adminMenuItem] : baseMenuItems;
+    if (user?.role === 'admin') {
+      return [...baseMenuItems, adminMenuItem];
+    }
+    return baseMenuItems;
+  }, [user]); // Re-calculate only when the user object changes
 
   return (
     <div className="flex w-72 flex-col space-y-4 border-r px-4 py-8">
@@ -74,11 +83,11 @@ export const ProfileSidebar = ({
         <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
           <Avatar className="h-20 w-20 border-2 border-primary transition-transform duration-300 ease-in-out group-hover:scale-105">
             <AvatarImage
-              src={avatarSrc || `https://api.dicebear.com/7.x/bottts/svg?seed=${username || 'user'}`}
+              src={avatarSrc || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.username || 'user'}`}
               alt="User Avatar"
               className="object-cover"
             />
-            <AvatarFallback>{username ? username[0].toUpperCase() : 'U'}</AvatarFallback>
+            <AvatarFallback>{user?.username ? user.username[0].toUpperCase() : 'U'}</AvatarFallback>
           </Avatar>
           {variant === "profile" && (
             <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black bg-opacity-50 opacity-0 transition-opacity duration-300 ease-in-out group-hover:opacity-100">
@@ -93,7 +102,7 @@ export const ProfileSidebar = ({
           onChange={onAvatarUpload}
           style={{ display: "none" }}
         />
-        <h2 className="text-xl font-semibold">{username || "Guest"}</h2>
+        <h2 className="text-xl font-semibold">{user?.username || "Guest"}</h2>
       </div>
 
       <div className="flex-1 space-y-2 pt-8">
