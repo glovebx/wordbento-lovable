@@ -78,7 +78,8 @@ auth.post('/login', async (c) => {
   const expirationTtl = 3600000;
   // Generate a session ID and store session data in the KV store
   const sessionId = randomUUID();
-  const sessionData = { username: user.username, role: user.role, uuid: user.uuid };
+  // Include avatar in the session data
+  const sessionData = { username: user.username, role: user.role, uuid: user.uuid, avatar: user.avatar };
   const sessionDataKv = { id: user.id, ...sessionData }
   await c.env.WORDBENTO_KV.put(sessionId, JSON.stringify(sessionDataKv), { expirationTtl: expirationTtl });
   if (user.access_token) {

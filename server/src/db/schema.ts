@@ -8,6 +8,7 @@ export const users = sqliteTable("users", {
   password: text("password").notNull(),
   role: text("role").default("user").notNull(),
   salt: text("salt").notNull(),
+  avatar: text("avatar"),
   vip_level: integer('vip_level'),
   access_token: text("access_token"),
   created_at: text("created_at").default("CURRENT_TIMESTAMP"),

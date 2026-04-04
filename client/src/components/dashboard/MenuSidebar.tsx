@@ -8,16 +8,10 @@ import {
   ShieldCheck,
   BarChart2
 } from "lucide-react";
-
-interface User {
-  uuid: string;
-  username: string;
-  role: string;
-}
+import { User } from "@/contexts/AuthContext";
 
 interface ProfileSidebarProps {
-  user: User | null; // Changed to accept the full user object
-  avatarSrc?: string | null;
+  user: User | null;
   activeSection: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement";
   onSelectSection: (section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => void;
   onAvatarUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -26,7 +20,6 @@ interface ProfileSidebarProps {
 
 export const ProfileSidebar = ({
   user,
-  avatarSrc,
   activeSection,
   onSelectSection,
   onAvatarUpload,
@@ -35,7 +28,9 @@ export const ProfileSidebar = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAvatarClick = () => {
-    if (variant === "profile" && fileInputRef.current) {
+    // The `onAvatarUpload` prop is only passed in the dashboard variant, 
+    // so we can use its existence to trigger the file input.
+    if (onAvatarUpload && fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
@@ -83,7 +78,8 @@ export const ProfileSidebar = ({
         <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
           <Avatar className="h-20 w-20 border-2 border-primary transition-transform duration-300 ease-in-out group-hover:scale-105">
             <AvatarImage
-              src={avatarSrc || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.username || 'user'}`}
+              // Use avatar from user object first, then fallback to DiceBear
+              src={user?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${user?.username || 'user'}`}
               alt="User Avatar"
               className="object-cover"
             />

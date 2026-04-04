@@ -85,21 +85,16 @@ import {
 } from "@/components/ui/drawer";
 import { ProfileSidebar } from "@/components/dashboard/MenuSidebar";
 import { useState } from "react";
-
-interface User {
-  uuid: string;
-  username: string;
-  role: string;
-}
+import { User } from "@/contexts/AuthContext";
 
 interface MobileNavigationProps {
-  user: User | null; // Changed to accept the full user object
-  avatarSrc?: string | null;  
+  user: User | null;
   activeSection: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement";
   onSelectSection: (section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => void;
+  onAvatarUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-export const MobileNavigation = ({ activeSection, onSelectSection, user, avatarSrc }: MobileNavigationProps) => {
+export const MobileNavigation = ({ activeSection, onSelectSection, user, onAvatarUpload }: MobileNavigationProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSelectSectionAndClose = (section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => {
@@ -131,9 +126,9 @@ export const MobileNavigation = ({ activeSection, onSelectSection, user, avatarS
           <div className="relative pt-12 pb-4 h-full"> {/* 留出顶部空间给关闭按钮 */}
             <ProfileSidebar 
               user={user}
-              avatarSrc={avatarSrc}
               activeSection={activeSection}
               onSelectSection={handleSelectSectionAndClose} // 传递新的处理函数
+              onAvatarUpload={onAvatarUpload}
               variant="dashboard"
             />
           </div>

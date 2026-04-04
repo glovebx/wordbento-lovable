@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { getCookie } from 'hono/cookie';
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../db/schema';
 import { sql, eq, and, desc, getTableColumns, like } from 'drizzle-orm';
@@ -220,6 +221,44 @@ profile.post('/change-password', async (c) => {
   } catch (error) {
     console.error("Failed to change password:", error);
     return c.json({ message: 'An internal error occurred while changing the password.' }, 500);
+  }
+});
+
+profile.put('/avatar', async (c) => {
+  const user = c.get('user');
+  if (!user || !user.id) {
+    return c.json({ message: 'Unauthorized' }, 401);
+  }
+
+  const { avatar } = await c.req.json();
+  if (!avatar || !avatar.startsWith('data:image/')) {
+    return c.json({ message: 'Invalid avatar data' }, 400);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+
+  try {
+    await db.update(schema.users)
+      .set({ 
+        avatar: avatar,
+        updated_at: sql`CURRENT_TIMESTAMP`
+      })
+      .where(eq(schema.users.id, user.id));
+
+    // After updating the DB, we must also update the session data in KV store
+    const sessionId = getCookie(c, 'session_id');
+    if (sessionId) {
+      const sessionData = await c.env.WORDBENTO_KV.get(sessionId, { type: 'json' });
+      if (sessionData) {
+        const updatedSessionData = { ...sessionData, avatar: avatar };
+        await c.env.WORDBENTO_KV.put(sessionId, JSON.stringify(updatedSessionData));
+      }
+    }
+
+    return c.json({ message: 'Avatar updated successfully.' }, 200);
+  } catch (error) {
+    console.error("Failed to update avatar:", error);
+    return c.json({ message: 'Failed to update avatar.' }, 500);
   }
 });
 

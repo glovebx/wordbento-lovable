@@ -1,10 +1,11 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback, useRef } from 'react';
 import { axiosPrivate } from "@/lib/axios";
 
-interface User {
+export interface User {
   uuid: string;
   username: string;
   role: string;
+  avatar?: string | null; 
 }
 
 export interface AuthContextType {

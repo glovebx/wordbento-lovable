@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     password TEXT NOT NULL,
     role TEXT NOT NULL,
     salt TEXT NOT NULL,
+    avatar TEXT,
     vip_level INTEGER,
     access_token TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
