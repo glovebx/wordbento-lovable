@@ -43,19 +43,19 @@ export const ProfileSidebar = ({
       icon: <BarChart2 className="h-4 w-4" />,
     },
     {
-      id: "profile",
-      title: "个人中心",
-      icon: <User className="h-4 w-4" />,
-    },
+      id: "wordHistory",
+      title: "浏览历史",
+      icon: <History className="h-4 w-4" />,
+    },    
     {
       id: "history",
       title: "解析历史",
       icon: <History className="h-4 w-4" />,
     },
     {
-      id: "wordHistory",
-      title: "浏览历史",
-      icon: <History className="h-4 w-4" />,
+      id: "profile",
+      title: "安全设置",
+      icon: <User className="h-4 w-4" />,
     },
   ];
 

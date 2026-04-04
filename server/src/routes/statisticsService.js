@@ -1,40 +1,45 @@
 import { sql, and, eq, gte, lte, count, desc } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 
-const getDateRange = (days) => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days + 1);
-    endDate.setHours(23, 59, 59, 999);
-    startDate.setHours(0, 0, 0, 0);
-    return { startDate, endDate };
+const toLocalDateString = (date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 const getDailyCounts = async (db, userId, days) => {
-    const { startDate, endDate } = getDateRange(days);
-    
+    // Define a query window slightly wider to be safe with timezones.
+    const queryEndDate = new Date();
+    const queryStartDate = new Date();
+    queryStartDate.setDate(queryEndDate.getDate() - days);
+
+    // Get daily counts from DB, grouped by the DB's local time.
     const results = await db.select({
-        date: sql`strftime('%Y-%m-%d', ${schema.word_views.created_at})`,
+        date: sql`strftime('%Y-%m-%d', ${schema.word_views.created_at}, 'localtime')`,
         count: sql`count(DISTINCT ${schema.word_views.word_id})`
     })
     .from(schema.word_views)
     .where(and(
         eq(schema.word_views.user_id, userId),
-        gte(schema.word_views.created_at, startDate.toISOString()),
-        lte(schema.word_views.created_at, endDate.toISOString())
+        gte(schema.word_views.created_at, queryStartDate.toISOString()),
+        lte(schema.word_views.created_at, queryEndDate.toISOString())
     ))
-    .groupBy(sql`strftime('%Y-%m-%d', ${schema.word_views.created_at})`)
-    .orderBy(sql`strftime('%Y-%m-%d', ${schema.word_views.created_at})`);
+    .groupBy(sql`strftime('%Y-%m-%d', ${schema.word_views.created_at}, 'localtime')`);
 
-    // Create a map of dates to counts for easy lookup
+    // Create a map of the results for easy lookup.
     const countsMap = new Map(results.map(r => [r.date, r.count]));
     
-    // Fill in missing dates with a count of 0
+    // Generate the final array for the last `days`, using local dates.
     const finalCounts = [];
+    const loopStartDate = new Date();
+    loopStartDate.setDate(loopStartDate.getDate() - days + 1);
+
     for (let i = 0; i < days; i++) {
-        const d = new Date(startDate);
-        d.setDate(startDate.getDate() + i);
-        const dateString = d.toISOString().split('T')[0];
+        const currentDate = new Date(loopStartDate);
+        currentDate.setDate(loopStartDate.getDate() + i);
+        
+        const dateString = toLocalDateString(currentDate);
         finalCounts.push({
             date: dateString,
             count: countsMap.get(dateString) || 0
@@ -45,34 +50,27 @@ const getDailyCounts = async (db, userId, days) => {
 };
 
 const getTodayYesterdayCount = async (db, userId) => {
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
+    const todayDateStr = toLocalDateString(new Date());
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayDateStr = toLocalDateString(yesterdayDate);
 
-    const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-    const todayEnd = new Date(today.setHours(23, 59, 59, 999)).toISOString();
-    const yesterdayStart = new Date(yesterday.setHours(0, 0, 0, 0)).toISOString();
-    const yesterdayEnd = new Date(yesterday.setHours(23, 59, 59, 999)).toISOString();
+    const results = await db.select({
+        date: sql`strftime('%Y-%m-%d', ${schema.word_views.created_at}, 'localtime')`,
+        count: sql`count(DISTINCT ${schema.word_views.word_id})`
+    })
+    .from(schema.word_views)
+    .where(and(
+        eq(schema.word_views.user_id, userId),
+        sql`strftime('%Y-%m-%d', ${schema.word_views.created_at}, 'localtime') IN (${todayDateStr}, ${yesterdayDateStr})`
+    ))
+    .groupBy(sql`strftime('%Y-%m-%d', ${schema.word_views.created_at}, 'localtime')`);
 
-    const todayResult = await db.select({ count: sql`count(DISTINCT ${schema.word_views.word_id})` })
-        .from(schema.word_views)
-        .where(and(
-            eq(schema.word_views.user_id, userId),
-            gte(schema.word_views.created_at, todayStart),
-            lte(schema.word_views.created_at, todayEnd)
-        ));
-
-    const yesterdayResult = await db.select({ count: sql`count(DISTINCT ${schema.word_views.word_id})` })
-        .from(schema.word_views)
-        .where(and(
-            eq(schema.word_views.user_id, userId),
-            gte(schema.word_views.created_at, yesterdayStart),
-            lte(schema.word_views.created_at, yesterdayEnd)
-        ));
+    const countsMap = new Map(results.map(r => [r.date, r.count]));
 
     return {
-        today: todayResult[0]?.count || 0,
-        yesterday: yesterdayResult[0]?.count || 0,
+        today: countsMap.get(todayDateStr) || 0,
+        yesterday: countsMap.get(yesterdayDateStr) || 0,
     };
 };
 
