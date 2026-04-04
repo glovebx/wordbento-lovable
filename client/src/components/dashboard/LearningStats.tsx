@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useLearningStats, LearningStatsData } from '@/hooks/use-learning-stats';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, BarChart2 } from 'lucide-react';
+import { Loader2, Users, BarChart2, Home } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 const StatCard = ({ title, value, icon }: { title: string, value: string | number, icon: React.ReactNode }) => (
@@ -49,26 +50,37 @@ const LearningStats: React.FC = () => {
     }
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <StatCard title="Today's Words" value={stats.today} icon={<BarChart2 className="h-4 w-4 text-muted-foreground" />} />
-                <StatCard title="Yesterday's Words" value={stats.yesterday} icon={<BarChart2 className="h-4 w-4 text-muted-foreground" />} />
-                <StatCard title="Your Rank" value={`${stats.rank} / ${stats.totalUsers}`} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+        <div className="p-6 flex flex-col gap-6">
+            <div className="flex justify-end">
+                <Button variant="outline" asChild>
+                    <Link to="/" className="flex items-center gap-2">
+                        <Home className="h-4 w-4" />
+                        Back to Home
+                    </Link>
+                </Button>
             </div>
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle>Learning Curve</CardTitle>
-                    <div className="space-x-2">
-                        <Button variant={days === 7 ? 'secondary' : 'outline'} onClick={() => setDays(7)}>7 Days</Button>
-                        <Button variant={days === 15 ? 'secondary' : 'outline'} onClick={() => setDays(15)}>15 Days</Button>
-                        <Button variant={days === 30 ? 'secondary' : 'outline'} onClick={() => setDays(30)}>30 Days</Button>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <LearningCurveChart data={stats.dailyCounts} />
-                </CardContent>
-            </Card>
+            <div className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <StatCard title="Today's Words" value={stats.today} icon={<BarChart2 className="h-4 w-4 text-muted-foreground" />} />
+                    <StatCard title="Yesterday's Words" value={stats.yesterday} icon={<BarChart2 className="h-4 w-4 text-muted-foreground" />} />
+                    <StatCard title="Your Rank" value={`${stats.rank} / ${stats.totalUsers}`} icon={<Users className="h-4 w-4 text-muted-foreground" />} />
+                </div>
+
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>Learning Curve</CardTitle>
+                        <div className="space-x-2">
+                            <Button variant={days === 7 ? 'secondary' : 'outline'} onClick={() => setDays(7)}>7 Days</Button>
+                            <Button variant={days === 15 ? 'secondary' : 'outline'} onClick={() => setDays(15)}>15 Days</Button>
+                            <Button variant={days === 30 ? 'secondary' : 'outline'} onClick={() => setDays(30)}>30 Days</Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <LearningCurveChart data={stats.dailyCounts} />
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 };
