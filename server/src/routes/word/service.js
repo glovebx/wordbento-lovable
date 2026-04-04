@@ -183,7 +183,7 @@ export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
 
   if (wordDetails) {
     const wordData = formatDbResultToWordResponse(c, wordDetails.word, wordDetails.contentRecords, wordDetails.imageRecords);
-    await log2WordViews(db, userId, wordDetails.word.id);
+    c.executionCtx.waitUntil(log2WordViews(db, userId, wordDetails.word.id));
     return c.json(wordData, 200);
   }
 

@@ -1,12 +1,64 @@
 import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
-// The schema object itself is usually defined in a separate file and imported for drizzle initialization
-import * as schema from '../db/schema'; // Keep schema import for drizzle initialization
-import { sql, eq, and, desc } from 'drizzle-orm'; // Import sql tag for raw SQL fragments like RANDOM() and LIKE
+import * as schema from '../db/schema';
+import { sql, eq, and, desc, getTableColumns, like } from 'drizzle-orm';
 import { generateSalt, hashPassword, verifyPassword, bufferToHex, hexToBuffer } from '../utils/passwords';
 
-
 const profile = new Hono();
+
+// Endpoint to get user's word view history
+profile.get('/view-history', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Unauthorized' }, 401);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+  const { page = '1', limit = '20', query = '' } = c.req.query();
+  const pageNum = parseInt(page, 10);
+  const limitNum = parseInt(limit, 10);
+  const offset = (pageNum - 1) * limitNum;
+
+  try {
+    const { id: wordId, ...restWordColumns } = getTableColumns(schema.words);
+
+    // Base query conditions
+    const conditions = [eq(schema.word_views.user_id, user.id)];
+    if (query) {
+      conditions.push(like(schema.words.word_text, `%${query}%`));
+    }
+
+    const historyRecords = await db
+      .select({
+        id: schema.word_views.id, // Use the view's ID as the primary key for the row
+        wordId: schema.words.id, // Keep the word's ID as wordId
+        viewedAt: schema.word_views.created_at,
+        ...restWordColumns
+      })
+      .from(schema.word_views)
+      .leftJoin(schema.words, eq(schema.word_views.word_id, schema.words.id))
+      .where(and(...conditions))
+      .orderBy(desc(schema.word_views.created_at))
+      .limit(limitNum)
+      .offset(offset);
+
+    const totalResult = await db.select({ count: sql`count(*)` }).from(schema.word_views)
+      .leftJoin(schema.words, eq(schema.word_views.word_id, schema.words.id))
+      .where(and(...conditions));
+      
+    const total = totalResult[0].count;
+
+    return c.json({
+      data: historyRecords,
+      totalPages: Math.ceil(total / limitNum),
+      currentPage: pageNum,
+    }, 200);
+
+  } catch (error) {
+    console.error("Failed to fetch word view history:", error);
+    return c.json({ message: 'Failed to fetch history.' }, 500);
+  }
+});
 
 profile.get('/token/get', async (c) => {
   const user = c.get('user');

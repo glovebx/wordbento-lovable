@@ -1,3 +1,4 @@
+import { and, eq, gt, desc } from 'drizzle-orm';
 import * as schema from '../db/schema';
 
 export const formatDbResultToWordResponse = (c, word, contentRecords, imageRecords) => {
@@ -47,8 +48,25 @@ export const mapGeminiToDbContent = (word_id, geminiData) => {
 
 export const log2WordViews = async (db, userId, wordId) => {
     if (!userId || !wordId) return;
+
     try {
-        await db.insert(schema.word_views).values({ user_id: userId, word_id: wordId });
+        // Calculate the timestamp for one hour ago.
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+        // Check for a recent view within the last hour.
+        const recentView = await db.select()
+            .from(schema.word_views)
+            .where(and(
+                eq(schema.word_views.user_id, userId),
+                eq(schema.word_views.word_id, wordId),
+                gt(schema.word_views.created_at, oneHourAgo.toISOString())
+            ))
+            .limit(1);
+
+        // If no recent view is found, insert a new record.
+        if (recentView.length === 0) {
+            await db.insert(schema.word_views).values({ user_id: userId, word_id: wordId });
+        }
     } catch (error) {
         console.error('Error logging word view:', error);
     }
