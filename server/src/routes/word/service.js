@@ -11,7 +11,7 @@ import { generateImageByAi } from './ai';
 import { checkAndConsumeFreeQuota } from '../../utils/security';
 import { NavigationMode } from '../../utils/constants';
 import { generateWordCard } from '../../utils/aiService';
-import { formatDbResultToWordResponse, log2WordViews } from '../../utils/dbUtils';
+import { formatDbResultToWordResponse } from '../../utils/dbUtils';
 
 /**
  * 应用归档过滤（排除已归档的单词）
@@ -183,7 +183,6 @@ export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
 
   if (wordDetails) {
     const wordData = formatDbResultToWordResponse(c, wordDetails.word, wordDetails.contentRecords, wordDetails.imageRecords);
-    c.executionCtx.waitUntil(log2WordViews(db, userId, wordDetails.word.id));
     return c.json(wordData, 200);
   }
 

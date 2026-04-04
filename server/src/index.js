@@ -10,6 +10,7 @@ import upload from './routes/upload.js';
 import llm from './routes/llm.js';
 import profile from './routes/profile.js';
 import admin from './routes/admin.js';
+import statistics from './routes/statistics.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = new Hono();
@@ -117,6 +118,7 @@ app.route('/api/analyze', analyze);
 app.route('/api/llm', llm);
 app.route('/api/profile', profile);
 app.route('/api/admin', admin);
+app.route('/api/statistics', statistics);
 
 // app.route('/api/rss', rss);
 

@@ -5,15 +5,16 @@ import {
   User,
   History,
   PlusCircle,
-  ShieldCheck
+  ShieldCheck,
+  BarChart2
 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProfileSidebarProps {
   username?: string | null;
   avatarSrc?: string | null;
-  activeSection: "profile" | "history" | "wordHistory" | "wordManagement";
-  onSelectSection: (section: "profile" | "history" | "wordHistory" | "wordManagement") => void;
+  activeSection: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement";
+  onSelectSection: (section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => void;
   onAvatarUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   variant: "history" | "profile" | "dashboard";
 }
@@ -36,6 +37,11 @@ export const ProfileSidebar = ({
   };
 
   const baseMenuItems = [
+    {
+      id: "learningStats",
+      title: "学习统计",
+      icon: <BarChart2 className="h-4 w-4" />,
+    },
     {
       id: "profile",
       title: "个人中心",
@@ -96,7 +102,7 @@ export const ProfileSidebar = ({
             key={item.id}
             variant={activeSection === item.id ? "secondary" : "ghost"}
             className="w-full justify-start"
-            onClick={() => onSelectSection(item.id as "profile" | "history" | "wordHistory" | "wordManagement")}>
+            onClick={() => onSelectSection(item.id as "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement")}>
             <span className="mr-2">{item.icon}</span>
             {item.title}
           </Button>

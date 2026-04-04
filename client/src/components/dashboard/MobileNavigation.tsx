@@ -87,8 +87,8 @@ import { ProfileSidebar } from "@/components/dashboard/MenuSidebar";
 import { useState } from "react";
 
 interface MobileNavigationProps {
-  activeSection: "profile" | "history" | "wordHistory" | "wordManagement";
-  onSelectSection: (section: "profile" | "history" | "wordHistory" | "wordManagement") => void;
+  activeSection: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement";
+  onSelectSection: (section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => void;
   username?: string | null;
   avatarSrc?: string | null;
 }
@@ -96,8 +96,7 @@ interface MobileNavigationProps {
 export const MobileNavigation = ({ activeSection, onSelectSection, username, avatarSrc }: MobileNavigationProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // 点击菜单项后，关闭抽屉并执行onSelectSection
-  const handleSelectSectionAndClose = (section: "profile" | "history" | "wordHistory" | "wordManagement") => {
+  const handleSelectSectionAndClose = (section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => {
     onSelectSection(section);
     setIsOpen(false);
   };  

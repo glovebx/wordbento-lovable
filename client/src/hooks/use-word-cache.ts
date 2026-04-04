@@ -13,7 +13,10 @@ export enum NavigationMode {
     Previous = -1,
 }
 
+import { useAuth } from '@/contexts/AuthContext';
+
 export const useWordCache = () => {
+    const { isAuthenticated } = useAuth();
     const wordCacheRef = useRef<Map<string, WordDataType>>(new Map());
     const cacheOrderRef = useRef<string[]>([]);
     const cachePrefetchRef = useRef<string[]>([]);
@@ -141,6 +144,15 @@ export const useWordCache = () => {
                 setCurrentWord(data);
                 addToCache(data.word_text, data);
                 setIsLoading(false);
+
+                // After successfully fetching a word, log the view
+                if (isAuthenticated && data.id) {
+                    axiosPrivate.post('/api/profile/log-view', { wordId: data.id })
+                      .catch(err => {
+                        // Don't bother the user, just log it for developers
+                        console.error("Fire-and-forget logging failed:", err);
+                      });
+                }
             } else {
                 // Should not happen with 200 OK, but as a fallback
                 setError(mode === NavigationMode.Search ? `'${nextSlug}' not found.`: 'No word found.');
@@ -159,10 +171,20 @@ export const useWordCache = () => {
     useEffect(() => {
         if (taskResult) {
             if (taskResult.status === 'completed' && taskResult.data) {
-                setCurrentWord(taskResult.data);
-                addToCache(taskResult.data.word_text, taskResult.data);
+                const data = taskResult.data;
+                setCurrentWord(data);
+                addToCache(data.word_text, data);
                 setIsLoading(false);
                 setTaskId(null);
+
+                // After successfully generating a word, log the view
+                if (isAuthenticated && data.id) {
+                    axiosPrivate.post('/api/profile/log-view', { wordId: data.id })
+                        .catch(err => {
+                            // Don't bother the user, just log it for developers
+                            console.error("Fire-and-forget logging failed:", err);
+                        });
+                }
             } else if (taskResult.status === 'failed') {
                 setError(taskResult.error || 'Failed to generate word.');
                 setCurrentWord(null);

@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../db/schema';
 import { sql, eq, and, desc, getTableColumns, like } from 'drizzle-orm';
 import { generateSalt, hashPassword, verifyPassword, bufferToHex, hexToBuffer } from '../utils/passwords';
+import { log2WordViews } from '../utils/dbUtils';
 
 const profile = new Hono();
 
@@ -220,6 +221,28 @@ profile.post('/change-password', async (c) => {
     console.error("Failed to change password:", error);
     return c.json({ message: 'An internal error occurred while changing the password.' }, 500);
   }
+});
+
+// Endpoint to log a word view
+profile.post('/log-view', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    // Even if it's a fire-and-forget, we can return early if no user.
+    return c.json({ message: 'Unauthorized' }, 401);
+  }
+
+  const { wordId } = await c.req.json();
+  if (!wordId || typeof wordId !== 'number') {
+    return c.json({ message: 'Invalid wordId provided.' }, 400);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+
+  // Use waitUntil to not block the client and ensure the log is written
+  c.executionCtx.waitUntil(log2WordViews(db, user.id, wordId));
+
+  // Respond immediately to the client
+  return c.json({ message: 'Log received.' }, 202); 
 });
 
 

@@ -4,18 +4,19 @@ import { ProfileSidebar } from "@/components/dashboard/MenuSidebar";
 import AnalysisHistory from "@/components/dashboard/AnalysisHistory";
 import UserProfile from "@/components/dashboard/UserProfile";
 import WordHistory from "@/components/dashboard/WordHistory";
-import WordManagement from "@/components/dashboard/WordManagement"; // Import the new component
+import WordManagement from "@/components/dashboard/WordManagement";
+import LearningStats from "@/components/dashboard/LearningStats"; // Import the new component
 import { MobileNavigation } from "@/components/dashboard/MobileNavigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [activeSection, setActiveSection] = useState<"profile" | "history" | "wordHistory" | "wordManagement">("profile");
+  const [activeSection, setActiveSection] = useState<"learningStats" | "profile" | "history" | "wordHistory" | "wordManagement">("learningStats");
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
-  const handleSelectSection = useCallback((section: "profile" | "history" | "wordHistory" | "wordManagement") => {
+  const handleSelectSection = useCallback((section: "learningStats" | "profile" | "history" | "wordHistory" | "wordManagement") => {
     setActiveSection(section);
   }, []);
 
@@ -32,15 +33,17 @@ const Dashboard = () => {
 
   const renderContent = () => {
     switch (activeSection) {
+      case "profile":
+        return <UserProfile />;
       case "history":
         return <AnalysisHistory />;
       case "wordHistory":
         return <WordHistory />;
       case "wordManagement":
         return <WordManagement />;
-      case "profile":        
+      case "learningStats":
       default:
-        return <UserProfile />;
+        return <LearningStats />;
     }
   };
 
@@ -55,7 +58,7 @@ const Dashboard = () => {
               activeSection={activeSection}
               onSelectSection={handleSelectSection}
               onAvatarUpload={handleAvatarUpload}
-              variant="dashboard" // 新增 variant prop，用于控制菜单显示
+              variant="dashboard"
             />
           )}
           
