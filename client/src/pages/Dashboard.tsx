@@ -2,18 +2,19 @@ import { useState, useCallback } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProfileSidebar } from "@/components/dashboard/MenuSidebar";
 import AnalysisHistory from "@/components/dashboard/AnalysisHistory";
-import UserProfile from "@/components/dashboard/UserProfile"; // 假设 UserProfile 页面组件
+import UserProfile from "@/components/dashboard/UserProfile";
+import WordHistory from "@/components/dashboard/WordHistory";
 import { MobileNavigation } from "@/components/dashboard/MobileNavigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [activeSection, setActiveSection] = useState<"profile" | "history">("profile");
+  const [activeSection, setActiveSection] = useState<"profile" | "history" | "wordHistory">("profile");
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
-  const handleSelectSection = useCallback((section: "profile" | "history") => {
+  const handleSelectSection = useCallback((section: "profile" | "history" | "wordHistory") => {
     setActiveSection(section);
   }, []);
 
@@ -32,6 +33,8 @@ const Dashboard = () => {
     switch (activeSection) {
       case "history":
         return <AnalysisHistory />;
+      case "wordHistory":
+        return <WordHistory />;
       case "profile":        
       default:
         return <UserProfile />;

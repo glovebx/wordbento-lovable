@@ -8,6 +8,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Dashboard from "./pages/Dashboard";
+
 import Footer from "./components/Footer";
 // import AppInitializer from "./AppInitializer";
 // import AnalysisHistory from "./components/dashboard/AnalysisHistory";

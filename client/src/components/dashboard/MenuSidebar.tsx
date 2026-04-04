@@ -104,8 +104,8 @@ import {
 interface ProfileSidebarProps {
   username?: string | null;
   avatarSrc?: string | null;
-  activeSection: "profile" | "history";
-  onSelectSection: (section: "profile" | "history") => void;
+  activeSection: "profile" | "history" | "wordHistory";
+  onSelectSection: (section: "profile" | "history" | "wordHistory") => void;
   onAvatarUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   variant: "history" | "profile" | "dashboard";
 }
@@ -135,6 +135,11 @@ export const ProfileSidebar = ({
     {
       id: "history",
       title: "解析历史",
+      icon: <History className="h-4 w-4" />,
+    },
+    {
+      id: "wordHistory",
+      title: "浏览历史",
       icon: <History className="h-4 w-4" />,
     },
   ];
@@ -174,8 +179,7 @@ export const ProfileSidebar = ({
             key={item.id}
             variant={activeSection === item.id ? "secondary" : "ghost"}
             className="w-full justify-start"
-            onClick={() => onSelectSection(item.id as "profile" | "history")}
-          >
+            onClick={() => onSelectSection(item.id as "profile" | "history" | "wordHistory")}>
             <span className="mr-2">{item.icon}</span>
             {item.title}
           </Button>

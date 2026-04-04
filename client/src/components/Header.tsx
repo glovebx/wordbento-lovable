@@ -101,8 +101,6 @@ const Header: React.FC<HeaderProps> = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={handleNavigateToDashboard}>个人中心</DropdownMenuItem>
-                  {/* <DropdownMenuItem onClick={handleNavigateToAnalysisHistory}>解析历史</DropdownMenuItem> */}
-                  {/* <DropdownMenuItem>学习记录</DropdownMenuItem> */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout}>退出登录</DropdownMenuItem>
                 </DropdownMenuContent>
