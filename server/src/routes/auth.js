@@ -13,8 +13,9 @@ const randomUUID = () => crypto.randomUUID();
 
 // User registration route
 auth.post('/register', async (c) => {
-  const { username, email, password, role = 'admin' } = await c.req.json();
+  const { username, email, password } = await c.req.json();
 
+  const role = 'user';
   const uuid = randomUUID();
   // Validate required fields
   if (!username || !email || !password) {
@@ -42,7 +43,9 @@ auth.post('/register', async (c) => {
     .bind(uuid, username, email, hashedPassword, saltHex, role)
     .run();
 
-  return c.json({ message: 'User registered successfully.' }, 201);
+  const sessionData = { username: username, role: role, uuid: uuid };  
+
+  return c.json({ message: 'User registered successfully.', user: sessionData }, 201);
 });
 
 // User login route

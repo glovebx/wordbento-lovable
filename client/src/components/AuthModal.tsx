@@ -115,8 +115,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
           title: "注册成功",
           description: `欢迎，${username}！`,
         });
-        onSuccess?.();
-        onClose();
+        // onSuccess?.();
+        // onClose();
+        setIsLogin(true);
       } else {
         // Handle registration failure (e.g., username/email already exists, weak password)
         // The register function in useAuth should return false or throw an error on failure
@@ -167,17 +168,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password-confirm">确认密码</Label>
-                <Input
-                  id="password-confirm"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="再次输入您的密码"
-                  required
-                />
-              </div>
             </>
           )}
 
@@ -193,6 +183,21 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
             />
           </div>
 
+          {!isLogin && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="password-confirm">确认密码</Label>
+                <Input
+                  id="password-confirm"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="再次输入您的密码"
+                  required
+                />
+              </div>
+            </>
+          )}
 
           <DialogFooter className="sm:justify-between flex flex-col sm:flex-row gap-2">
             <Button

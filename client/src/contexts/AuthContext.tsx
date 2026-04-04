@@ -131,7 +131,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // console.log('AuthContext: Register API response data:', response.data);
 
         if (response.data?.user) {
-          setUser(response.data.user as User);
+          // 让用户再次点击登录
+          setUser(null);
+          // setUser(response.data.user as User);
           // console.log('AuthContext: Registration successful, user set directly from register response.');
           // await refreshSession(); // Re-verify session after successful registration
           return true;

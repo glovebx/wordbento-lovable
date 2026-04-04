@@ -25,7 +25,7 @@ app.use('*', async (c, next) => {
 });
 
 // CORS Middleware
-const allowedOrigins = ['https://word.metaerp.ai', 'http://localhost:1234', 'http://192.168.3.58:1234', 'chrome-extension://dkmnlmelobggkpdmohjolalceieckfjj'];
+const allowedOrigins = ['https://word.metaerp.ai', 'http://192.168.3.58:1234', 'chrome-extension://dkmnlmelobggkpdmohjolalceieckfjj'];
 
 app.use(
   '*',
