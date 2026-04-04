@@ -25,6 +25,8 @@ import {
 // Import the useNavigate hook from react-router-dom
 import { useNavigate } from 'react-router-dom';
 
+import AndroidInstallGuide from './AndroidInstallGuide'; // Import the new component
+
 interface HeaderProps {
   viewMode: 'grid' | 'flashcard';
   onViewModeChange: (mode: 'grid' | 'flashcard') => void;  
@@ -40,7 +42,10 @@ const Header: React.FC<HeaderProps> = ({
     promptInstall, 
     showInstallButton,
     showIOSTutorial, 
-    setShowIOSTutorial 
+    setShowIOSTutorial,
+    showAndroidGuide, // Get new state
+    setShowAndroidGuide, // Get new state setter
+    isNonStandardBrowser // Get new flag
   } = usePwaInstall();
 
   // Get the navigate function from react-router-dom
@@ -87,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({
                 className="hidden sm:inline-flex items-center"
               >
                 <Download className="h-4 w-4 mr-2" />
-                <span>安装应用</span>
+                <span>{isNonStandardBrowser ? '添加到桌面' : '安装应用'}</span>
               </Button>
             )}
 
@@ -135,6 +140,8 @@ const Header: React.FC<HeaderProps> = ({
           </DialogHeader>
         </DialogContent>
       </Dialog>
+
+      <AndroidInstallGuide open={showAndroidGuide} onOpenChange={setShowAndroidGuide} />
     </header>
   );
 };

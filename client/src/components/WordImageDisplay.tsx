@@ -77,6 +77,8 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   onPrevious,
 }) => {
   const isTouchDevice = useIsTouchDevice();
+  // Get English examples for the dialog
+  const englishExamples = word?.content?.examples?.en || [];
   // State to control the visibility of the ENLARGED image dialog
   const [showEnlargedImageDialog, setShowEnlargedImageDialog] = useState(false);
   // State to store the index of the image clicked in the small carousel
@@ -90,7 +92,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
 
   // State for the new example selection dialog
   const [showExampleDialog, setShowExampleDialog] = useState(false);
-  const [selectedExample, setSelectedExample] = useState<string | null>(null);
+  const [selectedExampleIndex, setSelectedExampleIndex] = useState<number | null>(null);
 
   // Effect to update internal imageUrls state when initialImageUrls prop changes
   useEffect(() => {
@@ -122,42 +124,54 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
 
   // Handler for the "Generate Images" button click
   const handleGenerateButtonClick = useCallback(async () => {
+    console.log('handleGenerateButtonClick-1');
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
     }
 
+    console.log('handleGenerateButtonClick-2');
+
     const examples = word?.content?.examples?.en;
     if (examples && Array.isArray(examples) && examples.length > 0) {
-      if (!selectedExample) {
-        setSelectedExample(examples[0]);
+      console.log('handleGenerateButtonClick - 3');
+      if (selectedExampleIndex === null) {
+        setSelectedExampleIndex(0); // Default to the first example
+        console.log('handleGenerateButtonClick - 5');
       }
       setShowExampleDialog(true);
+      console.log('handleGenerateButtonClick - 6');
     } else {
+      console.log('handleGenerateButtonClick - 4');
       // console.log("No examples found or examples not in expected array format, generating image with word only.");
       if (typeof requestGenerateImages === 'function') {
         requestGenerateImages(word.word_text, '', true);
       }
     }        
-  }, [isAuthenticated, requestGenerateImages, word, selectedExample, onImagesGenerated]);
+    console.log('handleGenerateButtonClick - 9');
+  }, [isAuthenticated, requestGenerateImages, word, selectedExampleIndex, onImagesGenerated]);
 
 
   // Handler when an example is selected in the dialog and confirmed
   const handleExampleSelected = useCallback(async () => {
-      if (!selectedExample) {
+      if (selectedExampleIndex === null) {
           console.warn("No example selected.");
           return;
       }
+      const example = englishExamples[selectedExampleIndex];
+      if (!example) {
+        console.error("Selected example index is out of bounds.");
+        return;
+      }
 
       setShowExampleDialog(false); // Close the example selection dialog
-      setSelectedExample(null); // Reset selected example state
-
-      // console.log(`Generating image for word "${word.word_text}" with example: "${selectedExample}"`);
 
       if (typeof requestGenerateImages === 'function') {
-        requestGenerateImages(word.word_text, selectedExample, true);
+        requestGenerateImages(word.word_text, example, true);
       }
-  }, [requestGenerateImages, word, selectedExample, onImagesGenerated]);
+      
+      setSelectedExampleIndex(null); // Reset selected example state after using it
+  }, [requestGenerateImages, word, selectedExampleIndex, englishExamples]);
 
   // When parent passes generatedImageUrls, update internal imageUrls and notify via onImagesGenerated
   useEffect(() => {
@@ -180,8 +194,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   // Determine if we should show the small Carousel
   const showSmallCarousel = imageUrls && imageUrls.length > 0;
 
-  // Get English examples for the dialog
-  const englishExamples = word?.content?.examples?.en || [];
+
 
   return (
     <>
@@ -278,15 +291,19 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
 
       {/* Example Selection Dialog */}
       <Dialog open={showExampleDialog} onOpenChange={setShowExampleDialog}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent aria-describedby={undefined} className="sm:max-w-[600px]">
               <DialogHeader>
                   <DialogTitle>选择一个例句生成图片</DialogTitle>
               </DialogHeader>
               {englishExamples && Array.isArray(englishExamples) && englishExamples.length > 0 ? (
-                  <RadioGroup onValueChange={setSelectedExample} value={selectedExample || undefined} className="max-h-[300px] overflow-y-auto pr-4">
+                  <RadioGroup 
+                    onValueChange={(value) => setSelectedExampleIndex(Number(value))}
+                    value={selectedExampleIndex !== null ? String(selectedExampleIndex) : undefined}
+                    className="max-h-[300px] overflow-y-auto pr-4"
+                  >
                       {englishExamples.map((example: string, index: number) => (
-                          <div key={index} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-50 cursor-pointer">
-                              <RadioGroupItem value={example} id={`example-${index}`} />
+                          <div key={index} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-400 cursor-pointer">
+                              <RadioGroupItem value={String(index)} id={`example-${index}`} />
                               <Label htmlFor={`example-${index}`} className="cursor-pointer text-base font-normal leading-relaxed">
                                   {example}
                               </Label>
@@ -299,7 +316,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
               <DialogFooter>
                     <Button
                       onClick={handleExampleSelected}
-                      disabled={!selectedExample || isGenerating}
+                      disabled={selectedExampleIndex === null || isGenerating}
                     >
                       {isGenerating ? (
                         <>

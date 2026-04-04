@@ -7,14 +7,8 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const isIOS = () => {
-  // Modern way to check for iOS, avoiding the deprecated navigator.platform
-  // This regex is a common and robust way to identify Apple mobile devices.
   const isAppleDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
-
-  // This part is a clever trick to identify iPads on recent versions of iPadOS
-  // that report as a Mac. We should keep it.
   const isModernIPad = navigator.userAgent.includes("Mac") && "ontouchend" in document;
-
   return isAppleDevice || isModernIPad;
 }
 
@@ -34,39 +28,57 @@ export const usePwaInstall = () => {
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [isIOSUser, setIsIOSUser] = useState(false);
   const [showIOSTutorial, setShowIOSTutorial] = useState(false);
+  const [showAndroidGuide, setShowAndroidGuide] = useState(false);
+  const [isNonStandardBrowser, setIsNonStandardBrowser] = useState(false);
 
   useEffect(() => {
     const isStandalone = isInStandaloneMode();
-    const onIOS = isIOS();
-    setIsIOSUser(onIOS);
-
-    // If already in standalone mode, never show the button.
     if (isStandalone) {
       setShowInstallButton(false);
       return;
     }
 
-    // On iOS, if not standalone, always show the button to trigger the tutorial.
+    const onIOS = isIOS();
+    setIsIOSUser(onIOS);
+
     if (onIOS) {
       setShowInstallButton(true);
-    } else {
-      // On other platforms (Android/Desktop), wait for the beforeinstallprompt event.
-      const handleBeforeInstallPrompt = (event: Event) => {
-        event.preventDefault();
-        setInstallPromptEvent(event as BeforeInstallPromptEvent);
-        setShowInstallButton(true);
-      };
-      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      };
+      return;
     }
+
+    let promptHandled = false;
+    const handleBeforeInstallPrompt = (event: Event) => {
+      promptHandled = true;
+      event.preventDefault();
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // Fallback for non-standard browsers (like Huawei's)
+    const timer = setTimeout(() => {
+        if (!promptHandled) {
+            setIsNonStandardBrowser(true);
+            setShowInstallButton(true);
+        }
+    }, 3000); // Wait 3 seconds
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      clearTimeout(timer);
+    };
   }, []);
 
   const promptInstall = useCallback(async () => {
     if (isIOSUser) {
-        setShowIOSTutorial(true);
-        return;
+      setShowIOSTutorial(true);
+      return;
+    }
+
+    if (isNonStandardBrowser) {
+      setShowAndroidGuide(true);
+      return;
     }
 
     if (!installPromptEvent) return;
@@ -76,12 +88,15 @@ export const usePwaInstall = () => {
     
     setInstallPromptEvent(null);
     setShowInstallButton(false);
-  }, [installPromptEvent, isIOSUser]);
+  }, [installPromptEvent, isIOSUser, isNonStandardBrowser]);
 
   return { 
     promptInstall, 
     showInstallButton, 
     showIOSTutorial, 
-    setShowIOSTutorial 
+    setShowIOSTutorial, 
+    showAndroidGuide,
+    setShowAndroidGuide,
+    isNonStandardBrowser // Export this to change button text if needed
   };
 };

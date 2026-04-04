@@ -63,10 +63,15 @@ export const useGenerateImages = () => {
     }
   }, [toast, axiosPrivate]); // Dependencies: toast and axiosPrivate
 
+  const clearGenerationError = useCallback(() => {
+    setGenerationError(null);
+  }, []);
+
   // Return the generation function and states
   return {
     generateImages,
     isGeneratingImages,
     generationError,
+    clearGenerationError,
   };
 };

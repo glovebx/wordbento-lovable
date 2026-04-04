@@ -1,5 +1,5 @@
 
-import React, { RefObject, useState, useCallback } from 'react';
+import React, { RefObject, useState, useEffect, useCallback } from 'react';
 import { 
   FileText, 
   Atom, 
@@ -62,18 +62,18 @@ const WordGrid: React.FC<WordGridProps> = ({
   word, 
   isWordLoading,
   onMasteredSuccess,
-  onPrevious,
-  onNext,
+  onPrevious: onPreviousProp, // Rename prop to avoid conflict
+  onNext: onNextProp,       // Rename prop to avoid conflict
   bentoGridRef,
   onImagesGenerated,
-  onShowImageDialogChange, // <-- Receive new prop
-  onShowExampleDialogChange, // <-- Receive new prop  
+  onShowImageDialogChange, 
+  onShowExampleDialogChange, 
  }) => {
 
   const { isAuthenticated } = useAuth();  
   const isMobile = useIsMobile();
   // Image generation state managed here and passed down to WordImageDisplay
-  const { generateImages, isGeneratingImages, generationError } = useGenerateImages();
+  const { generateImages, isGeneratingImages, generationError, clearGenerationError } = useGenerateImages();
   const [generatedImageUrls, setGeneratedImageUrls] = useState<string[] | undefined>(undefined);
 
   const requestGenerateImages = useCallback(async (wordText: string, example: string, force: boolean) => {
@@ -85,6 +85,12 @@ const WordGrid: React.FC<WordGridProps> = ({
     }
     return urls;
   }, [generateImages, onImagesGenerated]);
+
+  useEffect(() => {
+    if (generationError) {
+     clearGenerationError(); 
+    }
+  }, [word]);  
 
   // NOTE: GridCard triggers generation via passed `requestGenerateImages` prop (bound below)
   // Safely access definition content
@@ -128,7 +134,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                   disabled={isWordLoading}
                   variant="outline"
                   size="icon"
-                  onClick={onPrevious}
+                  onClick={onPreviousProp}
                   className="hover:bg-muted export-hide"
                   title="上一个单词"
                 >
@@ -159,7 +165,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                   disabled={isWordLoading}
                   variant="outline"
                   size="icon"
-                  onClick={onNext}
+                  onClick={onNextProp}
                   className="hover:bg-muted export-hide"
                   title="下一个单词"
                 >
@@ -246,8 +252,8 @@ const WordGrid: React.FC<WordGridProps> = ({
         generatedImageUrls={generatedImageUrls}
         isGenerating={isGeneratingImages}
         generationError={generationError}
-        onNext={onNext} // Pass down the onNext handler
-        onPrevious={onPrevious} // Pass down the onPrevious handler
+        onNext={onNextProp} // Pass down the onNext handler
+        onPrevious={onPreviousProp} // Pass down the onPrevious handler
       />
 
       <div className="bento-grid">
