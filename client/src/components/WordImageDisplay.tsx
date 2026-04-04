@@ -29,7 +29,7 @@ import AuthModal from './AuthModal';
 import { WordDataType } from '@/types/wordTypes';
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft, ArrowRight } from 'lucide-react'; // Only Loader2 needed here for the main component
-import { useIsMobile } from '@/hooks/use-mobile';
+import useIsTouchDevice from '@/hooks/use-is-touch-device';
 import DraggableButton from './DraggableButton';
 
 // Import the new enlarged image carousel dialog component
@@ -76,7 +76,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   onNext,
   onPrevious,
 }) => {
-  const isMobile = useIsMobile();
+  const isTouchDevice = useIsTouchDevice();
   // State to control the visibility of the ENLARGED image dialog
   const [showEnlargedImageDialog, setShowEnlargedImageDialog] = useState(false);
   // State to store the index of the image clicked in the small carousel
@@ -167,7 +167,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       setImageUrls(generatedImageUrls);
       onImagesGenerated(word.word_text);
     }
-  }, [generatedImageUrls, onImagesGenerated]);
+  }, [generatedImageUrls, onImagesGenerated, word]);
 
 
   // Determine if we should show the "Generate Images" button
@@ -246,7 +246,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
         </div>
       )}
 
-      {isMobile && onNext && onPrevious && (
+      {isTouchDevice && onNext && onPrevious && (
         <>
           <DraggableButton
             storageKey="prev-word-pos"

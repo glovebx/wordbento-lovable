@@ -9,7 +9,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { useToast } from '@/components/ui/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { WordDataType } from '@/types/wordTypes';
-import { useIsMobile } from '@/hooks/use-mobile';
+import useIsTouchDevice from '@/hooks/use-is-touch-device';
 import {
   Carousel,
   CarouselContent,
@@ -31,7 +31,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   onNext,
   onPrevious,
 }) => {
-  const isMobile = useIsMobile();
+  const isTouchDevice = useIsTouchDevice();
 
   const [userInput, setUserInput] = useState('');
   const lastUserInputRef = useRef<string>('');
@@ -224,7 +224,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   //   }
   // };
 
-  const imageAspectRatio = isMobile ? (3 / 3) : (3 / 2);
+  const imageAspectRatio = isTouchDevice ? (3 / 3) : (3 / 2);
 
   return (
     <>
@@ -251,8 +251,8 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
           {/* Image with Navigation */}
           <div className="relative flex items-center justify-center w-full px-4 lg:max-w-6xl sm:max-w-4xl sm:mx-auto"> 
-            {/* Previous/Next Buttons for Desktop */}
-            {!isMobile && (
+          {/* Previous/Next Buttons for Desktop */}
+          {!isTouchDevice && (
               <>
                 <Button 
                   variant="outline"
@@ -429,7 +429,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
       </div>
 
       {/* Draggable Buttons for Mobile */}
-      {isMobile && (
+      {isTouchDevice && (
         <>
           <DraggableButton
             storageKey="prev-button-pos"
