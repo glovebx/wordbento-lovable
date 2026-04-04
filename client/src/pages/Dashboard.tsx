@@ -4,17 +4,18 @@ import { ProfileSidebar } from "@/components/dashboard/MenuSidebar";
 import AnalysisHistory from "@/components/dashboard/AnalysisHistory";
 import UserProfile from "@/components/dashboard/UserProfile";
 import WordHistory from "@/components/dashboard/WordHistory";
+import WordManagement from "@/components/dashboard/WordManagement"; // Import the new component
 import { MobileNavigation } from "@/components/dashboard/MobileNavigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [activeSection, setActiveSection] = useState<"profile" | "history" | "wordHistory">("profile");
+  const [activeSection, setActiveSection] = useState<"profile" | "history" | "wordHistory" | "wordManagement">("profile");
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
-  const handleSelectSection = useCallback((section: "profile" | "history" | "wordHistory") => {
+  const handleSelectSection = useCallback((section: "profile" | "history" | "wordHistory" | "wordManagement") => {
     setActiveSection(section);
   }, []);
 
@@ -35,6 +36,8 @@ const Dashboard = () => {
         return <AnalysisHistory />;
       case "wordHistory":
         return <WordHistory />;
+      case "wordManagement":
+        return <WordManagement />;
       case "profile":        
       default:
         return <UserProfile />;

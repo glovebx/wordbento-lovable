@@ -87,8 +87,8 @@ import { ProfileSidebar } from "@/components/dashboard/MenuSidebar";
 import { useState } from "react";
 
 interface MobileNavigationProps {
-  activeSection: "profile" | "history" | "wordHistory";
-  onSelectSection: (section: "profile" | "history" | "wordHistory") => void;
+  activeSection: "profile" | "history" | "wordHistory" | "wordManagement";
+  onSelectSection: (section: "profile" | "history" | "wordHistory" | "wordManagement") => void;
   username?: string | null;
   avatarSrc?: string | null;
 }
@@ -97,11 +97,10 @@ export const MobileNavigation = ({ activeSection, onSelectSection, username, ava
   const [isOpen, setIsOpen] = useState(false);
 
   // 点击菜单项后，关闭抽屉并执行onSelectSection
-  const handleSelectSectionAndClose = (section: "profile" | "history" | "wordHistory") => {
+  const handleSelectSectionAndClose = (section: "profile" | "history" | "wordHistory" | "wordManagement") => {
     onSelectSection(section);
     setIsOpen(false);
-  };
-  
+  };  
   return (
     <div className="fixed top-4 left-4 z-30 md:hidden">
       <Drawer open={isOpen} onOpenChange={setIsOpen}>

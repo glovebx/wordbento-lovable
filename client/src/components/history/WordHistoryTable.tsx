@@ -45,39 +45,37 @@ export const WordHistoryTable: React.FC<WordHistoryTableProps> = ({ history }) =
             <TableHead className="font-medium text-right">查看时间</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {history.map((record) => (
-            <Collapsible asChild key={record.id} open={openRowId === record.id} onOpenChange={() => handleRowToggle(record.id)}>
-              <>
-                <CollapsibleTrigger asChild>
-                  <TableRow className="cursor-pointer hover:bg-muted/50">
+        {history.map((record) => (
+          <Collapsible asChild key={record.id} open={openRowId === record.id} onOpenChange={() => handleRowToggle(record.id)}>
+            <tbody>
+              <CollapsibleTrigger asChild>
+                <TableRow className="cursor-pointer hover:bg-muted/50">
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{record.word_text}</span>
+                      <span className="text-sm text-muted-foreground">{record.meaning}</span>
+                    </div>
+                  </TableCell>
+                  {!isTouch && (
                     <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{record.word_text}</span>
-                        <span className="text-sm text-muted-foreground">{record.meaning}</span>
-                      </div>
+                      {record.phonetic && <Badge variant="outline">/{record.phonetic}/</Badge>}
                     </TableCell>
-                    {!isTouch && (
-                      <TableCell>
-                        {record.phonetic && <Badge variant="outline">/{record.phonetic}/</Badge>}
-                      </TableCell>
-                    )}
-                    <TableCell className="text-right">
-                      {formatDistanceToNow(new Date(record.viewedAt), { addSuffix: true, locale: zhCN })}
-                    </TableCell>
-                  </TableRow>
-                </CollapsibleTrigger>
-                <CollapsibleContent asChild>
-                  <TableRow>
-                    <TableCell colSpan={isTouch ? 2 : 3}>
-                      <WordImages wordText={record.word_text} />
-                    </TableCell>
-                  </TableRow>
-                </CollapsibleContent>
-              </>
-            </Collapsible>
-          ))}
-        </TableBody>
+                  )}
+                  <TableCell className="text-right">
+                    {formatDistanceToNow(new Date(record.viewedAt), { addSuffix: true, locale: zhCN })}
+                  </TableCell>
+                </TableRow>
+              </CollapsibleTrigger>
+              <CollapsibleContent asChild>
+                <TableRow>
+                  <TableCell colSpan={isTouch ? 2 : 3}>
+                    <WordImages wordText={record.word_text} />
+                  </TableCell>
+                </TableRow>
+              </CollapsibleContent>
+            </tbody>
+          </Collapsible>
+        ))}
       </Table>
     </div>
   );
