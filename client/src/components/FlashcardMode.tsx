@@ -1,13 +1,12 @@
 /// <reference types="@types/dom-speech-recognition" />
 
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle, XCircle, /*Mic,*/ Info } from 'lucide-react'; // Import Info icon for details
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ArrowLeft, ArrowRight, /*Mic,*/ Info } from 'lucide-react'; // Import Info icon for details
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { useToast } from '@/components/ui/use-toast';
-import { Badge } from '@/components/ui/badge';
 import { WordDataType } from '@/types/wordTypes';
 import useIsTouchDevice from '@/hooks/use-is-touch-device';
 import {
@@ -17,6 +16,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import type { CarouselApi } from '@/components/ui/carousel'; // 类型导入
+
 import EnlargedImageCarouselDialog from '@/components/EnlargedImageCarouselDialog';
 import DraggableButton from './DraggableButton';
 
@@ -24,12 +25,14 @@ interface FlashcardModeProps {
   wordData: WordDataType;
   onNext: () => void;
   onPrevious: () => void;
+  onShowImageDialogChange?: (isOpen: boolean) => void;
 }
 
 const FlashcardMode: React.FC<FlashcardModeProps> = ({
   wordData,
   onNext,
   onPrevious,
+  onShowImageDialogChange,
 }) => {
   const isTouchDevice = useIsTouchDevice();
 
@@ -37,11 +40,48 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const lastUserInputRef = useRef<string>('');
   const [attempts, setAttempts] = useState(0);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [isMarkedForReview, setIsMarkedForReview] = useState(false);
+  // const [isMarkedForReview, setIsMarkedForReview] = useState(false);
   const { toast } = useToast();
 
   const [showEnlargedImageDialog, setShowEnlargedImageDialog] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  // 在你的组件中
+  const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
+  const apiRef = useRef<CarouselApi | null>(null);  // 关键：使用 ref 保持最新值
+
+  // 同步 ref 和 state
+  useEffect(() => {
+    apiRef.current = carouselApi;
+    if (!carouselApi) return;
+
+    const onSelect = () => {
+      setSelectedImageIndex(carouselApi.selectedScrollSnap());
+    };
+
+    carouselApi.on('select', onSelect);
+
+  }, [carouselApi]);
+
+  // 控制方法 - 始终读取 ref 的最新值
+  const scrollNext = useCallback(() => {
+    const api = apiRef.current;
+    if (!api) return;
+
+    if (api.canScrollNext()) {
+      api.scrollNext();
+    } else {
+      // 已经是最后一张，回到第一张
+      api.scrollTo(0);
+    }
+  }, []);  // 空依赖数组，不会重新创建
+
+  // --- Effects to report dialog state changes ---
+  // Now reports the state of the NEW enlarged image dialog
+  useEffect(() => {
+    if (onShowImageDialogChange) {
+      onShowImageDialogChange(showEnlargedImageDialog);
+    }
+  }, [showEnlargedImageDialog, onShowImageDialogChange]);
 
   const maxAttempts = 3;
 
@@ -114,9 +154,10 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   // Effect for resetting state when word changes
   useEffect(() => {
     setIsCorrect(null);
-    setIsMarkedForReview(false);
+    // setIsMarkedForReview(false);
     setShowDetails(false);
     setIsSwitching(false);
+    setUserInput('');
   }, [wordData]);
 
   // Restore userInput from ref if it was unexpectedly cleared while answer marked correct
@@ -141,6 +182,15 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
               event.preventDefault();
               setShowDetails(prev => !prev);
           }
+          else if (event.key === 'n') {
+              event.preventDefault();
+              // 相当于点击CarouselNext
+              scrollNext();
+          }
+          else if (event.key === 'z') {
+              event.preventDefault();
+              setShowEnlargedImageDialog(!showEnlargedImageDialog);
+          }
       };
 
       window.addEventListener('keydown', handleKeyDown);
@@ -148,7 +198,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
       return () => {
           window.removeEventListener('keydown', handleKeyDown);
       };
-  }, [setShowDetails]); // Dependencies: loading states and navigation handlers
+  }, [setShowDetails, scrollNext, setShowEnlargedImageDialog, showEnlargedImageDialog]); // Dependencies: loading states and navigation handlers
   // --- End New useEffect for Keyboard Navigation ---  
 
   const checkAnswer = (valueToCheck: string = userInput) => {
@@ -157,10 +207,10 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     
     if (isAnswerCorrect) {
       lastUserInputRef.current = '';
-      toast({
-        title: "回答正确！",
-        description: "自动切换到下一个单词",
-      });
+      // toast({
+      //   title: "回答正确！",
+      //   description: "自动切换到下一个单词",
+      // });
       
       setTimeout(() => {
         onNext();
@@ -170,7 +220,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
       setAttempts(newAttempts);
       
       if (newAttempts >= maxAttempts) {
-        setIsMarkedForReview(true);
+        // setIsMarkedForReview(true);
         toast({
           title: "已标记为重点记忆",
           description: "该单词将加入重点复习列表",
@@ -231,7 +281,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
       <div className="container mx-auto px-4 py-2 max-w-6xl">
         <div className="flex flex-col items-center space-y-6">
           {/* Status Bar */}
-          <div className="flex items-center justify-center gap-4">
+          {/* <div className="flex items-center justify-center gap-4">
             {isMarkedForReview && (
               <Badge variant="destructive">重点记忆</Badge>
             )}
@@ -247,7 +297,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                 错误 ({attempts}/{maxAttempts})
               </Badge>
             )}
-          </div>
+          </div> */}
 
           {/* Image with Navigation */}
           <div className="relative flex items-center justify-center w-full px-4 lg:max-w-6xl sm:max-w-4xl sm:mx-auto"> 
@@ -285,7 +335,8 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                     </div>
                   </AspectRatio>
                 ) : wordData.imageUrls && wordData.imageUrls.length > 0 ? (
-                  <Carousel className="w-full">
+                  <Carousel className="w-full"
+                            setApi={setCarouselApi}>
                     <CarouselContent>
                       {wordData.imageUrls.map((url, index) => (
                         <CarouselItem key={index}>

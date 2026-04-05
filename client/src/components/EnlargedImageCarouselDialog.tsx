@@ -81,8 +81,9 @@ const EnlargedImageCarouselDialog: React.FC<EnlargedImageCarouselDialogProps> = 
           w-[calc(100vw-4rem)] h-[calc(100vh-6rem)]
           max-w-(--breakpoint-xl) max-h-[90vh]
           flex flex-col items-center justify-center
-          bg-background p-1 rounded-lg shadow-lg z-101
-        ">
+          bg-background p-1 rounded-lg shadow-lg z-101"
+          aria-describedby={undefined}
+          >
           <DialogTitle className="sr-only">
             {`Enlarged image carousel for "${wordText}"`}
           </DialogTitle>
@@ -116,8 +117,9 @@ const EnlargedImageCarouselDialog: React.FC<EnlargedImageCarouselDialogProps> = 
         flex flex-col items-center justify-center
         bg-background /* Use Shadcn default background */
         p-1 /* Add padding around the content */
-        rounded-lg shadow-lg z-101
-      ">
+        rounded-lg shadow-lg z-101"
+        aria-describedby={undefined}
+        >
         {/* DialogTitle for accessibility, visually hidden */}
         <DialogTitle className="sr-only">
           {`“${wordText}”的放大图片轮播`}

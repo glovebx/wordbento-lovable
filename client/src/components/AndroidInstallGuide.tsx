@@ -9,7 +9,7 @@ interface AndroidInstallGuideProps {
 const AndroidInstallGuide: React.FC<AndroidInstallGuideProps> = ({ open, onOpenChange }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>添加到主屏幕</DialogTitle>
           <DialogDescription>

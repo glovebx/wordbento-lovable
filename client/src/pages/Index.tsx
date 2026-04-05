@@ -504,6 +504,7 @@ const Index = () => {
             wordData={wordData}
             onNext={handleNext}
             onPrevious={handlePrevious}
+            onShowImageDialogChange={handleImageDialogStateChange}
           />
         )}
 

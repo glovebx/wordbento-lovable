@@ -186,8 +186,9 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
         flex flex-col items-center justify-center
         bg-background /* Use Shadcn default background */
         p-1 /* Add padding around the content */
-        rounded-lg shadow-lg z-101
-        ">
+        rounded-lg shadow-lg z-101"
+        aria-describedby={undefined}
+        >
           {/* 为辅助功能添加 DialogTitle，视觉上隐藏 */}
           <DialogTitle className="sr-only">
             {`“${wordText}”的放大图片轮播`}

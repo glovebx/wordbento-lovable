@@ -457,6 +457,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
           p-4 sm:p-6
           rounded-lg shadow-xl
         "
+        aria-describedby={undefined}
       >
         <DialogHeader>
           <DialogTitle>{isNewRecord ? "新增资源" : "编辑资源"}</DialogTitle>
