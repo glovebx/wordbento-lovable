@@ -119,31 +119,23 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
 
   // Handler for the "Generate Images" button click
   const handleGenerateButtonClick = useCallback(async () => {
-    console.log('handleGenerateButtonClick-1');
     if (!isAuthenticated) {
       setShowAuthModal(true);
       return;
     }
 
-    console.log('handleGenerateButtonClick-2');
-
     const examples = word?.content?.examples?.en;
     if (examples && Array.isArray(examples) && examples.length > 0) {
-      console.log('handleGenerateButtonClick - 3');
       if (selectedExampleIndex === null) {
         setSelectedExampleIndex(0); // Default to the first example
-        console.log('handleGenerateButtonClick - 5');
       }
       setShowExampleDialog(true);
-      console.log('handleGenerateButtonClick - 6');
     } else {
-      console.log('handleGenerateButtonClick - 4');
       // console.log("No examples found or examples not in expected array format, generating image with word only.");
       if (typeof requestGenerateImages === 'function') {
         requestGenerateImages(word.word_text, '', true);
       }
     }
-    console.log('handleGenerateButtonClick - 9');
   }, [isAuthenticated, requestGenerateImages, word, selectedExampleIndex]);
 
 
