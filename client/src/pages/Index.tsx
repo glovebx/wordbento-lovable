@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { AuthProvider } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import WordGrid from '@/components/WordGrid';
 import AudioPlayer from '../components/AudioPlayer';
@@ -532,7 +531,6 @@ const handleExportImage = useCallback(async () => {
   };
 
   return (
-    <AuthProvider>
       <div className="min-h-screen flex flex-col relative">
         {isGenerating && (
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
@@ -551,7 +549,6 @@ const handleExportImage = useCallback(async () => {
         />
         {renderContent()}
       </div>
-    </AuthProvider>
   );
 };
 

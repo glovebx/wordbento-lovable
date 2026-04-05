@@ -64,7 +64,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => 
   }, [isLogin, username, email, password, confirmPassword]); // Dependencies for validation effect
 
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
 
     // Basic validation for both login and registration
