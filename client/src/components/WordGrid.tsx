@@ -1,12 +1,12 @@
 
-import React, { RefObject, useState, useEffect, useCallback } from 'react';
-import { 
-  FileText, 
-  Atom, 
-  Layers, 
-  History, 
-  ArrowUpDown, 
-  Lightbulb, 
+import React, { RefObject } from 'react';
+import {
+  FileText,
+  Atom,
+  Layers,
+  History,
+  ArrowUpDown,
+  Lightbulb,
   Newspaper,
   ArrowLeft,
   ArrowRight
@@ -22,18 +22,26 @@ import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from '@/lib/utils';
-import { useGenerateImages } from '@/hooks/use-generate-images';
+
 
 interface WordGridProps {
   word: WordDataType;
   isWordLoading: boolean,
   onMasteredSuccess: () => void;
   onPrevious: () => void;
-  onNext: () => void;  
+  onNext: () => void;
   // New prop: Ref object passed from parent to attach to the bento grid element
   bentoGridRef: RefObject<HTMLDivElement | null>; // <-- Add ref prop  
   // New props: Callbacks to report dialog state changes
-  onImagesGenerated: (word: string) => void;
+  requestGenerateImages: (word: string, example: string, force: boolean) => void;
+  /**
+   * 上层容器是否正在生成图片（用于禁用按钮和显示 loading）
+   */
+  isImageGenerating?: boolean;
+  /**
+   * 上层容器的生成错误信息（可选）
+   */
+  imageGenerationError?: { message?: string } | null;
   onShowImageDialogChange?: (isOpen: boolean) => void; // <-- New prop
   onShowExampleDialogChange?: (isOpen: boolean) => void; // <-- New prop  
 }
@@ -43,10 +51,10 @@ const AnimatedWord: React.FC<{ word: string }> = ({ word }) => {
   return (
     <div className="relative inline-flex">
       {word.split('').map((char, index) => (
-        <span 
-          key={index} 
-          className="wave-text" 
-          style={{ 
+        <span
+          key={index}
+          className="wave-text"
+          style={{
             // @ts-ignore
             '--i': index
           }}
@@ -58,39 +66,36 @@ const AnimatedWord: React.FC<{ word: string }> = ({ word }) => {
   );
 };
 
-const WordGrid: React.FC<WordGridProps> = ({ 
-  word, 
+const WordGrid: React.FC<WordGridProps> = ({
+  word,
   isWordLoading,
   onMasteredSuccess,
   onPrevious: onPreviousProp, // Rename prop to avoid conflict
   onNext: onNextProp,       // Rename prop to avoid conflict
   bentoGridRef,
-  onImagesGenerated,
-  onShowImageDialogChange, 
-  onShowExampleDialogChange, 
- }) => {
+  requestGenerateImages,
+  isImageGenerating,
+  imageGenerationError,
+  onShowImageDialogChange,
+  onShowExampleDialogChange,
+}) => {
 
-  const { isAuthenticated } = useAuth();  
+  const { isAuthenticated } = useAuth();
   const isMobile = useIsMobile();
-  // Image generation state managed here and passed down to WordImageDisplay
-  const { generateImages, isGeneratingImages, generationError, clearGenerationError } = useGenerateImages();
-  const [generatedImageUrls, setGeneratedImageUrls] = useState<string[] | undefined>(undefined);
+  // // const [generatedImageUrls, setGeneratedImageUrls] = useState<string[] | undefined>(undefined);
+  // const [wordImageUrls, setWordImageUrls] = useState<string[]>([]);
 
-  const requestGenerateImages = useCallback(async (wordText: string, example: string, force: boolean) => {
-    // Trigger generation via hook and store results for child
-    const urls = await generateImages(wordText, example, force);
-    if (urls && urls.length > 0) {
-      setGeneratedImageUrls(urls);
-      onImagesGenerated(wordText);
-    }
-    return urls;
-  }, [generateImages, onImagesGenerated]);
-
-  useEffect(() => {
-    if (generationError) {
-     clearGenerationError(); 
-    }
-  }, [word]);  
+  // useEffect(() => {
+  //   // 清除错误
+  //   if (generationError) {
+  //    clearGenerationError(); 
+  //   }
+  //   setWordImageUrls(word.imageUrls);
+  //   // // 清除创建的图片
+  //   // if (generatedImageUrls && generatedImageUrls.length > 0) {
+  //   //   setGeneratedImageUrls(undefined);
+  //   // }
+  // }, [word]);  
 
   // NOTE: GridCard triggers generation via passed `requestGenerateImages` prop (bound below)
   // Safely access definition content
@@ -98,8 +103,8 @@ const WordGrid: React.FC<WordGridProps> = ({
 
   return (
     <div className="container mx-auto px-4 py-8" ref={bentoGridRef}>
-      <div className="mb-10 text-center relative">  
-{/* Navigation buttons */}
+      <div className="mb-10 text-center relative">
+        {/* Navigation buttons */}
         <div className="flex flex-col items-center">
           <div className={cn(
             "flex items-center justify-center gap-4 mb-6",
@@ -130,7 +135,7 @@ const WordGrid: React.FC<WordGridProps> = ({
               </>
             ) : (
               <>
-                <Button 
+                <Button
                   disabled={isWordLoading}
                   variant="outline"
                   size="icon"
@@ -161,7 +166,7 @@ const WordGrid: React.FC<WordGridProps> = ({
                   </p>
                 </div>
 
-                <Button 
+                <Button
                   disabled={isWordLoading}
                   variant="outline"
                   size="icon"
@@ -177,81 +182,79 @@ const WordGrid: React.FC<WordGridProps> = ({
         </div>
 
         <div className="text-left max-w-2xl mx-auto px-4"> {/* Container for definition text */}
-                {/* Optional: Include the icon next to the definition title/text */}
-                {/* <div className="flex items-center justify-center mb-2">
+          {/* Optional: Include the icon next to the definition title/text */}
+          {/* <div className="flex items-center justify-center mb-2">
                     {definitionContent.icon && (
                         <BookOpen className="h-5 w-5 text-blue-500 mr-2" /> // Using BookOpen icon
                     )}
                     <h3 className="text-lg font-semibold text-gray-800">Definition</h3> // Optional title
                 </div> */}
 
-                {/* Render English Definition */}
-                {typeof definitionContent.en === 'string' && definitionContent.en.trim() !== '' && (
-                    <p className="text-sm text-foreground mb-2"> {/* Added mb-2 for spacing between languages */}
-                        {definitionContent.en.split('\n').map((line, index, array) => (
-                            <React.Fragment key={index}>
-                                {line}
-                                {index < array.length - 1 && <br />} {/* Add <br /> for newlines */}
-                            </React.Fragment>
-                        ))}
-                    </p>
-                )}
-                 {/* Handle array case for English definition if necessary (based on WordContentMap) */}
-                 {definitionContent.en && Array.isArray(definitionContent.en) && definitionContent.en.length > 0 && (
-                     <div className="text-sm text-foreground mb-2">
-                        {definitionContent.en.map((item, index) => (
-                            <React.Fragment key={index}>
-                                {item}
-                                {index < definitionContent.en!.length - 1 && <br />}
-                            </React.Fragment>
-                        ))}
-                     </div>
-                 )}
+          {/* Render English Definition */}
+          {typeof definitionContent.en === 'string' && definitionContent.en.trim() !== '' && (
+            <p className="text-sm text-foreground mb-2"> {/* Added mb-2 for spacing between languages */}
+              {definitionContent.en.split('\n').map((line, index, array) => (
+                <React.Fragment key={index}>
+                  {line}
+                  {index < array.length - 1 && <br />} {/* Add <br /> for newlines */}
+                </React.Fragment>
+              ))}
+            </p>
+          )}
+          {/* Handle array case for English definition if necessary (based on WordContentMap) */}
+          {definitionContent.en && Array.isArray(definitionContent.en) && definitionContent.en.length > 0 && (
+            <div className="text-sm text-foreground mb-2">
+              {definitionContent.en.map((item, index) => (
+                <React.Fragment key={index}>
+                  {item}
+                  {index < definitionContent.en!.length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
 
 
-                {/* Render Chinese Definition */}
-                {typeof definitionContent.zh === 'string' && definitionContent.zh.trim() !== '' && (
-                    <p className="text-sm text-muted-foreground">
-                         {definitionContent.zh.split('\n').map((line, index, array) => (
-                            <React.Fragment key={index}>
-                                {line}
-                                {index < array.length - 1 && <br />} {/* Add <br /> for newlines */}
-                            </React.Fragment>
-                        ))}
-                    </p>
-                )}
-                {/* Handle array case for Chinese definition if necessary (based on WordContentMap) */}
-                 {definitionContent.zh && Array.isArray(definitionContent.zh) && definitionContent.zh.length > 0 && (
-                     <div className="text-sm text-muted-foreground">
-                        {definitionContent.zh.map((item, index) => (
-                            <React.Fragment key={index}>
-                                {item}
-                                {index < definitionContent.zh!.length - 1 && <br />}
-                            </React.Fragment>
-                        ))}
-                     </div>
-                 )}
+          {/* Render Chinese Definition */}
+          {typeof definitionContent.zh === 'string' && definitionContent.zh.trim() !== '' && (
+            <p className="text-sm text-muted-foreground">
+              {definitionContent.zh.split('\n').map((line, index, array) => (
+                <React.Fragment key={index}>
+                  {line}
+                  {index < array.length - 1 && <br />} {/* Add <br /> for newlines */}
+                </React.Fragment>
+              ))}
+            </p>
+          )}
+          {/* Handle array case for Chinese definition if necessary (based on WordContentMap) */}
+          {definitionContent.zh && Array.isArray(definitionContent.zh) && definitionContent.zh.length > 0 && (
+            <div className="text-sm text-muted-foreground">
+              {definitionContent.zh.map((item, index) => (
+                <React.Fragment key={index}>
+                  {item}
+                  {index < definitionContent.zh!.length - 1 && <br />}
+                </React.Fragment>
+              ))}
+            </div>
+          )}
 
-                 {/* Optional: Fallback if no definition content is available */}
-                 {/* {!definitionContent.en && !definitionContent.zh && !Array.isArray(definitionContent.en) && !Array.isArray(definitionContent.zh) && (
+          {/* Optional: Fallback if no definition content is available */}
+          {/* {!definitionContent.en && !definitionContent.zh && !Array.isArray(definitionContent.en) && !Array.isArray(definitionContent.zh) && (
                      <p className="text-sm text-gray-500">No definition available.</p>
                  )} */}
 
-            </div>        
-        
-      </div>      
+        </div>
 
-        {/* Word Image - Centered in the page */}
-      <WordImageDisplay initialImageUrls={word.imageUrls} 
-        word={word} 
+      </div>
+
+      {/* Word Image - Centered in the page */}
+      <WordImageDisplay
+        word={word}
         isWordLoading={isWordLoading}
-        onImagesGenerated={onImagesGenerated}
         onShowImageDialogChange={onShowImageDialogChange} // <-- Pass the callback
         onShowExampleDialogChange={onShowExampleDialogChange} // <-- Pass the callback      
         requestGenerateImages={requestGenerateImages}
-        generatedImageUrls={generatedImageUrls}
-        isGenerating={isGeneratingImages}
-        generationError={generationError}
+        isGenerating={isImageGenerating}
+        generationError={imageGenerationError}
         onNext={onNextProp} // Pass down the onNext handler
         onPrevious={onPreviousProp} // Pass down the onPrevious handler
       />
@@ -402,11 +405,10 @@ const WordGrid: React.FC<WordGridProps> = ({
           size="lg"
           requestGenerateImages={async (example: string, force: boolean) => {
             const trending_story = `${example}\n根据上述台词和解释，创造一张电影海报，风格要接近这段文字中提到的作品，海报上要突出台词。\n图片标题：${word.word_text}\n注意：文字尽可能清晰，阅读体验要好`;
-            await requestGenerateImages(word.word_text, trending_story, force);
+            requestGenerateImages(word.word_text, trending_story, force);
           }}
-          // generatedImageUrls={generatedImageUrls}
-          isGenerating={isGeneratingImages}
-          generationError={generationError}
+          isGenerating={isImageGenerating}
+          generationError={imageGenerationError}
         />)}
       </div>
     </div>

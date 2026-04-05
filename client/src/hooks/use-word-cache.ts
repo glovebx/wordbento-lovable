@@ -167,6 +167,20 @@ export const useWordCache = () => {
         }
     }, [addToCache]);
 
+    const updateWordImageUrls = useCallback((wordText: string, urls: string[]) => {
+        if (wordCacheRef.current.has(wordText)) {
+            const cachedData = wordCacheRef.current.get(wordText)!;
+            // 创建新对象，确保引用变化触发副作用
+            const newCachedData = {
+                ...cachedData,
+                imageUrls: urls.concat(cachedData.imageUrls || [])
+            };
+            
+            wordCacheRef.current.set(wordText, newCachedData);
+            setCurrentWord(newCachedData);
+        }
+    }, []);
+
     // Effect to handle WebSocket results
     useEffect(() => {
         if (taskResult) {
@@ -226,5 +240,6 @@ export const useWordCache = () => {
         isGenerating: !!taskId,
         queuePosition: taskResult?.queuePosition,
         fetchWord,
+        updateWordImageUrls
     };
 };

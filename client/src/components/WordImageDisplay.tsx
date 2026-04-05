@@ -36,10 +36,9 @@ import DraggableButton from './DraggableButton';
 import EnlargedImageCarouselDialog from '@/components/EnlargedImageCarouselDialog';
 
 interface WordImageDisplayProps {
-  initialImageUrls: string[];
   word: WordDataType;
   isWordLoading: boolean;
-  onImagesGenerated: (word: string) => void;
+  // onImagesGenerated: (word: string, newImageUrls: string[]) => void;
   onShowImageDialogChange?: (isOpen: boolean) => void;
   onShowExampleDialogChange?: (isOpen: boolean) => void;
   onNext?: () => void;
@@ -47,11 +46,11 @@ interface WordImageDisplayProps {
   /**
    * 外部触发生成图片的请求处理器（上层容器应执行生成并通过 `generatedImageUrls` 回传结果）
    */
-  requestGenerateImages?: (word: string, example: string, force: boolean) => void;
-  /**
-   * 由上层容器传入的已生成图片 URL 列表
-   */
-  generatedImageUrls?: string[];
+  requestGenerateImages: (word: string, example: string, force: boolean) => void;
+  // /**
+  //  * 由上层容器传入的已生成图片 URL 列表
+  //  */
+  // generatedImageUrls?: string[];
   /**
    * 上层容器是否正在生成图片（用于禁用按钮和显示 loading）
    */
@@ -62,15 +61,12 @@ interface WordImageDisplayProps {
   generationError?: { message?: string } | null;
 }
 
-const WordImageDisplay: React.FC<WordImageDisplayProps> = ({ 
-  initialImageUrls, 
+const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   word,
   isWordLoading,
-  onImagesGenerated,
   onShowImageDialogChange,
   onShowExampleDialogChange,
   requestGenerateImages,
-  generatedImageUrls,
   isGenerating,
   generationError,
   onNext,
@@ -84,11 +80,10 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   // State to store the index of the image clicked in the small carousel
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   // State to manage the image URLs displayed in the carousel
-  const [imageUrls, setImageUrls] = useState<string[]>(initialImageUrls || []);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
 
-  const { isAuthenticated } = useAuth();  
+  const { isAuthenticated } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-
 
   // State for the new example selection dialog
   const [showExampleDialog, setShowExampleDialog] = useState(false);
@@ -96,26 +91,26 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
 
   // Effect to update internal imageUrls state when initialImageUrls prop changes
   useEffect(() => {
-    setImageUrls(initialImageUrls || []);
+    setImageUrls(word.imageUrls || []);
     // Reset selected image index when new initial images are provided
     setSelectedImageIndex(null);
-  }, [initialImageUrls]);
+  }, [word]);
 
   // --- Effects to report dialog state changes ---
   // Now reports the state of the NEW enlarged image dialog
   useEffect(() => {
-      if (onShowImageDialogChange) {
-          onShowImageDialogChange(showEnlargedImageDialog);
-      }
+    if (onShowImageDialogChange) {
+      onShowImageDialogChange(showEnlargedImageDialog);
+    }
   }, [showEnlargedImageDialog, onShowImageDialogChange]);
 
   useEffect(() => {
-      if (onShowExampleDialogChange) {
-          onShowExampleDialogChange(showExampleDialog);
-      }
+    if (onShowExampleDialogChange) {
+      onShowExampleDialogChange(showExampleDialog);
+    }
   }, [showExampleDialog, onShowExampleDialogChange]);
   // --- End Effects ---
-    
+
   // Handler to open the enlarged image dialog and set the selected image index
   const handleImageClick = useCallback((index: number) => {
     setSelectedImageIndex(index); // Set the index of the image to display in the dialog
@@ -147,41 +142,41 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       if (typeof requestGenerateImages === 'function') {
         requestGenerateImages(word.word_text, '', true);
       }
-    }        
+    }
     console.log('handleGenerateButtonClick - 9');
-  }, [isAuthenticated, requestGenerateImages, word, selectedExampleIndex, onImagesGenerated]);
+  }, [isAuthenticated, requestGenerateImages, word, selectedExampleIndex]);
 
 
   // Handler when an example is selected in the dialog and confirmed
   const handleExampleSelected = useCallback(async () => {
-      if (selectedExampleIndex === null) {
-          console.warn("No example selected.");
-          return;
-      }
-      const example = englishExamples[selectedExampleIndex];
-      if (!example) {
-        console.error("Selected example index is out of bounds.");
-        return;
-      }
+    if (selectedExampleIndex === null) {
+      console.warn("No example selected.");
+      return;
+    }
+    const example = englishExamples[selectedExampleIndex];
+    if (!example) {
+      console.error("Selected example index is out of bounds.");
+      return;
+    }
 
-      setShowExampleDialog(false); // Close the example selection dialog
+    setShowExampleDialog(false); // Close the example selection dialog
 
-      if (typeof requestGenerateImages === 'function') {
-        requestGenerateImages(word.word_text, example, true);
-      }
-      
-      setSelectedExampleIndex(null); // Reset selected example state after using it
+    if (typeof requestGenerateImages === 'function') {
+      requestGenerateImages(word.word_text, example, true);
+    }
+
+    setSelectedExampleIndex(null); // Reset selected example state after using it
   }, [requestGenerateImages, word, selectedExampleIndex, englishExamples]);
 
-  // When parent passes generatedImageUrls, update internal imageUrls and notify via onImagesGenerated
-  useEffect(() => {
-    if (generatedImageUrls && Array.isArray(generatedImageUrls) && generatedImageUrls.length > 0) {
-      // console.log(generatedImageUrls);
-      
-      setImageUrls(generatedImageUrls);
-      onImagesGenerated(word.word_text);
-    }
-  }, [generatedImageUrls, onImagesGenerated, word]);
+  // // When parent passes generatedImageUrls, update internal imageUrls and notify via onImagesGenerated
+  // useEffect(() => {
+  //   if (generatedImageUrls && Array.isArray(generatedImageUrls) && generatedImageUrls.length > 0) {
+  //     // console.log(generatedImageUrls);
+
+  //     setImageUrls(generatedImageUrls);
+  //     onImagesGenerated(word.word_text, generatedImageUrls);
+  //   }
+  // }, [generatedImageUrls, onImagesGenerated, word]);
 
 
   // Determine if we should show the "Generate Images" button
@@ -194,8 +189,6 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
   // Determine if we should show the small Carousel
   const showSmallCarousel = imageUrls && imageUrls.length > 0;
 
-
-
   return (
     <>
       {/* Conditional Rendering based on state */}
@@ -205,7 +198,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
             {isGenerating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                生成中... 
+                生成中...
               </>
             ) : (
               "生成图片"
@@ -215,15 +208,15 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       )}
 
       {isGenerating && !showSmallCarousel && (
-        <GeneratingFallback message="" />        
+        <GeneratingFallback message="" />
       )}
 
-       {/* Optional: Display generation error if any */}
-       {generationError && !isGenerating && (
-           <div className="text-center my-8 text-red-600">
-               <p>图片生成失败: {generationError.message}</p>
-           </div>
-       )}
+      {/* Optional: Display generation error if any */}
+      {generationError && !isGenerating && (
+        <div className="text-center my-8 text-red-600">
+          <p>图片生成失败: {generationError.message}</p>
+        </div>
+      )}
 
       {/* Small Image Carousel Section */}
       {showSmallCarousel && (
@@ -236,13 +229,13 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
                     onClick={() => handleImageClick(index)} // Click to open enlarged dialog
                     className="cursor-pointer rounded-md overflow-hidden transition-opacity hover:opacity-80 export-image"
                   >
-                    <AspectRatio ratio={16/9} className="bg-muted">
+                    <AspectRatio ratio={16 / 9} className="bg-muted">
                       <img
                         src={url}
                         alt={`Image ${index + 1} representing the word "${word.word_text}"`}
                         className="object-cover w-full h-full"
                         loading="lazy"
-                        decoding="async"                        
+                        decoding="async"
                       />
                     </AspectRatio>
                   </div>
@@ -291,51 +284,51 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
 
       {/* Example Selection Dialog */}
       <Dialog open={showExampleDialog} onOpenChange={setShowExampleDialog}>
-          <DialogContent aria-describedby={undefined} className="sm:max-w-[600px]">
-              <DialogHeader>
-                  <DialogTitle>选择一个例句生成图片</DialogTitle>
-              </DialogHeader>
-              {englishExamples && Array.isArray(englishExamples) && englishExamples.length > 0 ? (
-                  <RadioGroup 
-                    onValueChange={(value) => setSelectedExampleIndex(Number(value))}
-                    value={selectedExampleIndex !== null ? String(selectedExampleIndex) : undefined}
-                    className="max-h-[300px] overflow-y-auto pr-4"
-                  >
-                      {englishExamples.map((example: string, index: number) => (
-                          <div key={index} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-400 cursor-pointer">
-                              <RadioGroupItem value={String(index)} id={`example-${index}`} />
-                              <Label htmlFor={`example-${index}`} className="cursor-pointer text-base font-normal leading-relaxed">
-                                  {example}
-                              </Label>
-                          </div>
-                      ))}
-                  </RadioGroup>
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>选择一个例句生成图片</DialogTitle>
+          </DialogHeader>
+          {englishExamples && Array.isArray(englishExamples) && englishExamples.length > 0 ? (
+            <RadioGroup
+              onValueChange={(value) => setSelectedExampleIndex(Number(value))}
+              value={selectedExampleIndex !== null ? String(selectedExampleIndex) : undefined}
+              className="max-h-[300px] overflow-y-auto pr-4"
+            >
+              {englishExamples.map((example: string, index: number) => (
+                <div key={index} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-400 cursor-pointer">
+                  <RadioGroupItem value={String(index)} id={`example-${index}`} />
+                  <Label htmlFor={`example-${index}`} className="cursor-pointer text-base font-normal leading-relaxed">
+                    {example}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          ) : (
+            <p className="text-center text-gray-500">没有找到英文例句。</p>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={handleExampleSelected}
+              disabled={selectedExampleIndex === null || isGenerating}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  生成中...
+                </>
               ) : (
-                  <p className="text-center text-gray-500">没有找到英文例句。</p>
+                "确定"
               )}
-              <DialogFooter>
-                    <Button
-                      onClick={handleExampleSelected}
-                      disabled={selectedExampleIndex === null || isGenerating}
-                    >
-                      {isGenerating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          生成中...
-                        </>
-                      ) : (
-                        "确定"
-                      )}
-                    </Button>
-              </DialogFooter>
-          </DialogContent>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
 
-      <AuthModal 
+      <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {}}
-      />      
+        onSuccess={() => { }}
+      />
     </>
   );
 };
