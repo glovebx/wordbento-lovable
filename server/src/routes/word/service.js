@@ -17,10 +17,10 @@ import { formatDbResultToWordResponse } from '../../utils/dbUtils';
  * 应用归档过滤（排除已归档的单词）
  */
 function applyArchiveFilter(query, userId) {
-  if (userId) {
-    return query.where(isNull(schema.archives.word_id));
-  }
-  return query;
+    if (userId) {
+        return query.where(isNull(schema.archives.word_id));
+    }
+    return query;
 }
 
 /**
@@ -36,7 +36,7 @@ function applyArchiveFilter(query, userId) {
  * @returns {Promise<object|null>} Aggregated word details or null.
  */
 async function getAggregatedWord(db, whereClause) {
-  console.log('whereClause', whereClause)
+    console.log('whereClause', whereClause)
     const rows = await db
         .select({
             word: schema.words,
@@ -59,28 +59,28 @@ async function findRandomAggregatedWord(db, userId, mustHaveImage) {
     if (!maxId) return null;
 
     // for (let i = 0; i < 10; i++) { // Try up to 10 times to find a word
-        // 2. Pick a random ID between 1 and maxId.
-        const randomId = Math.floor(Math.random() * maxId) - 1;
+    // 2. Pick a random ID between 1 and maxId.
+    const randomId = Math.floor(Math.random() * maxId) - 1;
 
-        // 3. Find the first word with an ID >= randomId that meets the criteria.
-        let query = db.select({ id: schema.words.id })
-            .from(schema.words)
-            .where(gte(schema.words.id, randomId));
+    // 3. Find the first word with an ID >= randomId that meets the criteria.
+    let query = db.select({ id: schema.words.id })
+        .from(schema.words)
+        .where(gte(schema.words.id, randomId));
 
-        if (mustHaveImage) {
-            query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
-        }
-        // if (userId) {
-        //     const subquery = db.select({ word_id: schema.archives.word_id }).from(schema.archives).where(eq(schema.archives.user_id, userId));
-        //     query.where(notInArray(schema.words.id, subquery));
-        // }
+    if (mustHaveImage) {
+        query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
+    }
+    // if (userId) {
+    //     const subquery = db.select({ word_id: schema.archives.word_id }).from(schema.archives).where(eq(schema.archives.user_id, userId));
+    //     query.where(notInArray(schema.words.id, subquery));
+    // }
 
-        const word = await query.orderBy(asc(schema.words.id)).limit(1);
+    const word = await query.orderBy(asc(schema.words.id)).limit(1);
 
-        if (word.length > 0) {
-            // 4. Once we have a valid ID, fetch the full aggregated data.
-            return getAggregatedWord(db, eq(schema.words.id, word[0].id));
-        }
+    if (word.length > 0) {
+        // 4. Once we have a valid ID, fetch the full aggregated data.
+        return getAggregatedWord(db, eq(schema.words.id, word[0].id));
+    }
     // }
 
     // If we couldn't find a word after 10 tries, return null.
@@ -94,29 +94,29 @@ async function getAdjacentWord(db, slug, mode, userId, mustHaveImage) {
         .where(eq(schema.words.word_text, slug))
         .limit(1);
 
-    const wordId =  currentResult[0].id;
+    const wordId = currentResult[0].id;
 
-  const condition = mode === NavigationMode.Next
-    ? gt(schema.words.id, wordId)
-    : lt(schema.words.id, wordId);
+    const condition = mode === NavigationMode.Next
+        ? gt(schema.words.id, wordId)
+        : lt(schema.words.id, wordId);
 
-  let query = db.select({ id: schema.words.id })
-    .from(schema.words)
-    .where(condition);
+    let query = db.select({ id: schema.words.id })
+        .from(schema.words)
+        .where(condition);
 
-  if (mustHaveImage) {
-      query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
-  }    
+    if (mustHaveImage) {
+        query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
+    }
 
-  // query = applyArchiveFilter(query, userId);
-  query = query.orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id));
-  query = query.limit(1);  
+    // query = applyArchiveFilter(query, userId);
+    query = query.orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id));
+    query = query.limit(1);
 
     const nextIdResult = await query;
     if (nextIdResult.length > 0) {
-      const nextId = nextIdResult[0].id || wordId;
-      // 4. Once we have a valid ID, fetch the full aggregated data.
-      return getAggregatedWord(db, eq(schema.words.id, nextId));
+        const nextId = nextIdResult[0].id || wordId;
+        // 4. Once we have a valid ID, fetch the full aggregated data.
+        return getAggregatedWord(db, eq(schema.words.id, nextId));
     }
 
     return null;
@@ -129,7 +129,7 @@ async function getPrefixWordId(db, slug, userId) {
         .where(sql`${schema.words.word_text} LIKE ${prefix}`)
         .limit(1);
     if (result.length > 0) {
-      return result[0].id;
+        return result[0].id;
     }
     return null;
 }
@@ -138,72 +138,89 @@ async function getPrefixWordId(db, slug, userId) {
  * 处理 slug 字符串：去除引号，判断是否为引号包裹
  */
 function processSlug(slug) {
-  if (!slug || typeof slug !== 'string' || slug.trim() === '') {
-    return { isQuoted: false, cleanSlug: '' };
-  }
-  const trimmed = slug.trim().toLowerCase();
-  const quoted = isQuoted(trimmed);
-  const clean = quoted ? removeQuotes(trimmed) : trimmed;
-  return { isQuoted: quoted, cleanSlug: clean };
+    if (!slug || typeof slug !== 'string' || slug.trim() === '') {
+        return { isQuoted: false, cleanSlug: '' };
+    }
+    const trimmed = slug.trim().toLowerCase();
+    const quoted = isQuoted(trimmed);
+    const clean = quoted ? removeQuotes(trimmed) : trimmed;
+    return { isQuoted: quoted, cleanSlug: clean };
 }
 
 // ==================== 主函数重构 ====================
 
 export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
-  const { isQuoted: isSlugQuoted, cleanSlug: searchSlug } = processSlug(slug);
+    const { isQuoted: isSlugQuoted, cleanSlug: searchSlug } = processSlug(slug);
 
-  let wordDetails = null;
+    let wordDetails = null;
 
-  if (searchSlug) {
-    if (mode !== NavigationMode.Search) {
-        // 翻页
-        wordDetails = await getAdjacentWord(db, searchSlug, mode, userId, mustHaveImage);
-    } else {
-        wordDetails = await getAggregatedWord(db, eq(schema.words.word_text, searchSlug));
-        if (!wordDetails && !isSlugQuoted) {
-            // This part is tricky with aggregation. A simple LIKE might fetch multiple words and mix their details.
-            // For simplicity and performance, we'll fetch the ID first, then get the full details.
-            const prefixId = await getPrefixWordId(db, searchSlug, userId);
-            if (prefixId) {
-                wordDetails = await getAggregatedWord(db, eq(schema.words.id, prefixId));
+    if (searchSlug) {
+        if (mode !== NavigationMode.Search) {
+            // 翻页
+            wordDetails = await getAdjacentWord(db, searchSlug, mode, userId, mustHaveImage);
+        } else {
+            wordDetails = await getAggregatedWord(db, eq(schema.words.word_text, searchSlug));
+            if (!wordDetails && !isSlugQuoted) {
+                // This part is tricky with aggregation. A simple LIKE might fetch multiple words and mix their details.
+                // For simplicity and performance, we'll fetch the ID first, then get the full details.
+                const prefixId = await getPrefixWordId(db, searchSlug, userId);
+                if (prefixId) {
+                    wordDetails = await getAggregatedWord(db, eq(schema.words.id, prefixId));
+                }
             }
         }
+    } else {
+        wordDetails = await findRandomAggregatedWord(db, userId, mustHaveImage);
     }
-  } else {
-    wordDetails = await findRandomAggregatedWord(db, userId, mustHaveImage);
-  }
 
-//   if (mode !== NavigationMode.Search && wordDetails) {
-//       // Navigation logic (Next/Prev) still needs a separate query for simplicity.
-//       const adjacentWord = await getAdjacentWord(db, wordDetails.word.id, mode, userId, mustHaveImage);
-//       if (adjacentWord) {
-//           wordDetails = await getAggregatedWord(db, eq(schema.words.id, adjacentWord.id));
-//       }
-//   }
+    //   if (mode !== NavigationMode.Search && wordDetails) {
+    //       // Navigation logic (Next/Prev) still needs a separate query for simplicity.
+    //       const adjacentWord = await getAdjacentWord(db, wordDetails.word.id, mode, userId, mustHaveImage);
+    //       if (adjacentWord) {
+    //           wordDetails = await getAggregatedWord(db, eq(schema.words.id, adjacentWord.id));
+    //       }
+    //   }
 
-  if (wordDetails) {
-    const wordData = formatDbResultToWordResponse(c, wordDetails.word, wordDetails.contentRecords, wordDetails.imageRecords);
-    return c.json(wordData, 200);
-  }
+    if (wordDetails) {
+        const wordData = formatDbResultToWordResponse(c, wordDetails.word, wordDetails.contentRecords, wordDetails.imageRecords);
+        return c.json(wordData, 200);
+    }
 
-  // 4. 未找到单词的情况
-  if (mode !== NavigationMode.Search || mustHaveImage) {
-    // 如果是在翻页模式或必须带图片，没有更多数据
-    return c.json({}, 200);
-  }
+    // 4. 未找到单词的情况
+    if (mode !== NavigationMode.Search || mustHaveImage) {
+        // 如果是在翻页模式或必须带图片，没有更多数据
+        return c.json({}, 200);
+    }
 
-  // 如果执行到这里，说明是搜索模式，且数据库没有，需要调用AI生成
-  if (!searchSlug) {
-    return c.json({ message: 'Cannot generate data for empty slug.' }, 400);
-  }
+    // 如果执行到这里，说明是搜索模式，且数据库没有，需要调用AI生成
+    if (!searchSlug) {
+        return c.json({ message: 'Cannot generate data for empty slug.' }, 400);
+    }
 
-  const newWordData = await generateWordCard(c, db, userId, searchSlug);
+    // // 字典里是否存在这个单词
+    // const dictResult = await db.select({
+    //     exists: sql`EXISTS (SELECT 1 FROM dictionary WHERE word = ${searchSlug})`
+    // });
 
-  if (newWordData) {
-    return c.json(newWordData, 201);
-  } else {
-    return c.json({ message: `Failed to save generated data for "${searchSlug}".` }, 200);
-  }
+    // // 手动转换类型
+    // const exists = Boolean(dictResult[0]?.exists);
+
+    // if (!exists) {
+    //     // 单词不存在，说明用户输入非法，直接返回
+    //     console.log(`Word "${searchSlug}" not found in dictionary.`);
+    //     return c.json({ message: `Word "${searchSlug}" not exists in dictionary.` }, 200);
+    // } else {
+    //     // 单词存在，调用AI生成
+    //     console.log(`Word "${searchSlug}" found in dictionary, calling AI to generate...`);
+    // }
+
+    const newWordData = await generateWordCard(c, db, userId, searchSlug);
+
+    if (newWordData) {
+        return c.json(newWordData, 201);
+    } else {
+        return c.json({ message: `Failed to save generated data for "${searchSlug}".` }, 200);
+    }
 
 };
 
@@ -278,11 +295,11 @@ function aggregateWordDetails(rows) {
 
 
 const getWordDetails = async (c, db, word) => {
-  const [contentRecords, imageRecords] = await Promise.all([
-    db.select().from(schema.word_content).where(eq(schema.word_content.word_id, word.id)),
-    db.select().from(schema.images).where(eq(schema.images.word_id, word.id)),
-  ]);
-  return formatDbResultToWordResponse(c, word, contentRecords, imageRecords);
+    const [contentRecords, imageRecords] = await Promise.all([
+        db.select().from(schema.word_content).where(eq(schema.word_content.word_id, word.id)),
+        db.select().from(schema.images).where(eq(schema.images.word_id, word.id)),
+    ]);
+    return formatDbResultToWordResponse(c, word, contentRecords, imageRecords);
 };
 
 

@@ -126,3 +126,17 @@ export const word_views = sqliteTable('word_views', {
   created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   // updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 });
+
+
+export const dictionary = sqliteTable('dictionary', {
+  id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
+  word: text('word').unique().notNull(),
+  lang: text('lang').default("en").notNull(),
+  phonetic: text('phonetic').notNull(),
+  meaning: text('meaning').notNull(),
+  frequency: integer('frequency').default(0),
+  difficulty: integer('difficulty').default(0),
+  created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+}, (table) => [
+    unique('unq_word_lang').on(table.word, table.lang),
+]);

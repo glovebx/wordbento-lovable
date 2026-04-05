@@ -13,7 +13,6 @@ import { useLlms, Llm, SaveLlmData } from '@/hooks/use-llm'; // 假设 use-llms 
 import { useProfile } from '@/hooks/use-profile'; // 假设 use-llms 路径正确
 import { AccessTokenSettings } from "../profile/AccessTokenSettings";
 import { ChangePasswordSettings } from "../profile/ChangePasswordSettings";
-import axios from 'axios';
 
 // --- 类型定义 ---
 
@@ -264,7 +263,9 @@ const UserProfile = () => {
     const { 
         recentProfile, 
         renewAccessToken, 
-        isSaving: isTokenRefreshing 
+        isSaving: isTokenRefreshing, 
+        changePassword,
+        isChangingPassword
     } = useProfile(isAuthenticated);
 
     // 状态初始化为默认值，等待后端数据加载
@@ -281,7 +282,7 @@ const UserProfile = () => {
         isSaving: false
     });
 
-    const [isSavingPassword, setIsSavingPassword] = useState(false);
+
 
     // --- EFFECT: 合并后端数据到前端状态 ---
     useEffect(() => {
@@ -369,41 +370,7 @@ const UserProfile = () => {
         }
     }, [apiConfigs, saveLlm]); // 依赖 apiConfigs 以获取 ID
 
-    const handleChangePassword = async (currentPassword: string, newPassword: string, confirmPassword: string) => {
-        if (newPassword !== confirmPassword) {
-            toast({
-                title: "Error",
-                description: "New password and confirmation do not match.",
-                variant: "destructive",
-            });
-            return;
-        }
 
-        setIsSavingPassword(true);
-        try {
-            const response = await axios.post("/api/profile/change-password", {
-                currentPassword,
-                newPassword,
-                confirmPassword,
-            });
-
-            if (response.status === 200) {
-                toast({
-                    title: "Success",
-                    description: "Password updated successfully.",
-                });
-            }
-        } catch (error: any) {
-            const errorMessage = error.response?.data?.message || "An unknown error occurred.";
-            toast({
-                title: "Error Changing Password",
-                description: errorMessage,
-                variant: "destructive",
-            });
-        } finally {
-            setIsSavingPassword(false);
-        }
-    };
 
     // 渲染时判断是否正在初始加载 LLMs
     const isInitialLoading = isLlmsLoading && recentLlms.length === 0;
@@ -456,8 +423,8 @@ const UserProfile = () => {
                         </div>
                         <div id="change-password-section" className="scroll-mt-12">
                             <ChangePasswordSettings 
-                                onSave={handleChangePassword}
-                                isSaving={isSavingPassword}
+                                onSave={async (current, newPass, confirm) => { await changePassword(current, newPass, confirm); }}
+                                isSaving={isChangingPassword}
                             />
                         </div>
                     </div>

@@ -30,6 +30,7 @@ export const useProfile = (isAuthenticated: boolean) => {
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationInfo>({ currentPage: 1, totalPages: 0 });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const { toast } = useToast();
 
@@ -114,6 +115,47 @@ export const useProfile = (isAuthenticated: boolean) => {
     }
   }, [toast, fetchProfile]);
 
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string, confirmPassword: string): Promise<boolean> => {
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "密码不匹配",
+        description: "新密码与确认密码不一致。",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const response = await axiosPrivate.post("/api/profile/change-password", {
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+
+      if (response.status === 200) {
+        toast({
+          title: "成功",
+          description: "密码已成功更新。",
+        });
+        return true;
+      }
+      // Should not happen, but as a fallback
+      return false;
+
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "发生未知错误。";
+      toast({
+        title: "修改密码失败",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsChangingPassword(false);
+    }
+  }, [toast]);
+
   return { 
     recentProfile, 
     isLoading, 
@@ -125,6 +167,9 @@ export const useProfile = (isAuthenticated: boolean) => {
     isHistoryLoading, 
     historyError, 
     pagination, 
-    fetchWordHistory 
+    fetchWordHistory,
+    // Expose password change-related state and function
+    isChangingPassword,
+    changePassword,
   };
 };

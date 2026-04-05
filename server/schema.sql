@@ -211,4 +211,3 @@ CREATE TABLE IF NOT EXISTS dictionary (
     
     UNIQUE (word, lang) -- 确保每个单词在每种语言只有一条记录
 );
-
