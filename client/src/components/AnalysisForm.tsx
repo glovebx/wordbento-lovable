@@ -148,7 +148,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
         
         <TabsContent value="search" className="mt-4 relative">
           {(isWordLoading || isAnalysisLoading) && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-md">
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10 rounded-md">
                   <LoadingFallback message={isWordLoading ? "正在加载单词..." : "分析处理中..."} />
               </div>
           )}          
@@ -168,7 +168,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
 
         <TabsContent value="analyze" className="mt-4 relative">
           {(isAnalysisLoading || isWordLoading) && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10 rounded-md">
+              <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10 rounded-md">
                   <LoadingFallback message={isAnalysisLoading ? "分析处理中..." : "正在加载单词..."} />
               </div>
           )}
@@ -372,7 +372,9 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                                 onClick={() => onWordClick(word, form.getValues('examType'))}
                                 className={cn(
                                     "cursor-pointer",
-                                    word === currentWord ? "bg-blue-500 text-white hover:bg-blue-600" : "hover:bg-gray-100"
+                                    word === currentWord 
+                                        ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+                                        : "hover:bg-primary/10 hover:text-primary"
                                 )}
                             >
                                 {word}
