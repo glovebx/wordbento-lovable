@@ -192,6 +192,13 @@ const Index = () => {
       } else if (event.key === 'ArrowRight') {
         event.preventDefault(); // Prevent default browser scroll behavior
         handleNext(); // Call the next word handler
+      } else if (event.key === 's') {
+        // 切换网格视图和卡片视图
+        if (viewMode === 'grid') {
+          setViewMode('flashcard')
+        } else {
+          setViewMode('grid')
+        }
       }
     };
 
