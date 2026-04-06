@@ -32,6 +32,12 @@ export const usePwaInstall = () => {
   const [isNonStandardBrowser, setIsNonStandardBrowser] = useState(false);
 
   useEffect(() => {
+    // PWA can only be installed in secure contexts (HTTPS or localhost)
+    if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+      setShowInstallButton(false);
+      return;
+    }
+
     const isStandalone = isInStandaloneMode();
     if (isStandalone) {
       setShowInstallButton(false);

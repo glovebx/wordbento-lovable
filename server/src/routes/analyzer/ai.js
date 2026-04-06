@@ -34,9 +34,9 @@ const extractWordsByPlaformAi = async (c, llm, analysisData) => {
 
   try {
     const prompt = analysisData.sourceType === 'article' ? `
-我给你一篇文章，请从中将${analysisData.examType}等级的单词筛选出来，最多500个，请仅以json格式的数组返回，不要包含任何其他文本或解释。
+我给你一篇文章，请从中将${analysisData.examType}等级的单词筛选出来，最多300个，请仅以json格式的数组返回，不要包含任何其他文本或解释。
 文章如下：${analysisData.content}
-              ` : `我给你一个url，请访问阅读其中的正文，从中将${analysisData.examType}等级的单词筛选出来，最多500个，请仅以json格式的数组返回，不要包含任何其他文本或解释。
+              ` : `我给你一个url，请访问阅读其中的正文，从中将${analysisData.examType}等级的单词筛选出来，最多300个，请仅以json格式的数组返回，不要包含任何其他文本或解释。
 URL如下：${analysisData.content}`;
 
 
@@ -90,14 +90,17 @@ URL如下：${analysisData.content}`;
 
       const jsonStr = cleanAiJsonResponse(messageContent)
 
-      const repairedStr = jsonrepair(jsonStr.toLowerCase())
-      console.log(`repairedStr: ${repairedStr}`);
+      if (jsonStr) {
+        const repairedStr = jsonrepair(jsonStr.toLowerCase())
+        console.log(`repairedStr: ${repairedStr}`);
 
-      const jsonWords = JSON.parse(repairedStr);
+        const jsonWords = JSON.parse(repairedStr);
 
-      // Validate the structure of the received data if necessary
-      return jsonWords;
+        // Validate the structure of the received data if necessary
+        return jsonWords;
+      }
 
+      return [];
   } catch (error) {
       console.error(`Network error calling ${llm[0]} AI API:`, error);
       return null;

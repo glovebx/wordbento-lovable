@@ -119,6 +119,7 @@ app.route('/api/llm', llm);
 app.route('/api/profile', profile);
 app.route('/api/admin', admin);
 app.route('/api/statistics', statistics);
+app.route('/ws/analyze', analyze);
 
 // app.route('/api/rss', rss);
 

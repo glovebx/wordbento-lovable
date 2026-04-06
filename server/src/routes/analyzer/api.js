@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../../db/schema';
-import { sql, eq, and, desc } from 'drizzle-orm';
+import { sql, eq, and, ne, desc } from 'drizzle-orm';
 import { calculateMD5 } from '../../utils/passwords';
 import { extractTextFromSrt } from '../../utils/languageParser';
 import { isYouTubeLinkRegex, extractWordsByScraper } from './youtube';
@@ -512,24 +512,44 @@ analyze.delete('/detail/:id', async (c) => {
       .where(eq(schema.attachments.resource_id, resourceId));
       // .limit(1);
 
-      // if (existingAttachments.length == 0) {
-      //     return new Response('Bad Request: Invalid uuid.', { status: 400 });
-      // }    
-
       if (existingAttachments.length > 0) {
         for (const existingAttachment of existingAttachments) {
           let objectKey = existingAttachment.audio_key;
           if (objectKey) {
-            await c.env.WORDBENTO_R2.delete(objectKey);
+            // 如果这个 objectKey 被其他记录引用，就不删除
+            const otherAttachments = await db.select({
+                id: schema.attachments.id,
+            })
+            .from(schema.attachments)
+            .where(and(
+                ne(schema.attachments.resource_id, resourceId),
+                like(schema.attachments.audio_key, `%${objectKey}%`),
+            ));
 
-            console.log(`R2 Object "${objectKey}" has been deleted successfully.`);
+            if (otherAttachments.length == 0) {
+                await c.env.WORDBENTO_R2.delete(objectKey);
+                console.log(`R2 Object "${objectKey}" has been deleted successfully.`);
+            } else {
+              console.log(`R2 Object "${objectKey}" is still referenced by other records, not deleted.`);
+            }
           }
 
           objectKey = existingAttachment.video_key;
           if (objectKey) {
-            await c.env.WORDBENTO_R2.delete(objectKey);
+            // 如果这个 objectKey 被其他记录引用，就不删除
+            const otherAttachments = await db.select({
+                id: schema.attachments.id,
+            })
+            .from(schema.attachments)
+            .where(and(
+                ne(schema.attachments.resource_id, resourceId),
+                like(schema.attachments.video_key, `%${objectKey}%`),
+            ));
 
-            console.log(`R2 Object "${objectKey}" has been deleted successfully.`);
+            if (otherAttachments.length == 0) {
+              await c.env.WORDBENTO_R2.delete(objectKey);
+              console.log(`R2 Object "${objectKey}" has been deleted successfully.`);
+            }
           }
         }
 

@@ -1,7 +1,6 @@
 
-import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../../db/schema';
-import { sql, eq, and } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { checkAndConsumeFreeQuota } from '../../utils/security';
 import { extractWordsByAi } from './ai';
 

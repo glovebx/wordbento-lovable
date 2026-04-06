@@ -1,3 +1,7 @@
+import * as schema from '../../db/schema';
+import { eq, and } from 'drizzle-orm';
+import { extractTextFromSrt } from '../../utils/languageParser';
+import { simulateAnalysisTask } from './service';
 
 export const extractWordsByScraper = async (c, url) => {
   console.log(`Calling Youtube Scraper API for url: ${url}`);
@@ -228,7 +232,6 @@ export const getAudioFromScraperThenExtractWords = async (c, db, task, examType)
   const YOUTUBE_SCRAPER_SRT_ENDPOINT = c.env.YOUTUBE_SCRAPER_ENDPOINT + '/tasks/' + task.uuid + '/audio';
 
   try {
-
       const response = await fetch(YOUTUBE_SCRAPER_SRT_ENDPOINT, {
           method: 'GET',
         //   headers: {
