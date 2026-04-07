@@ -180,7 +180,7 @@ analyze.post('/update', async (c) => {
       if (!analysisData || !analysisData.id) {
           return c.json({ message: 'Invalid analysis data provided.' }, 400);
       }
-      if (analysisData.audioKey === undefined && analysisData.captionSrt === undefined) {
+      if (analysisData.audioKey === undefined && analysisData.captionSrt === undefined && analysisData.fee === undefined) {
         return c.json({ message: 'Invalid data types in analysis request.' }, 400);
       }
   } catch (e) {
@@ -199,6 +199,11 @@ analyze.post('/update', async (c) => {
       return c.json({ message: 'Task not found' }, 404);
   }
 
+  if ('fee' in analysisData) {
+    await db.update(schema.resources)
+        .set({ fee: analysisData.fee })
+        .where(eq(schema.resources.id, analysisData.id));
+  }  
   // // TODO: Get authenticated user ID (replace with actual auth logic)
   // const userId = user.id; // Placeholder for public user or replace with actual user ID
 
@@ -217,50 +222,52 @@ analyze.post('/update', async (c) => {
     }
   }
 
-  // 3. Check if a record with the same exam_type and content_md5 already exists
-  try {
-      const existingAttachments = await db.select({
-        id: schema.attachments.id,
-      })
-      .from(schema.attachments)
-      .where(eq(schema.attachments.resource_id, analysisData.id))
-      .limit(1); // We only need to find one match
+  if (values.audio_key || values.caption_srt || values.caption_txt) {
+    // 3. Check if a record with the same exam_type and content_md5 already exists
+    try {
+        const existingAttachments = await db.select({
+          id: schema.attachments.id,
+        })
+        .from(schema.attachments)
+        .where(eq(schema.attachments.resource_id, analysisData.id))
+        .limit(1); // We only need to find one match
 
-      if (existingAttachments.length > 0) {
-        console.log(`existingAttachments: ${JSON.stringify(existingAttachments[0])}`)
-        // 成功
-        await db.update(schema.attachments)
-            .set(values)
-            .where(eq(schema.attachments.id, existingAttachments[0].id));  
-      } else {
-        values.resource_id = analysisData.id
-        const insertedResult = await db.insert(schema.attachments).values(values)
-        // Use .returning() in Drizzle for D1 to get the inserted row
-        .returning()
-        .get(); // .get() for a single row
+        if (existingAttachments.length > 0) {
+          console.log(`existingAttachments: ${JSON.stringify(existingAttachments[0])}`)
+          // 成功
+          await db.update(schema.attachments)
+              .set(values)
+              .where(eq(schema.attachments.id, existingAttachments[0].id));  
+        } else {
+          values.resource_id = analysisData.id
+          const insertedResult = await db.insert(schema.attachments).values(values)
+          // Use .returning() in Drizzle for D1 to get the inserted row
+          .returning()
+          .get(); // .get() for a single row
 
-        // Check if insertion was successful and returned a row
-        if (!insertedResult) {
-            throw new Error("Failed to insert srt into table or get inserted row.");
+          // Check if insertion was successful and returned a row
+          if (!insertedResult) {
+              throw new Error("Failed to insert srt into table or get inserted row.");
+          }
         }
-      }
 
-  } catch (checkError) {
-      console.error("Failed to check for existing attachment in DB:", checkError);
-      // Continue to insert if checking fails, or return an error depending on desired behavior
-      // For now, let's return an error if the check itself failed
-      return c.json({ message: 'Failed to check for existing attachment.' }, 500);
-  }
-
-  if (values.caption_txt) {
-    const simulateAnalysisData = {
-        title: values.title,
-        sourceType: 'article',
-        content: values.caption_txt,
-        examType: existingTask.exam_type,
+    } catch (checkError) {
+        console.error("Failed to check for existing attachment in DB:", checkError);
+        // Continue to insert if checking fails, or return an error depending on desired behavior
+        // For now, let's return an error if the check itself failed
+        return c.json({ message: 'Failed to check for existing attachment.' }, 500);
     }
 
-    c.executionCtx.waitUntil(simulateAnalysisTask(c, existingTask.uuid, db, simulateAnalysisData));
+    if (values.caption_txt) {
+      const simulateAnalysisData = {
+          title: values.title,
+          sourceType: 'article',
+          content: values.caption_txt,
+          examType: existingTask.exam_type,
+      }
+
+      c.executionCtx.waitUntil(simulateAnalysisTask(c, existingTask.uuid, db, simulateAnalysisData));
+    }
   }
 
   return c.json({ uuid: existingTask.uuid }, 201); // 201 Created
@@ -392,7 +399,7 @@ analyze.get('/list/:limit/:page', async (c) => {
 
     if (paginatedResources.length > 0) {
       paginatedResources.forEach(r => {
-          r.content = r.content.substring(0, 47) + '...';
+          r.content = r.content.length > 64 ? r.content.substring(0, 64) + '...' : r.content;
           r.audioKey = !!r.audioKey;
           r.captionSrt = !!r.captionSrt;
       });
@@ -439,6 +446,7 @@ analyze.get('/detail/:id', async (c) => {
         examType: schema.resources.exam_type,
         content: schema.resources.content, 
         words: schema.resources.result,
+        fee: schema.resources.fee,
     })
       .from(schema.resources)
       .where(and(

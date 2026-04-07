@@ -8,6 +8,7 @@ export interface Resource {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   result: any; // JSON result
   error?: string;
+  fee: number;
   uuid: string;
   createdAt: string;
   updatedAt: string;
@@ -32,6 +33,7 @@ export interface UiResourceWithAttachment {
   sourceType: 'url' | 'article' | 'pdf' | 'image';
   content: string;
   examType: string;
+  fee: number;
 
   audioKey?: string | null;
   videoKey?: string | null;

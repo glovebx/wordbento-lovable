@@ -70,6 +70,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
         content: resource?.content || "",
         examType: resource?.examType || "TOFEL",
         sourceType: resource?.sourceType || "url",
+        fee: resource?.fee || 0,
 
         audioKey: resource.attachments?.[0]?.audioKey || null,
         videoKey: resource.attachments?.[0]?.videoKey || null,
@@ -86,6 +87,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
     content: "",
     examType: "",
     sourceType: "url" as "url" | "article" | "pdf" | "image",
+    fee: 0,
   });
   const [isSaving, setIsSaving] = useState(false);
 //   const [isSyncing, setIsSyncing] = useState(false);
@@ -115,6 +117,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
         content: resource.content,
         examType: resource.examType,
         sourceType: resource.sourceType,
+        fee: resource.fee,
       });
 
       // Find the single attachment object (if any)
@@ -142,6 +145,7 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
         content: "",
         examType: "",
         sourceType: "url",
+        fee: 0
       });
       setExistingAttachment(null);
       setExistingAudioPreviewUrl(null);
@@ -253,6 +257,10 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
       }
       if (formData.sourceType !== initialResourceSnapshot?.sourceType) {
         dataToSave.sourceType = formData.sourceType;
+      }
+
+      if (formData.fee !== initialResourceSnapshot?.fee) {
+        dataToSave.fee = formData.fee;
       }
 
       // Handle file uploads first
@@ -562,6 +570,19 @@ export const EditResourceDialog: React.FC<EditResourceDialogProps> = ({
                   </AlertDialog>
                 )} */}
               </div>
+            </div>
+
+            <div className="grid gap-2 w-1/8">
+              <Label htmlFor="fee">费用</Label>
+              <Input
+                id="fee"
+                type="number"
+                value={formData.fee}
+                onChange={(e) => 
+                  setFormData(prev => ({ ...prev, fee: Number(e.target.value) }))
+                }
+                placeholder="资源费用，0表示可免费下载"
+              />
             </div>
 
             {/* 音频文件上传/管理 */}
