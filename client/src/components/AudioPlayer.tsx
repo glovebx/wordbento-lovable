@@ -46,6 +46,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   const [tempSliderValue, setTempSliderValue] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- Draggable State ---
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const playerRef = useRef<HTMLDivElement>(null);
+  // --- End Draggable State ---
+
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
 
   const lastCueIndex = useRef(-1); // Cache for last active cue index
@@ -225,6 +232,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       audio.addEventListener('timeupdate', savePosition);
     }
 
+    // Set initial position of the player
+    if (playerRef.current) {
+      const playerWidth = playerRef.current.offsetWidth;
+      const initialX = (window.innerWidth - playerWidth) / 2;
+      const initialY = window.innerHeight - playerRef.current.offsetHeight - 20; // 20px padding from bottom
+      setPosition({ x: initialX, y: initialY });
+    }
+
     return () => {
       if (audio) {
         audio.removeEventListener('timeupdate', savePosition);
@@ -365,6 +380,89 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, []);
+
+  // --- Draggable Handlers ---
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button, .rc-slider')) {
+      return; // Don't drag if clicking on a button or slider
+    }
+    setIsDragging(true);
+    dragStartPos.current = {
+      x: e.clientX - position.x,
+      y: e.clientY - position.y,
+    };
+  }, [position]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isDragging || !playerRef.current) return;
+
+    let newX = e.clientX - dragStartPos.current.x;
+    let newY = e.clientY - dragStartPos.current.y;
+
+    // Boundary checks
+    const playerWidth = playerRef.current.offsetWidth;
+    const playerHeight = playerRef.current.offsetHeight;
+    newX = Math.max(0, Math.min(newX, window.innerWidth - playerWidth));
+    newY = Math.max(0, Math.min(newY, window.innerHeight - playerHeight));
+
+    setPosition({ x: newX, y: newY });
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button, .rc-slider')) {
+      return;
+    }
+    setIsDragging(true);
+    const touch = e.touches[0];
+    dragStartPos.current = {
+      x: touch.clientX - position.x,
+      y: touch.clientY - position.y,
+    };
+  }, [position]);
+
+  const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (!isDragging || !playerRef.current) return;
+    const touch = e.touches[0];
+
+    let newX = touch.clientX - dragStartPos.current.x;
+    let newY = touch.clientY - dragStartPos.current.y;
+
+    const playerWidth = playerRef.current.offsetWidth;
+    const playerHeight = playerRef.current.offsetHeight;
+    newX = Math.max(0, Math.min(newX, window.innerWidth - playerWidth));
+    newY = Math.max(0, Math.min(newY, window.innerHeight - playerHeight));
+
+    setPosition({ x: newX, y: newY });
+  }, [isDragging]);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchmove', handleTouchMove);
+      window.addEventListener('touchend', handleTouchEnd);
+    } else {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
+  // --- End Draggable Handlers ---
 
   // // OPTIMIZATION: Memoize escapedHighlightWords
   // const escapedHighlightWords = useMemo(() => {
@@ -602,8 +700,18 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   if (!audioUrl) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-linear-to-r from-purple-800 to-indigo-900 text-white p-4 shadow-lg z-50">
-      <div className="container mx-auto flex flex-col md:flex-row items-center justify-between">
+    <div 
+      ref={playerRef}
+      className="fixed bg-linear-to-r from-purple-800 to-indigo-900 text-white p-4 shadow-lg z-50 rounded-lg w-[90vw] max-w-2xl cursor-grab active:cursor-grabbing"
+      style={{
+        left: `${position.x}px`,
+        top: `${position.y}px`,
+        touchAction: 'none', // Prevent default touch actions like scrolling
+      }}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
+    >
+      <div className="container mx-auto flex flex-col md:flex-row items-center justify-between pr-8 md:pr-0">
         <audio ref={audioRef} src={audioUrl} preload="auto" />
 
         {isLoading && (
@@ -686,7 +794,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
           variant="ghost"
           size="icon"
           onClick={onClose}
-          className="mt-2 md:mt-0 md:ml-4"
+          className="absolute top-1 right-1 md:relative md:top-auto md:right-auto md:mt-0 md:ml-4"
         >
           <X className="h-5 w-5" />
         </Button>        
