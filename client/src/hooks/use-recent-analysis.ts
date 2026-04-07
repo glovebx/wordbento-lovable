@@ -26,10 +26,11 @@ export const useRecentAnalysis = (isAuthenticated: boolean) => {
   // Internal helper to fetch submissions with pagination
   const fetchSubmissions = useCallback(async (page: number) => {
     if (!isAuthenticated) {
-      setIsLoading(false);
-      setHasMore(false); // No more data if not authenticated
-      setRecentSubmissions([]);
-      return;
+      // setIsLoading(false);
+      // setHasMore(false); // No more data if not authenticated
+      // setRecentSubmissions([]);
+      // return;
+      console.log('fetch analyzer results without authentication');
     }
 
     setIsLoading(true);
@@ -69,7 +70,7 @@ export const useRecentAnalysis = (isAuthenticated: boolean) => {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, toast]);
+  }, [toast]);
 
   // Effect for initial load and when isAuthenticated changes
   useEffect(() => {
@@ -77,12 +78,12 @@ export const useRecentAnalysis = (isAuthenticated: boolean) => {
     setRecentSubmissions([]);
     setCurrentPage(0);
     setHasMore(true); // Assume there's more data for a fresh start
-    if (isAuthenticated) {
+    // if (isAuthenticated) {
       fetchSubmissions(0);
-    } else {
-      setIsLoading(false); // No loading if not authenticated
-    }
-  }, [isAuthenticated, fetchSubmissions]);
+    // } else {
+    //   setIsLoading(false); // No loading if not authenticated
+    // }
+  }, [fetchSubmissions]);
 
   // Function to load more submissions (exposed to component)
   const loadMore = useCallback(() => {

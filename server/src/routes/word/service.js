@@ -311,6 +311,16 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
     const existingWord = await db.select().from(schema.words).where(eq(schema.words.word_text, wordToGenerate)).limit(1);
     if (existingWord.length === 0) return null;
 
+    if (!force) {
+        // 非强制，先找到既存的图片
+        const existImages = await db.select({ image_key: schema.images.image_key })
+        .from(schema.images)
+        .where(eq(schema.images.word_id, existingWord[0].id));
+        if (existImages.length > 0) {
+            return existImages.map(img => `${c.env.VITE_IMG_URL}/${img.image_key}`);
+        }
+    }
+
     if (!example) {
         const examples = await db.select({ content: schema.word_content.content })
             .from(schema.word_content)

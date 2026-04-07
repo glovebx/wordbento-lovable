@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS resources (
     status TEXT CHECK(status IN ('pending', 'processing', 'completed', 'failed')) NOT NULL DEFAULT 'pending',
     result TEXT, -- Stored as TEXT, you'll need to handle JSON parsing in your application
     error TEXT,
+    fee INTEGER DEFAULT 0,  -- download fee, 0 means free to download
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     uuid TEXT UNIQUE,

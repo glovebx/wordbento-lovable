@@ -72,6 +72,7 @@ export const resources = sqliteTable('resources', {
   status: text('status', { enum: ['pending', 'processing', 'completed', 'failed'] }).notNull().default('pending'), // Task status
   result: text('result', { mode: 'json' }), // Store JSON result on completion
   error: text('error'), // Store error message on failure
+  fee: integer('fee').default(0),
   uuid: text("uuid").unique(),
   created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`),

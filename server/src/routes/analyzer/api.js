@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../../db/schema';
-import { sql, eq, and, ne, desc } from 'drizzle-orm';
+import { sql, eq, and, or, ne, desc } from 'drizzle-orm';
 import { calculateMD5 } from '../../utils/passwords';
 import { extractTextFromSrt } from '../../utils/languageParser';
 import { isYouTubeLinkRegex, extractWordsByScraper } from './youtube';
@@ -268,16 +268,26 @@ analyze.post('/update', async (c) => {
 
 analyze.get('/history', async (c) => {
   const user = c.get('user');
-  if (!user) {
-    // return c.json({ message: 'Forbidden' }, 403);
-    return c.json([], 200);
-  }
+  // if (!user) {
+  //   // return c.json({ message: 'Forbidden' }, 403);
+  //   return c.json([], 200);
+  // }
 
   const limit = parseInt(c.req.query('limit') || 4, 10);
   const offset = parseInt(c.req.query('offset') || 0, 10);
 
   const db = drizzle(c.env.DB, { schema });
   
+  const whereClause = user && and(
+        eq(schema.resources.status, 'completed'),
+        or(
+          eq(schema.resources.user_id, user.id), 
+          eq(schema.resources.fee, 0)
+        )) || and(
+        eq(schema.resources.status, 'completed'),
+        eq(schema.resources.fee, 0)
+        )
+
   try {
       const existingResources = await db.select({
           uuid: schema.resources.uuid,
@@ -294,17 +304,16 @@ analyze.get('/history', async (c) => {
                 eq(schema.attachments.resource_id, schema.resources.id)
             )
         )      
-      .where(and(
-        eq(schema.resources.user_id, user.id), 
-        eq(schema.resources.status, 'completed'))
-        )
+      .where(whereClause)
       .orderBy(desc(schema.resources.id))
       .offset(offset)
       .limit(limit);
 
+      console.log('existingResources', existingResources);
+
       if (existingResources.length > 0) {
         existingResources.forEach(r => {
-            r.content = r.content.substring(0, 47) + '...';
+            r.content = r.content.length > 64 ? r.content.substring(0, 64) + '...' : r.content;
             r.audioKey = !!r.audioKey;
             r.captionSrt = !!r.captionSrt;
         });

@@ -9,7 +9,7 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { useAuth } from '@/contexts/AuthContext';
+// import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from './AuthModal';
 import { useGenerateImages } from '@/hooks/use-generate-images';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -28,7 +28,7 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
   position,
   onClose,
 }) => {
-  const { isAuthenticated } = useAuth();  
+  // const { isAuthenticated } = useAuth();  
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
 
@@ -39,10 +39,10 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
 
   // 获取图片 URL
   useEffect(() => {
-    if (!isAuthenticated) {
-      setShowAuthModal(true);
-      return;
-    }
+    // if (!isAuthenticated) {
+    //   setShowAuthModal(true);
+    //   return;
+    // }
 
     const fetchImageUrls = async (word: string) => {
         try {
@@ -60,7 +60,7 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
     };
 
     fetchImageUrls(wordText);
-  }, [isAuthenticated, generateImages, wordText, onClose]);
+  }, [generateImages, wordText, onClose]);
 
   // 处理图片点击，打开大图弹窗
   const handleImageClick = useCallback((index: number) => {
