@@ -11,6 +11,7 @@ interface ImageData {
 // 2. If not found, calling an image generation API (like Imagen-3.0).
 // 3. Storing generated images for future use.
 
+// 废弃了
 export const useWordImages = (wordText: string) => {
   const [imageUrls, setImageUrls] = useState<ImageData[]>([]);
   const [isLoading, setIsLoading] = useState(false);

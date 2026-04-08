@@ -391,11 +391,11 @@ export const repairAiResponseToJson = (messageContent) => {
 };
 
 const generatePosterPromptWithExample = (word, language, pronunciation, exampleSentence, style) => {
-    return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Subtitle: "${pronunciation}" (smaller, elegant, below title). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate all text seamlessly. Crucial: sentence must be highly legible. Style: ${style}.`;
+    return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Subtitle: "${pronunciation}" (smaller, elegant, below title). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate all text seamlessly. Crucial: sentence must be highly legible. Style: ${style}. Additionally, the full sentence must appear as text on the poster.`;
 };
 
 const generatePosterPromptWithoutExample = (word, language, pronunciation, style) => {
-    return `Conceptual poster for ${language} word "${word}": visually define its essence. Title "${word}" large/bold as focal point; pronunciation "${pronunciation}" below elegantly. Imagery conveys concept intuitively to non-speakers via evocative metaphor. Style: ${style}.`;
+    return `Conceptual poster for ${language} word "${word}": visually define its essence. Title "${word}" large/bold as focal point; pronunciation "${pronunciation}" below elegantly. Imagery conveys concept intuitively to non-speakers via evocative metaphor. Style: ${style}. Additionally, the full sentence must appear as text on the poster. `;
 };
 
 function extractHttpLinks(text) {
