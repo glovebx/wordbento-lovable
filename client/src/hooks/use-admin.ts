@@ -21,14 +21,14 @@ export const useAdmin = (isAuthenticated: boolean) => {
   });
   const { toast } = useToast();
 
-  const fetchAllWords = useCallback(async (page: number, searchTerm: string = '') => {
+  const fetchAllWords = useCallback(async (page: number, searchTerm: string = '', noImageOnly: boolean = false) => {
     if (!isAuthenticated) return;
 
     setIsLoading(true);
     setError(null);
     try {
       const response = await axiosPrivate.get<PaginatedWordsResponse>('/api/admin/words', {
-        params: { page, limit: 20, query: searchTerm },
+        params: { page, limit: 20, query: searchTerm, noImage: noImageOnly },
       });
       setWords(response.data.data);
       setPagination({

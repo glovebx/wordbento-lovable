@@ -11,11 +11,11 @@ admin.use('/*', adminRequired);
 
 // Route to get all words with pagination
 admin.get('/words', async (c) => {
-    const { page = '1', limit = '20', query = '' } = c.req.query();
+    const { page = '1', limit = '20', query = '', noImage = 'false' } = c.req.query();
     const db = drizzle(c.env.DB, { schema });
 
     try {
-        const data = await getAllWords(db, parseInt(page, 10), parseInt(limit, 10), query);
+        const data = await getAllWords(db, parseInt(page, 10), parseInt(limit, 10), query, noImage === 'true');
         return c.json(data);
     } catch (error) {
         console.error("Failed to fetch all words:", error);

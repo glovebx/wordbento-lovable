@@ -8,6 +8,8 @@ import { Pagination } from '@/components/Pagination';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { Home, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -26,16 +28,17 @@ const WordManagement: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [wordToDelete, setWordToDelete] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [noImageOnly, setNoImageOnly] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchAllWords(1, debouncedSearchTerm);
+      fetchAllWords(1, debouncedSearchTerm, noImageOnly);
     }
-  }, [isAuthenticated, fetchAllWords, debouncedSearchTerm]);
+  }, [isAuthenticated, fetchAllWords, debouncedSearchTerm, noImageOnly]);
 
   const handlePageChange = (page: number) => {
-    fetchAllWords(page, debouncedSearchTerm);
+    fetchAllWords(page, debouncedSearchTerm, noImageOnly);
   };
 
   const handleDeleteRequest = (wordId: number) => {
@@ -68,16 +71,22 @@ const WordManagement: React.FC = () => {
 
       <div className="mt-12">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4">
             <CardTitle>Word Management</CardTitle>
-            <div className="w-full max-w-sm">
-              <Input
-                type="search"
-                placeholder="Search words..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-              />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
+              <div className="flex items-center space-x-2">
+                <Checkbox id="no-image-filter" checked={noImageOnly} onCheckedChange={(checked) => setNoImageOnly(Boolean(checked))} />
+                <Label htmlFor="no-image-filter">无图</Label>
+              </div>
+              <div className="w-full md:w-96">
+                <Input
+                  type="search"
+                  placeholder="Search words..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+              </div>
             </div>
           </CardHeader>
           <CardContent>

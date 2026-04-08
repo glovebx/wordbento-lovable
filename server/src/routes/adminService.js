@@ -1,23 +1,50 @@
-import { eq, desc, sql, like, and } from 'drizzle-orm';
+import { eq, desc, sql, like, and, isNull } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 
 // Service to get all words with pagination and search
-export const getAllWords = async (db, page, limit, query) => {
+export const getAllWords = async (db, page, limit, query, noImageOnly) => {
     const offset = (page - 1) * limit;
 
+    // Base query
+    let queryBuilder = db.select({ word: schema.words }).from(schema.words);
+
+    // Handle no-image filter
+    if (noImageOnly) {
+        queryBuilder = queryBuilder.leftJoin(schema.images, eq(schema.words.id, schema.images.word_id))
+                                 .where(isNull(schema.images.id));
+    }
+
+    // Handle search term
     const conditions = [];
     if (query) {
         conditions.push(like(schema.words.word_text, `%${query}%`));
     }
 
-    const words = await db.select()
-        .from(schema.words)
-        .where(and(...conditions))
-        .orderBy(desc(schema.words.id)) // Order by most recent
-        .limit(limit)
-        .offset(offset);
+    // We need a separate query for counting that respects all conditions
+    let countQueryBuilder = db.select({ count: sql`count(*)` }).from(schema.words);
+    if (noImageOnly) {
+        countQueryBuilder = countQueryBuilder.leftJoin(schema.images, eq(schema.words.id, schema.images.word_id))
+                                             .where(isNull(schema.images.id));
+    }
+    if (conditions.length > 0) {
+        countQueryBuilder = countQueryBuilder.where(and(...conditions));
+    }
 
-    const totalResult = await db.select({ count: sql`count(*)` }).from(schema.words).where(and(...conditions));
+    // Apply conditions to the main query builder
+    if (conditions.length > 0) {
+        queryBuilder = queryBuilder.where(and(...conditions));
+    }
+
+    // Execute both queries
+    const [wordsResult, totalResult] = await Promise.all([
+        queryBuilder
+            .orderBy(desc(schema.words.id))
+            .limit(limit)
+            .offset(offset),
+        countQueryBuilder
+    ]);
+
+    const words = wordsResult.map(res => res.word); // Extract just the word data
     const totalCount = totalResult[0].count;
     const totalPages = Math.ceil(totalCount / limit);
 
