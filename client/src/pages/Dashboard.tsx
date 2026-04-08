@@ -1,12 +1,12 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, lazy, Suspense } from "react";
 import { Navigate } from "react-router-dom";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ProfileSidebar } from "@/components/dashboard/MenuSidebar";
-import AnalysisHistory from "@/components/dashboard/AnalysisHistory";
-import UserProfile from "@/components/dashboard/UserProfile";
-import WordHistory from "@/components/dashboard/WordHistory";
-import WordManagement from "@/components/dashboard/WordManagement";
-import LearningStats from "@/components/dashboard/LearningStats";
+const AnalysisHistory = lazy(() => import("@/components/dashboard/AnalysisHistory"));
+const UserProfile = lazy(() => import("@/components/dashboard/UserProfile"));
+const WordHistory = lazy(() => import("@/components/dashboard/WordHistory"));
+const WordManagement = lazy(() => import("@/components/dashboard/WordManagement"));
+const LearningStats = lazy(() => import("@/components/dashboard/LearningStats"));
 import { MobileNavigation } from "@/components/dashboard/MobileNavigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -123,7 +123,9 @@ const Dashboard = () => {
                 onAvatarUpload={handleAvatarUpload}
               />
             )}
-            {renderContent()}
+            <Suspense fallback={<LoadingFallback message="Loading section..." />}>
+              {renderContent()}
+            </Suspense>
           </SidebarInset>
         </div>
       </SidebarProvider>

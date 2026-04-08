@@ -8,14 +8,16 @@ import LoadingFallback from '@/components/LoadingFallback';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
-import { Home, Loader2 } from 'lucide-react';
+import { Home, Loader2, FileDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { usePdfExporter } from '@/hooks/use-pdf-exporter'; // Import the new hook
 
 const WordHistoryPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const { isExporting, exportToPdf } = usePdfExporter();
   
   const { 
     history, 
@@ -33,10 +35,27 @@ const WordHistoryPage: React.FC = () => {
     fetchWordHistory(1, debouncedSearchTerm);
   }, [isAuthenticated, navigate, debouncedSearchTerm, fetchWordHistory]);
 
+  useEffect(() => {
+    // Preload the PDF generation libraries in the background
+    // after the main page content has likely loaded, to improve
+    // the perceived performance of the PDF export button.
+    const timer = setTimeout(() => {
+      import('@react-pdf/renderer');
+      import('@/components/pdf/PdfDocument');
+    }, 3000); // 3-second delay
+
+    return () => clearTimeout(timer);
+  }, []); // Run only once when the component mounts
+
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= pagination.totalPages) {
       fetchWordHistory(page, debouncedSearchTerm);
     }
+  };
+
+  const handleExport = () => {
+    const wordsToExport = history.slice(0, 10);
+    exportToPdf(wordsToExport, 'word-history');
   };
 
   if (!user && !isAuthenticated) {
@@ -65,14 +84,24 @@ const WordHistoryPage: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <CardTitle>浏览历史</CardTitle>
-            <div className="w-full max-w-sm">
-              <Input
-                type="search"
-                placeholder="搜索单词..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-              />
+            <div className="flex items-center gap-2">
+              <Button onClick={handleExport} disabled={isExporting || history.length === 0}>
+                {isExporting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileDown className="mr-2 h-4 w-4" />
+                )}
+                导出为PDF
+              </Button>
+              <div className="w-full max-w-sm">
+                <Input
+                  type="search"
+                  placeholder="搜索单词..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full"
+                />
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -101,6 +130,7 @@ const WordHistoryPage: React.FC = () => {
             )}
           </CardContent>
         </Card>
+
       </div>
     </div>
   );

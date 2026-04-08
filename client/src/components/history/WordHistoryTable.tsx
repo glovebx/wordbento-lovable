@@ -12,7 +12,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns/formatDistanceToNow';
 import { zhCN } from 'date-fns/locale';
 import { WordDataType } from '@/types/wordTypes';
 import useIsTouchDevice from '@/hooks/use-is-touch-device';

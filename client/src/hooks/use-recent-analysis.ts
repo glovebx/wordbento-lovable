@@ -16,7 +16,7 @@ export type Submission = {
 
 const BATCH_SIZE = 4; // Number of submissions to load per request
 
-export const useRecentAnalysis = (isAuthenticated: boolean) => {
+export const useRecentAnalysis = () => {
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(0); // Tracks current page loaded
@@ -25,14 +25,6 @@ export const useRecentAnalysis = (isAuthenticated: boolean) => {
 
   // Internal helper to fetch submissions with pagination
   const fetchSubmissions = useCallback(async (page: number) => {
-    if (!isAuthenticated) {
-      // setIsLoading(false);
-      // setHasMore(false); // No more data if not authenticated
-      // setRecentSubmissions([]);
-      // return;
-      console.log('fetch analyzer results without authentication');
-    }
-
     setIsLoading(true);
     try {
       // Assuming your backend API supports 'limit' and 'offset' for pagination

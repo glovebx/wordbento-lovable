@@ -59,7 +59,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   const [sourceType, setSourceType] = useState<'url' | 'article'>('url');
   const [searchInput, setSearchInput] = useState('');
   // 从 useRecentAnalysis 钩子中解构出 hasMore 和 loadMore
-  const { recentSubmissions, isLoading: isLoadingHistory, hasMore, loadMore } = useRecentAnalysis(isAuthenticated);
+  const { recentSubmissions, isLoading: isLoadingHistory, hasMore, loadMore } = useRecentAnalysis();
   const [words, setWords] = useState<string[]>([]);
   const [showAllWords, setShowAllWords] = useState(false);
 

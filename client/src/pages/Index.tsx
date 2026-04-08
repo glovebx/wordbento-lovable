@@ -70,7 +70,7 @@ const Index = () => {
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | undefined>(undefined);
   const [currentSubtitleContent, setCurrentSubtitleContent] = useState<string | undefined>(undefined);
   const [currentSrtResource, setCurrentSrtResource] = useState<string | undefined>(undefined);
-  const { getSrt } = useRecentAnalysis(false);
+  const { getSrt } = useRecentAnalysis();
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const { startAnalysis, isLoading: isAnalysisLoading } = useAnalysisTask();
   const bentoGridRef = useRef<HTMLDivElement>(null);

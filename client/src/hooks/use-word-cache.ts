@@ -167,6 +167,26 @@ export const useWordCache = () => {
         }
     }, [addToCache]);
 
+    const getWordDetails = useCallback(async (slug: string): Promise<WordDataType | null> => {
+        const slug_to_search = slug.trim().toLowerCase();
+        if (wordCacheRef.current.has(slug_to_search)) {
+            return wordCacheRef.current.get(slug_to_search)!;
+        }
+
+        try {
+            const response = await axiosPrivate.post('/api/word/search', { slug: slug_to_search, mode:NavigationMode.Search, mhi: true });
+            if (response.data?.content) {
+                const data = response.data as WordDataType;
+                addToCache(slug_to_search, data); // Add to cache for future use
+                return data;
+            }
+            return null;
+        } catch (error) {
+            console.error(`Failed to fetch details for ${slug_to_search}`, error);
+            return null;
+        }
+    }, [addToCache]);
+
     const updateWordImageUrls = useCallback((wordText: string, urls: string[]) => {
         if (wordCacheRef.current.has(wordText)) {
             const cachedData = wordCacheRef.current.get(wordText)!;
@@ -240,6 +260,7 @@ export const useWordCache = () => {
         isGenerating: !!taskId,
         queuePosition: taskResult?.queuePosition,
         fetchWord,
-        updateWordImageUrls
+        updateWordImageUrls,
+        getWordDetails
     };
 };
