@@ -178,7 +178,7 @@ export const WordManagementTable: React.FC<WordManagementTableProps> = ({ words,
               className="max-h-[300px] overflow-y-auto pr-4"
             >
               {englishExamples.map((example: string, index: number) => (
-                <div key={index} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+                <div key={index} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-400 cursor-pointer">
                   <RadioGroupItem value={String(index)} id={`example-${index}`} />
                   <Label htmlFor={`example-${index}`} className="cursor-pointer text-base font-normal leading-relaxed">
                     {example}
