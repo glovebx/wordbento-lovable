@@ -16,9 +16,10 @@ import { baseURL } from "@/lib/axios";
 import FloatingImageCarousel from '@/components/FloatingImageCarousel';
 import { useGenerateImages } from '@/hooks/use-generate-images';
 import * as htmlToImage from 'html-to-image';
+import { useViewMode } from '@/hooks/use-view-mode'; // Import the new hook
 
 const Index = () => {
-  const [viewMode, setViewMode] = useState<'grid' | 'flashcard'>('grid');
+  const [viewMode, setViewMode] = useViewMode('grid'); // Use the custom hook
   const {
     currentWord: wordData, // Rename for consistency with existing components
     isLoading: isWordLoading,
