@@ -23,7 +23,7 @@ export const checkAndConsumeFreeQuota = async (c, userId) => {
     if (userId) {
         key = `${USER_KEY_PREFIX}-${userId}`;
         // Potentially different limit for logged-in users
-        limit = c.env.USER_CALLS_LIMIT || 100;
+        limit = c.env.USER_CALLS_LIMIT || 1000;
     } else {
         const requestIp = c.req.header('CF-Connecting-IP');
         if (!requestIp) {

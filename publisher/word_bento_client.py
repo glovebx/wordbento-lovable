@@ -154,38 +154,51 @@ class WordBentoClient:
             'Accept-Charset': 'UTF-8',
             'Content-Type': 'application/json'
         }
+        self.state = self._load_state()
 
-    def load_state(self) -> int:
-        """
-        从JSON文件加载上次的latestViewsId
-        
-        Returns:
-            int: 上次的latestViewsId，如果文件不存在返回0
-        """
+    def _load_state(self) -> dict:
+        """从JSON文件加载整个状态"""
         try:
             if os.path.exists(self.state_file):
                 with open(self.state_file, 'r', encoding='utf-8') as f:
                     state = json.load(f)
-                    return state.get('latestViewsId', 0)
-            return 0
+                    if isinstance(state, dict):
+                        return state
+                    else:
+                        print(f"状态文件格式不正确，应为JSON对象。正在重置...")
+                        return {}
+            return {}
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"加载状态文件失败: {e}，返回空状态")
+            return {}
+
+    def _save_state(self) -> None:
+        """保存整个状态到JSON文件"""
+        try:
+            with open(self.state_file, 'w', encoding='utf-8') as f:
+                json.dump(self.state, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            print(f"加载状态文件失败: {e}，使用默认值0")
-            return 0
+            print(f"保存状态文件失败: {e}")
+
+    def load_state(self) -> int:
+        """
+        从内存中的状态获取latestViewsId
+        
+        Returns:
+            int: 上次的latestViewsId，如果不存在返回0
+        """
+        return self.state.get('latestViewsId', 0)
 
     def save_state(self, latest_views_id: int) -> None:
         """
-        保存latestViewsId到JSON文件
+        更新内存中的latestViewsId并保存整个状态到文件
         
         Args:
             latest_views_id: 最新的视图ID
         """
-        try:
-            state = {'latestViewsId': latest_views_id}
-            with open(self.state_file, 'w', encoding='utf-8') as f:
-                json.dump(state, f, indent=2, ensure_ascii=False)
-            print(f"状态已保存: latestViewsId = {latest_views_id}")
-        except Exception as e:
-            print(f"保存状态文件失败: {e}")
+        self.state['latestViewsId'] = latest_views_id
+        self._save_state()
+        print(f"状态已保存: latestViewsId = {latest_views_id}")
 
     def get_today_words(self, max_id: int) -> Optional[Dict]:
         """
@@ -213,6 +226,31 @@ class WordBentoClient:
             return None
         except json.JSONDecodeError as e:
             print(f"解析响应JSON失败: {e}")
+            return None
+
+    def get_word_details(self, slug: str) -> Optional[Dict]:
+        """
+        获取单词详情
+        
+        Args:
+            slug: 单词的slug标识
+            
+        Returns:
+            Dict: 单词详情数据，失败返回None
+        """
+        url = f"{self.base_url}/api/word/search"
+        payload = {"slug": slug, "mode": 0, "mhi": False}
+        
+        try:
+            response = self.session.post(url, headers=self.headers, json=payload, timeout=self.timeout)
+            response.raise_for_status()
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            print(f"获取单词详情 '{slug}' 失败: {e}")
+            return None
+        except json.JSONDecodeError as e:
+            print(f"解析单词 '{slug}' 详情JSON失败: {e}")
             return None
 
     def generate_word_image(self, word_slug: str) -> bool:
@@ -398,5 +436,7 @@ class WordBentoClient:
         return contents
 
     def close(self):
-        """关闭会话"""
+        """关闭会话并保存最终状态"""
+        self._save_state()
         self.session.close()
+        print("客户端已关闭，最终状态已保存。")

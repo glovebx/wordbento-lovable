@@ -3,6 +3,7 @@ import { WordDataType } from '@/types/wordTypes';
 import { axiosPrivate } from "@/lib/axios";
 import { AxiosError } from "axios";
 import { useTaskSubscription } from './use-task-subscription';
+import { preloadImages } from '../utils/preload.ts';
 
 // ... (keep WordDataType and MAX_CACHE_SIZE as they are)
 const MAX_CACHE_SIZE = 20;
@@ -242,6 +243,9 @@ export const useWordCache = () => {
                         } else {
                             // 插入到当前这个单词的前面
                             prependToPrefetchCache(response.data.word_text, currentWord.word_text);
+                        }
+                        if (response.data.imageUrls && response.data.imageUrls.length > 0) {
+                            preloadImages(response.data.imageUrls);
                         }
                     }
                 } catch (e) {
