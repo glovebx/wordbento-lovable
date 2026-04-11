@@ -22,11 +22,12 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
+    "types": ["vite/client"],
 
     "paths": {
       "@/*": ["./src/*"],
       "@pages/*": ["./src/pages/*"],
     }    
   },
-  "include": ["src"]
+  "include": ["src", "src/vite-env.d.ts"]
 }

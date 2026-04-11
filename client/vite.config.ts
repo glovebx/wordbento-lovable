@@ -4,10 +4,27 @@ import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 
 const _dirname = typeof __dirname !== 'undefined'
   ? __dirname
-  : dirname(fileURLToPath(import.meta.url))
+  : dirname(fileURLToPath(import.meta.url));
+
+// Read the theme initialization script content
+const themeScript = fs.readFileSync(resolve(_dirname, 'src/theme-init.ts'), 'utf-8');
+
+// Plugin to inject the script into the <head>
+const injectThemeScriptPlugin = () => {
+  return {
+    name: 'inject-theme-script',
+    transformIndexHtml(html: string) {
+      return html.replace(
+        '</head>',
+        `  <script>${themeScript}</script>\n</head>`
+      );
+    },
+  };
+};
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -16,6 +33,7 @@ export default defineConfig(({ mode }) => ({
     port: 1234,
   },
   plugins: [
+    injectThemeScriptPlugin(),
     react(),
     tailwindcss(),  // ✅ 作为 Vite 插件
     VitePWA({
