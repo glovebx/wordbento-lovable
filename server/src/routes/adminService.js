@@ -17,11 +17,11 @@ export const getAllWords = async (db, page, limit, query, noImageOnly) => {
     // Handle search term
     const conditions = [];
     if (query) {
-        conditions.push(like(schema.words.word_text, `%${query}%`));
+        conditions.push(like(schema.words.word_text, `${query}%`));
     }
 
     // We need a separate query for counting that respects all conditions
-    let countQueryBuilder = db.select({ count: sql`count(*)` }).from(schema.words);
+    let countQueryBuilder = db.select({ count: sql`count(distinct ${schema.words.id})` }).from(schema.words);
     if (noImageOnly) {
         countQueryBuilder = countQueryBuilder.leftJoin(schema.images, eq(schema.words.id, schema.images.word_id))
                                              .where(isNull(schema.images.id));
@@ -38,6 +38,7 @@ export const getAllWords = async (db, page, limit, query, noImageOnly) => {
     // Execute both queries
     const [wordsResult, totalResult] = await Promise.all([
         queryBuilder
+            .groupBy(schema.words.id)
             .orderBy(desc(schema.words.id))
             .limit(limit)
             .offset(offset),

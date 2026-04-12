@@ -110,12 +110,16 @@ def main():
         os.makedirs(image_dir, exist_ok=True)
 
         # --- Generate meta.json ---
+        definitions = []
         cover_image_paths = []
         for i, word in enumerate(words_details):
             if word.get('imageUrls') and len(word['imageUrls']) > 0:
                 img_path = os.path.join(image_dir, f"cover_{i}.jpg")
                 if download_image(word['imageUrls'][0], img_path):
                     cover_image_paths.append(img_path)
+                
+            # Add definition scene
+            definitions.append(word.get('content', {}).get('definition', {}).get('en', '') + '\n' + word['word_text'])
 
         cover_filename = "cover.jpg"
         cover_output_path = os.path.join(image_dir, cover_filename)
@@ -132,12 +136,13 @@ def main():
             "prompt": {"text2": ""},
             "label": {"text2": ""},
             "author": "4s背单词",
+            "ending": "assets/4swords_with_silence.mp4",
             "title2": "\\n".join(word_texts),
             "highlights": word_texts,
             "xhs": {
-                "title": f"每日英语学习：{word_texts[0]}, {word_texts[1]}, {word_texts[2]}",
-                "desc": f"今天我们来学习三个有用的单词：{word_texts[0]}, {word_texts[1]}, 和 {word_texts[2]}。通过例句和图片加深理解。",
-                "tags": "#英语学习 #每日单词 #单词打卡"
+                "title": f"单词打卡：{word_texts[0]}, {word_texts[1]}, {word_texts[2]}",
+                "desc": '\n\n'.join(definitions),
+                "tags": ['单词打卡', '每日单词', '英语学习', '英语单词速记', '英语词汇', '单词记忆法', '日常英语']
             },
             "music": "Young_and_Beautiful.mp3",
             "zoom_effect_in_clip": True,
