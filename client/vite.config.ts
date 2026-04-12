@@ -116,138 +116,62 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id: string) {
-          // if (id.includes('node_modules')) {
-          //   if (id.includes('recharts')) {
-          //       return 'charts';
-          //   }
-          //   if (id.includes('d3')) {
-          //       return 'd3';
-          //   }
-          //   if (id.includes('react-router-dom')) {
-          //       return 'router';
-          //   }
-          //   // 1. React 核心（不含 DOM 渲染器）
-          //   if (id.includes('/react/') || id.includes('/react/index')) {
-          //     return 'react-core';
-          //   }
-          //   // 2. React DOM 渲染器（体积较大）
-          //   if (id.includes('/react-dom/')) {
-          //     return 'react-dom';
-          //   }
-          //   // 3. 调度器（通常随 react-dom 引入，但也可独立观察）
-          //   if (id.includes('/scheduler/')) {
-          //     return 'scheduler';
-          //   }            
-          //   // 5. 路由
-          //   if (id.includes('react-router-dom') || id.includes('react-router')) {
-          //     return 'router';
-          //   }
-          //   // if (id.includes('react') || id.includes('react-dom')) {
-          //   //   return 'react';
-          //   // }
-          //   if (id.includes('@react-pdf/renderer')) {
-          //     return 'pdf';
-          //   }
-          //   return 'vendor';
-          // }
-          // 仅处理 node_modules 中的模块
           if (!id.includes('node_modules')) return;
 
-          // ============ 1. 超大体积独立库（强制按需加载） ============
-          // PDF 渲染器 —— 除非首页必须，否则配合动态 import 使用效果最佳
-          if (id.includes('@react-pdf/renderer')) {
-            return 'pdf-renderer';
-          }
+          // ============ 1. Large libraries for lazy-loading ============
+          if (id.includes('@react-pdf/renderer')) return 'pdf-renderer';
+          if (id.includes('recharts')) return 'charts-recharts';
+          if (id.includes('html-to-image')) return 'html-to-image';
+          if (id.includes('d3')) return 'charts-d3';
 
-          // ============ 2. 图表与可视化（体积大、更新频率低） ============
-          if (id.includes('recharts')) {
-            return 'charts-recharts';
-          }
-          if (id.includes('d3')) {
-            // d3 通常作为 recharts 的依赖引入，单独分包避免重复
-            return 'charts-d3';
-          }
+          // ============ 2. Core Framework (stable, long-term caching) ============
+          if (id.includes('react-dom')) return 'react-dom';
+          if (id.includes('react-router-dom') || id.includes('react-router')) return 'router';
+          if (id.includes('react')) return 'react'; // Catches react, scheduler, etc.
 
-          // ============ 3. 核心框架层（确保稳定、独立缓存） ============
-          // React 核心 API (极小块，独立缓存几乎永久有效)
-          if (id.includes('/react/') || id.includes('/react/index')) {
-            return 'react-core';
-          }
-          // React DOM 渲染器 (体积较大，但稳定)
-          if (id.includes('/react-dom/')) {
-            return 'react-dom';
-          }
-          // 调度器 (内部依赖，随 react-dom 加载)
-          if (id.includes('/scheduler/')) {
-            return 'scheduler';
-          }
-          // 路由 (相对独立，更新不频繁)
-          if (id.includes('react-router-dom') || id.includes('react-router')) {
-            return 'router';
-          }
-          // 数据请求缓存层
-          if (id.includes('@tanstack/react-query')) {
-            return 'data-query';
-          }
-
-          // ============ 4. UI 组件库分组 ============
-          // Radix UI 系列（数量多但单个极小，合并成一个 chunk 避免请求爆炸）
-          if (id.includes('@radix-ui/')) {
-            return 'ui-radix';
-          }
-          // 其他 UI 组件 (如 cmdk, vaul, sonner 等)
+          // ============ 3. UI and Component Libraries (consolidated) ============
           if (
+            id.includes('@radix-ui/') ||
             id.includes('cmdk') ||
             id.includes('vaul') ||
             id.includes('sonner') ||
-            id.includes('input-otp')
+            id.includes('input-otp') ||
+            id.includes('embla-carousel') ||
+            id.includes('react-resizable-panels')
           ) {
-            return 'ui-components';
-          }
-          // 轮播图 (embla-carousel)
-          if (id.includes('embla-carousel')) {
-            return 'ui-carousel';
+            return 'ui-libs';
           }
 
-          // ============ 5. 图标库（重点优化区域） ============
-          // 强烈建议代码层面对图标使用动态导入，否则此处可将它们单独拆分
-          if (id.includes('lucide-react')) {
-            return 'icons-lucide';
-          }
-          if (id.includes('react-icons')) {
-            return 'icons-react';
-          }
+          // ============ 4. Icons ============
+          if (id.includes('lucide-react')) return 'icons-lucide';
+          if (id.includes('react-icons')) return 'icons-react';
 
-          // ============ 6. 表单与校验 ============
+          // ============ 5. Forms and Date/Time (consolidated) ============
           if (
             id.includes('react-hook-form') ||
             id.includes('zod') ||
-            id.includes('@hookform/resolvers')
+            id.includes('@hookform/resolvers') ||
+            id.includes('react-select') ||
+            id.includes('react-day-picker') ||
+            id.includes('date-fns')
           ) {
-            return 'form-lib';
-          }
-          if (id.includes('react-select')) {
-            return 'form-select';
-          }
-          if (id.includes('react-day-picker') || id.includes('date-fns')) {
-            return 'form-date';
+            return 'form-libs';
           }
 
-          // ============ 7. 通用工具库（高频、小块、合并） ============
+          // ============ 6. Common Utilities ============
           if (
-            id.includes('lodash') ||
+            id.includes('lodash') || // Catches lodash and lodash-es
             id.includes('clsx') ||
             id.includes('class-variance-authority') ||
             id.includes('tailwind-merge') ||
-            id.includes('html-to-image') ||
             id.includes('axios') ||
-            id.includes('buffer')
+            id.includes('buffer') ||
+            id.includes('@tanstack/react-query')
           ) {
             return 'utils';
           }
 
-          // ============ 8. 剩余第三方依赖 ============
-          // 确保 vendor 包不会过大（通常 < 200KB）
+          // ============ 7. Default vendor chunk for everything else ============
           return 'vendor';
         },
       },

@@ -15,7 +15,6 @@ import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis';
 import { baseURL } from "@/lib/axios";
 import FloatingImageCarousel from '@/components/FloatingImageCarousel';
 import { useGenerateImages } from '@/hooks/use-generate-images';
-import * as htmlToImage from 'html-to-image';
 import { useViewMode } from '@/hooks/use-view-mode'; // Import the new hook
 
 const Index = () => {
@@ -265,6 +264,8 @@ const Index = () => {
       });
       return;
     }
+
+    const htmlToImage = await import('html-to-image');
 
     // console.log("Attempting to capture bento grid element with html-to-image:", element);
 
