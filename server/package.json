@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n \"WRANGLER,DRIZZLE-KIT\" -c \"blue,green\" \"wrangler dev --env development --ip 0.0.0.0 --log-level debug > wrangler_debug.log 2>&1\" \"drizzle-kit studio\"",
+    "dev": "concurrently -n \"WRANGLER,DRIZZLE-KIT\" -c \"blue,green\" \"wrangler dev --env development --ip 0.0.0.0 --port 8787 --log-level debug > wrangler_debug.log 2>&1\" \"drizzle-kit studio\"",
     "start": "wrangler deploy --env production",
     "build": "esbuild src/index.js --bundle --outfile=dist/index.js --platform=node --format=esm",
     "serve": "node server.js",
@@ -21,27 +21,29 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "djwt": "^2.0.0",
-    "dotenv": "^17.4.0",
-    "hono": "^4.12.9",
-    "jimp": "^1.6.0",
+    "dotenv": "^17.4.2",
+    "hono": "^4.12.12",
+    "jimp": "1.6.0",
     "jsonrepair": "^3.13.3",
     "langs": "^2.0.0",
     "mariadb": "^3.5.2",
     "nanoid": "^5.1.7",
-    "undici": "^7.24.7"
+    "undici": "^8.0.2"
   },
   "devDependencies": {
-    "@cloudflare/puppeteer": "^1.0.6",
+    "@cloudflare/puppeteer": "^1.0.7",
     "@playwright/test": "^1.59.1",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "better-sqlite3": "^12.8.0",
     "concurrently": "^9.2.1",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
-    "esbuild": "^0.27.5",
+    "esbuild": "^0.28.0",
+    "node-addon-api": "^8.7.0",
+    "node-gyp": "^12.2.0",
     "sharp": "^0.34.5",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
-    "wrangler": "^4.79.0"
+    "wrangler": "^4.81.1"
   }
 }

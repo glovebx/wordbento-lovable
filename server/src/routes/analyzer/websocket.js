@@ -1,7 +1,7 @@
 
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../../db/schema';
-import { eq } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { isYouTubeLinkRegex, pollingStatusFromScraper, getAudioFromScraperThenExtractWords, getSrtFromScraperThenExtractWords } from './youtube';
 
 export const handleWebSocket = async (c) => {
