@@ -1,7 +1,7 @@
 // components/AudioPlayer.tsx
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Volume2, VolumeX, Subtitles, X, Settings } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Subtitles, X, Settings, Repeat, Repeat1 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -39,6 +39,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [isLooping, setIsLooping] = useState(false);
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [parsedCues, setParsedCues] = useState<SubtitleCue[]>([]);
   const [currentActiveCueIndex, setCurrentActiveCueIndex] = useState<number | null>(null);
@@ -712,7 +713,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       onTouchStart={handleTouchStart}
     >
       <div className="container mx-auto flex flex-col md:flex-row items-center justify-between pr-8 md:pr-0">
-        <audio ref={audioRef} src={audioUrl} preload="auto" />
+        <audio ref={audioRef} src={audioUrl} preload="auto" loop={isLooping} />
 
         {isLoading && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -750,6 +751,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
               disabled={isLoading}
             />
           </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsLooping(!isLooping)}
+            title={isLooping ? "取消循环播放" : "循环播放"}
+          >
+            {isLooping ? <Repeat1 className="h-5 w-5 text-blue-300" /> : <Repeat className="h-5 w-5" />}
+          </Button>
 
           {parsedCues.length > 0 && (
             <>
