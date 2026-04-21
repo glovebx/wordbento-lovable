@@ -51,15 +51,15 @@ export const useAdmin = (isAuthenticated: boolean) => {
     try {
       await axiosPrivate.delete(`/api/admin/words/${wordId}`);
       toast({ title: "Success", description: "Word deleted successfully." });
-      // Refresh the word list after deletion
-      fetchAllWords(pagination.currentPage);
+      // // Refresh the word list after deletion
+      // fetchAllWords(pagination.currentPage, searchTerm, noImageOnly);
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       toast({ title: "Deletion Failed", description: errorMessage, variant: "destructive" });
       return false;
     }
-  }, [isAuthenticated, toast, fetchAllWords, pagination.currentPage]);
+  }, [isAuthenticated, toast, pagination.currentPage]);
 
   return {
     words,

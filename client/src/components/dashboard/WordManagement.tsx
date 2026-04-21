@@ -49,9 +49,14 @@ const WordManagement: React.FC = () => {
     if (wordToDelete === null) return;
 
     setIsDeleting(true);
-    await deleteWord(wordToDelete);
+    const success = await deleteWord(wordToDelete);
     setIsDeleting(false);
     setWordToDelete(null);
+
+    // If deletion was successful, manually refetch with current filters
+    if (success) {
+      fetchAllWords(pagination.currentPage, debouncedSearchTerm, noImageOnly);
+    }
   };
 
   if (error) {

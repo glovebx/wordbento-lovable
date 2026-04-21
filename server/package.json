@@ -10,6 +10,8 @@
     "generate:migration": "drizzle-kit generate --schema src/db/schema.ts --dialect sqlite",
     "push:migration": "drizzle-kit push --db ./drizzle/sqlite.db",
     "sync:once": "node scripts/sync.mjs",
+    "sync:images": "node scripts/sync_new_images.mjs",
+    "sync:audios": "node scripts/sync_new_audios.mjs",
     "sync:incremental": "node scripts/sync.mjs",
     "sync:r2": "node scripts/sync_r2.mjs"
   },
