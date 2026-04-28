@@ -6,6 +6,7 @@ geckodriver
 geckodriver.log
 *.pyc
 
+*.py
 test.py
 today.py
 *.json

@@ -7,6 +7,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, XCircle, Search } from 'lucide-react';
@@ -55,6 +56,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   currentWord }) => {
 
     const { isAuthenticated } = useAuth();  
+    const isMobile = useIsMobile();
 
   const [sourceType, setSourceType] = useState<'url' | 'article'>('url');
   const [searchInput, setSearchInput] = useState('');
@@ -62,8 +64,10 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   const { recentSubmissions, isLoading: isLoadingHistory, hasMore, loadMore } = useRecentAnalysis();
   const [words, setWords] = useState<string[]>([]);
   const [showAllWords, setShowAllWords] = useState(false);
-
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // const [displayLimit, setDisplayLimit] = useState(25);
+  const [wordsToDisplay, setWordsToDisplay] = useState<string[]>([]);
 
   useEffect(() => {
     if (analysisResult?.words) {
@@ -134,8 +138,14 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
     setSourceType(submission.sourceType); // Also update local state for radio group display
   };
 
-  const displayLimit = 25;
-  const wordsToDisplay = showAllWords ? words : words.slice(0, displayLimit);
+  // const displayLimit = 25;
+  // const wordsToDisplay = showAllWords ? words : words.slice(0, displayLimit);
+
+  // Effect 2: Handles subtitle parsing (when subtitleContent or isMobile changes)
+  useEffect(() => {
+    const limit = isMobile ? 5 : 25;
+    setWordsToDisplay(showAllWords ? words : words.slice(0, limit));
+  }, [words, showAllWords, isMobile]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 mb-8 mt-4">
@@ -382,7 +392,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                         ))}
                     </div>
                     {/* Conditional "Show All" or "Hide" button */}
-                    {words.length > displayLimit && !showAllWords && (
+                    {words.length > wordsToDisplay.length && !showAllWords && (
                         <div className="text-center mt-4">
                             <Button
                                 variant="link"
@@ -393,7 +403,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                             </Button>
                         </div>
                     )}
-                    {words.length > displayLimit && showAllWords && (
+                    {words.length > wordsToDisplay.length && showAllWords && (
                         <div className="text-center mt-4">
                             <Button
                                 variant="link"

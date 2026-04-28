@@ -703,7 +703,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   return (
     <div 
       ref={playerRef}
-      className="fixed bg-linear-to-r from-purple-800 to-indigo-900 text-white p-4 shadow-lg z-50 rounded-lg w-[90vw] max-w-2xl cursor-grab active:cursor-grabbing"
+      className={cn(
+        "fixed max-w-4xl bg-background text-foreground p-4 shadow-2xl z-50 rounded-lg cursor-grab active:cursor-grabbing",
+        "border dark:border-slate-800 dark:bg-slate-900",
+        "container" // This ensures it matches the main content width
+      )}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
