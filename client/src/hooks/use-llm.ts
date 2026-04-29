@@ -110,9 +110,28 @@
 //     }
 //   }, [toast, axiosPrivate]); // Dependencies: toast and axiosPrivate
 
-//   return { recentLlms, isLoading, saveLlm, isSaving, saveError};
-// };
+export const useEinkStatus = (isAuthenticated: boolean) => {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['einkStatus'],
+    queryFn: async () => {
+      const response = await axiosPrivate.get('/api/llm/eink-status');
+      return response.data as { configured: boolean; endpoint: string | null; token: string | null };
+    },
+    enabled: isAuthenticated, // Only run the query if the user is authenticated
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: false, // Do not refetch on window focus
+  });
+
+  return {
+    isEinkConfigured: data?.configured ?? false,
+    einkEndpoint: data?.endpoint,
+    einkToken: data?.token,
+    isLoadingEinkStatus: isLoading,
+    einkStatusError: error,
+  };
+};
 import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from "@tanstack/react-query";
 import { axiosPrivate } from "@/lib/axios"; // 假设 axiosPrivate 是一个稳定的、不随渲染变化的实例
 import axios, { AxiosError } from 'axios'; 
 import { useToast } from '@/hooks/use-toast';

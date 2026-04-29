@@ -21,6 +21,8 @@ import type { CarouselApi } from '@/components/ui/carousel'; // 类型导入
 import EnlargedImageCarouselDialog from '@/components/EnlargedImageCarouselDialog';
 import DraggableButton from './DraggableButton';
 
+import { useEinkStatus } from '@/hooks/use-llm';
+
 interface FlashcardModeProps {
   wordData: WordDataType;
   onNext: () => void;
@@ -35,6 +37,8 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   onShowImageDialogChange,
 }) => {
   const isTouchDevice = useIsTouchDevice();
+  const { isEinkConfigured, einkEndpoint, einkToken, isLoadingEinkStatus } = useEinkStatus(true);
+  const [isPushing, setIsPushing] = useState(false);
 
   const [userInput, setUserInput] = useState('');
   const lastUserInputRef = useRef<string>('');
@@ -42,6 +46,66 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   // const [isMarkedForReview, setIsMarkedForReview] = useState(false);
   const { toast } = useToast();
+
+  const handlePushToEink = async () => {
+    // Ensure there is an image selected. Default to the first image if not.
+    const imageIndexToPush = selectedImageIndex ?? 0;
+
+    if (!einkEndpoint || !wordData.imageUrls || wordData.imageUrls.length === 0) {
+      toast({
+        title: "推送失败",
+        description: "没有可用的图片或 e-ink 阅读器未配置。",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsPushing(true);
+    try {
+      const imageUrl = wordData.imageUrls[imageIndexToPush];
+      // Use a CORS proxy if necessary, or fetch directly if allowed
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.statusText}`);
+      }
+      const imageBlob = await response.blob();
+
+      const formData = new FormData();
+      // The filename can be anything, as the server will likely process the blob.
+      formData.append('file', imageBlob, 'pushed-image.jpg');
+
+      const pushResponse = await fetch(`${einkEndpoint}/api/v1/push`, {
+        method: 'POST',
+        headers: {
+          'X-API-Token': einkToken || '',
+        },
+        body: formData,
+      });
+
+      if (!pushResponse.ok) {
+        const errorBody = await pushResponse.text();
+        throw new Error(`HTTP error! status: ${pushResponse.status}, body: ${errorBody}`);
+      }
+
+      // 延迟3秒钟,e-ink刷新需要时间
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      toast({
+        title: "推送成功",
+        description: "图片已发送到您的 e-ink 设备。",
+      });
+
+    } catch (error) {
+      console.error("Failed to push to e-ink:", error);
+      toast({
+        title: "推送失败",
+        description: `无法发送图片: ${error instanceof Error ? error.message : '未知错误'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsPushing(false);
+    }
+  };
 
   const [showEnlargedImageDialog, setShowEnlargedImageDialog] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
@@ -376,15 +440,26 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
           {/* NEW: "详细" button and details section */}
           <div className="w-full max-w-md flex flex-col items-center space-y-4">
+            <div className="flex space-x-2 mt-4">
               <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowDetails(!showDetails)}
-                  className="mt-4"
               >
                   <Info className="h-4 w-4 mr-2" />
                   {showDetails ? '隐藏详细' : '显示详细'}
               </Button>
+              {isEinkConfigured && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePushToEink}
+                  disabled={isLoadingEinkStatus || !isEinkConfigured || !wordData.imageUrls || wordData.imageUrls.length === 0 || isPushing}
+                >
+                  {isPushing ? '推送中...' : '推送'}
+                </Button>
+              )}
+            </div>
 
               <div className="text-center p-3 bg-muted rounded-lg w-full max-w-sm animate-fade-in">
                   {wordData.phonetic && (
