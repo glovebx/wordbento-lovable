@@ -77,7 +77,10 @@ word.post('/imagize', async (c) => {
 
   try {
     const imageUrls = await generateWordImage(c, db, userId, slug, example, force);
-    if (imageUrls && imageUrls.length > 0) {
+    if (!imageUrls) {
+      // 说明字典中单词不存在
+      return c.json({ message: `Word "${slug}" not found in dictionary.` }, 404);
+    } else if (imageUrls.length > 0) {
       return c.json({ imageUrls }, 200);
     } else {
       return c.json({ message: `Failed to generate image for "${slug}".` }, 500);

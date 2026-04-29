@@ -9,17 +9,16 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-// import { useAuth } from '@/contexts/AuthContext';
 import AuthModal from './AuthModal';
 import { useGenerateImages } from '@/hooks/use-generate-images';
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
-// Define CarouselApi type for internal use (since it's not directly exported)
-type CarouselApi = any; // You might get a proper type from shadcn/ui documentation if available
+// Define CarouselApi type for internal use
+type CarouselApi = any;
 
 interface FloatingImageCarouselProps {
   wordText: string;
-  position: { top: number; left: number; width: number; height: number; }; // position is relative to viewport
+  position: { top: number; left: number; width: number; height: number; };
   onClose: () => void;
 }
 
@@ -28,89 +27,81 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
   position,
   onClose,
 }) => {
-  // const { isAuthenticated } = useAuth();  
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [showEnlargedDialog, setShowEnlargedDialog] = useState(false);
   const [enlargedImageIndex, setEnlargedImageIndex] = useState<number | null>(null);
 
   const { generateImages, isGeneratingImages } = useGenerateImages();
 
-  // 获取图片 URL
+  const fetchAndSetImages = useCallback(async (force = false) => {
+    setIsLoading(true);
+    setImageUrls([]);
+    try {
+      const urls = await generateImages(wordText, '', force);
+      if (urls && urls.length > 0) {
+        setImageUrls(urls);
+      }
+    } catch (error) {
+      console.error(`Failed to ${force ? 'generate' : 'fetch'} images:`, error);
+      // In case of initial fetch failure, we close the component.
+      if (!force) onClose();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [wordText, generateImages, onClose]);
+
   useEffect(() => {
-    // if (!isAuthenticated) {
-    //   setShowAuthModal(true);
-    //   return;
-    // }
+    fetchAndSetImages(false); // Initial fetch, don't force generation
+  }, [fetchAndSetImages]);
 
-    const fetchImageUrls = async (word: string) => {
-        try {
-            const generatedUrls = await generateImages(word, '', false);
-            if (generatedUrls && generatedUrls.length > 0) {
-                setImageUrls(generatedUrls);
-            } else {
-                onClose(); // 如果没有生成图片，则关闭
-            }
-            
-        } catch (error) {
-            console.error('Failed to fetch images:', error);
-            onClose(); // 出现错误时关闭
-        }
-    };
+  // Handle click on the generate button
+  const handleGenerateClick = () => {
+    fetchAndSetImages(true); // Force generation
+  };
 
-    fetchImageUrls(wordText);
-  }, [generateImages, wordText, onClose]);
-
-  // 处理图片点击，打开大图弹窗
+  // Handle image click to open the enlarged view
   const handleImageClick = useCallback((index: number) => {
     setEnlargedImageIndex(index);
     setShowEnlargedDialog(true);
   }, []);
 
-  // 计算浮动轮播的位置样式 - 动态调整以避免超出屏幕
+  // ... (position calculation logic remains the same) ...
   const carouselWidth = 320;
   const carouselHeight = 200;
-  const margin = 20; // 单词与轮播之间的间距
+  const margin = 20;
 
   let calculatedTop = 0;
   let calculatedLeft = 0;
 
-  // 尝试将轮播放置在单词上方
   const potentialTopAbove = position.top - carouselHeight - margin;
-
-  // 如果上方空间不足 (例如，单词靠近视口顶部)，则放置在单词下方
-  if (potentialTopAbove < 0) { // 假设顶部至少有0px，可以增加一个小的安全边距如10px
+  if (potentialTopAbove < 0) {
     calculatedTop = position.top + position.height + margin;
   } else {
     calculatedTop = potentialTopAbove;
   }
 
-  // 确保轮播不会超出视口的底部
   const viewportHeight = window.innerHeight;
   if (calculatedTop + carouselHeight > viewportHeight) {
-    calculatedTop = viewportHeight - carouselHeight - margin; // 距离底部也留出一些间距
-    // 如果即使放置在底部边缘，仍然会超出顶部 (这发生在视口非常小且单词很靠下时)，
-    // 则直接将其固定在顶部
+    calculatedTop = viewportHeight - carouselHeight - margin;
     if (calculatedTop < 0) {
         calculatedTop = margin;
     }
   }
 
-  // 计算左右位置 (居中于单词)
   const potentialLeft = position.left + (position.width / 2) - (carouselWidth / 2);
   const viewportWidth = window.innerWidth;
 
-  // 确保轮播不会超出视口左侧
-  if (potentialLeft < 0) { // 假设左侧至少有0px，可以增加一个小的安全边距如10px
+  if (potentialLeft < 0) {
     calculatedLeft = margin;
-  } else if (potentialLeft + carouselWidth > viewportWidth) { // 确保不会超出视口右侧
-    calculatedLeft = viewportWidth - carouselWidth - margin; // 距离右侧也留出一些间距
+  } else if (potentialLeft + carouselWidth > viewportWidth) {
+    calculatedLeft = viewportWidth - carouselWidth - margin;
   } else {
     calculatedLeft = potentialLeft;
   }
 
-  // 将计算后的位置应用到样式
   const floatingCarouselStyle = {
     top: `${calculatedTop}px`,
     left: `${calculatedLeft}px`,
@@ -120,10 +111,9 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
 
   return (
     <>
-      {/* 浮动轮播容器 */}
       <div
         className="fixed z-100 bg-gray-900 bg-opacity-95 rounded-lg shadow-2xl p-2 flex flex-col items-center justify-center"
-        style={floatingCarouselStyle} // 应用计算后的样式
+        style={floatingCarouselStyle}
       >
         <Button
           variant="ghost"
@@ -134,10 +124,10 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
           <X className="h-5 w-5" />
         </Button>
 
-        {isGeneratingImages ? (
+        {isLoading ? (
           <div className="flex flex-col items-center justify-center text-white">
             <Loader2 className="h-8 w-8 animate-spin mb-2" />
-            <p>生成图片中...</p>
+            <p>加载中...</p>
           </div>
         ) : imageUrls.length > 0 ? (
           <Carousel className="w-full h-full max-w-xs mx-auto">
@@ -145,7 +135,7 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
               {imageUrls.map((url, index) => (
                 <CarouselItem key={index} className="h-full flex items-center justify-center">
                   <div
-                    onClick={() => handleImageClick(index)} // 点击打开大图弹窗
+                    onClick={() => handleImageClick(index)}
                     className="cursor-pointer w-full h-full"
                   >
                     <AspectRatio ratio={16/9}>
@@ -162,55 +152,53 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
                 </CarouselItem>
               ))}
             </CarouselContent>
-            {/* 小轮播导航按钮 */}
-            <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 text-white hover:bg-gray-700 w-6 h-6" />
-            <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 text-white hover:bg-gray-700 w-6 h-6" />
+            {imageUrls.length > 1 && (
+              <>
+                <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2 text-white hover:bg-gray-700 w-6 h-6" />
+                <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2 text-white hover:bg-gray-700 w-6 h-6" />
+              </>
+            )}
           </Carousel>
         ) : (
           <div className="flex flex-col items-center justify-center text-white text-center p-4">
-            <p className="mb-2">暂无图片。</p>
+            <p className="mb-4">暂无数据</p>
+            <Button onClick={handleGenerateClick} disabled={isGeneratingImages}>
+              {isGeneratingImages ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> 正在生成...</>
+              ) : (
+                "创建详情或生成新图片"
+              )}
+            </Button>
           </div>
         )}
       </div>
 
-      {/* 大图弹窗 */}
+      {/* Enlarged Image Dialog */}
       <Dialog open={showEnlargedDialog} onOpenChange={setShowEnlargedDialog}>
         <DialogContent className="
         fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-        w-[calc(100vw-2rem)] /* 关键修改: 手机端宽度接近满屏，留1rem边距 */
-        sm:max-w-2xl /* sm breakpoint onwards, max-w takes over */
+        w-[calc(100vw-2rem)]
+        sm:max-w-2xl
         md:max-w-3xl
         lg:max-w-4xl
         xl:max-w-5xl
-        max-h-[90vh] /* Max height of dialog content */
+        max-h-[90vh]
         flex flex-col items-center justify-center
-        bg-background /* Use Shadcn default background */
-        p-1 /* Add padding around the content */
+        bg-background
+        p-1
         rounded-lg shadow-lg z-101"
         aria-describedby={undefined}
         >
-          {/* 为辅助功能添加 DialogTitle，视觉上隐藏 */}
           <DialogTitle className="sr-only">
             {`“${wordText}”的放大图片轮播`}
           </DialogTitle>
-
-          {/* 将大图轮播封装为独立组件，并确保它能填充可用空间 */}
           <EnlargedImageCarousel
             imageUrls={imageUrls}
             wordText={wordText}
             initialIndex={enlargedImageIndex}
             onCloseDialog={() => setShowEnlargedDialog(false)}
-            className="w-full h-full bg-black/10 rounded-md" /* 确保轮播组件填充其父容器，并添加黑色背景和圆角 */
+            className="w-full h-full bg-black/10 rounded-md"
           />
-           {/* 关闭按钮 */}
-           {/* <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowEnlargedDialog(false)}
-            className="absolute top-2 right-2 text-foreground hover:bg-muted-foreground/10 z-20"
-          >
-            <X className="h-6 w-6" />
-          </Button> */}
         </DialogContent>
       </Dialog>
 
@@ -218,7 +206,7 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={() => {}}
-      />         
+      />
     </>
   );
 };

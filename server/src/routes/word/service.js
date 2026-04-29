@@ -305,7 +305,7 @@ const getWordDetails = async (c, db, word) => {
 
 
 export const generateWordImage = async (c, db, userId, slug, example, force) => {
-    if (!slug) return null;
+    if (!slug) throw new Error('Slug is required.');
 
     const wordToGenerate = slug.trim().toLowerCase();
     const existingWord = await db.select().from(schema.words).where(eq(schema.words.word_text, wordToGenerate)).limit(1);
@@ -366,7 +366,7 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
         }));
         return savedImageUrls;
     }
-    return null;
+    return [];
 };
 
 export const markWordAsMastered = async (db, userId, wordId) => {
