@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS temp_attachments (
 CREATE TABLE IF NOT EXISTS llms (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    platform TEXT CHECK(platform IN ('deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'seedream', 'dreamina', 'scraper')) NOT NULL,
+    platform TEXT CHECK(platform IN ('deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'seedream', 'dreamina', 'scraper', 'eink')) NOT NULL,
     endpoint TEXT NOT NULL,
     token TEXT,
     model TEXT,

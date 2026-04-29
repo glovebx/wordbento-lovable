@@ -6,6 +6,43 @@ import { sql, eq, and, desc } from 'drizzle-orm'; // Import sql tag for raw SQL 
 
 const llm = new Hono();
 
+llm.get('/eink-status', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ configured: false, endpoint: null }, 403);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+  const userId = user.id;
+
+  try {
+    const einkConfig = await db.select({
+      endpoint: schema.llms.endpoint,
+      token: schema.llms.token
+    })
+    .from(schema.llms)
+    .where(and(
+      eq(schema.llms.user_id, userId),
+      eq(schema.llms.platform, 'eink'),
+      eq(schema.llms.active, 1)
+    ))
+    .limit(1);
+
+    if (einkConfig.length > 0 && einkConfig[0].endpoint) {
+      return c.json({ 
+        configured: true, 
+        endpoint: einkConfig[0].endpoint, 
+        token: einkConfig[0].token 
+      });
+    } else {
+      return c.json({ configured: false, endpoint: null, token: null });
+    }
+  } catch (error) {
+    console.error("Failed to get eink status:", error);
+    return c.json({ message: 'Internal Server Error' }, 500);
+  }
+});
+
 llm.get('/list', async (c) => {
   const user = c.get('user');
   if (!user) {
@@ -60,7 +97,7 @@ llm.post('/save', async (c) => {
           return c.json({ message: 'Invalid llm data provided.' }, 400);
       }
       //  // Basic enum checks (should align with requestData interface)
-      const validPlatforms = ['deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'seedream', 'dreamina', 'scraper'];
+      const validPlatforms = ['deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'seedream', 'dreamina', 'scraper', 'eink'];
       // //  const validExamTypes = ['托福', 'GRE', 'TOEIC', 'SAT', '6级'];
       // //  if (!validSourceTypes.includes(requestData.sourceType) || !validExamTypes.includes(requestData.examType)) {
       if (!validPlatforms.includes(requestData.platform)) {

@@ -112,7 +112,7 @@ export const archives = sqliteTable('archives', {
 export const llms = sqliteTable('llms', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
   user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  platform: text('platform', { enum: ['deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'seedream', 'dreamina', 'scraper'] }).notNull(),
+  platform: text('platform', { enum: ['deepseek', 'gemini', 'openai', 'doubao', 'jimeng', 'seedream', 'dreamina', 'scraper', 'eink'] }).notNull(),
   endpoint: text('endpoint').notNull(),
   token: text('token'),
   model: text('model'),
