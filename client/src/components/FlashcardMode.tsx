@@ -475,7 +475,9 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
             onOpenChange={setShowEnlargedImageDialog}
             imageUrls={wordData.imageUrls || []}
             wordText={wordData.word_text}
-            initialIndex={selectedImageIndex}/>
+            initialIndex={selectedImageIndex}
+            onNextWord={onNext}
+            onPreviousWord={onPrevious}/>
           )}
       </div>
 

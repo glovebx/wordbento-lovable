@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import {
@@ -14,11 +14,13 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 type CarouselApi = any;
 
 interface EnlargedImageCarouselDialogProps {
-  open: boolean; // Controls dialog visibility
-  onOpenChange: (isOpen: boolean) => void; // Callback to close dialog
+  open: boolean;
+  onOpenChange: (isOpen: boolean) => void;
   imageUrls: string[];
   wordText: string;
-  initialIndex: number | null; // Index of the image to start with
+  initialIndex: number | null;
+  onNextWord?: () => void;
+  onPreviousWord?: () => void;
 }
 
 const EnlargedImageCarouselDialog: React.FC<EnlargedImageCarouselDialogProps> = ({
@@ -27,19 +29,86 @@ const EnlargedImageCarouselDialog: React.FC<EnlargedImageCarouselDialogProps> = 
   imageUrls,
   wordText,
   initialIndex,
+  onNextWord,
+  onPreviousWord,
 }) => {
   const [api, setApi] = useState<CarouselApi | null>(null); // State to hold the carousel API instance
+  const hasTriggeredWordSwitch = useRef(false);
+  const prevImageUrlsRef = useRef<string[] | undefined>(undefined);
+  const prevOpenRef = useRef(open);
 
-  // Effect to scroll the carousel to the initial index when API is available or dialog opens
+  // Effect to scroll to the correct image when dialog opens or word changes
   useEffect(() => {
-    if (api && open && initialIndex !== null) {
-      // Use setTimeout to ensure the carousel has rendered and measured itself
-      // before attempting to scroll, especially on initial open.
-      setTimeout(() => {
-        api.scrollTo(initialIndex, true); // true for smooth scroll
-      }, 0); 
+    if (!api) return;
+
+    const justOpened = !prevOpenRef.current && open;
+    // Check if the array reference has changed, which is a good proxy for content change
+    const imagesChanged = prevImageUrlsRef.current !== imageUrls;
+
+    if (justOpened) {
+      // Dialog was just opened, go to the clicked image without animation
+      if (initialIndex !== null) {
+        setTimeout(() => api.scrollTo(initialIndex, true), 0);
+      }
+    } else if (imagesChanged) {
+      // Images changed (word switched), jump to the first image without animation
+      setTimeout(() => api.scrollTo(0, true), 0);
     }
-  }, [api, open, initialIndex]);
+
+    // Update refs for the next render
+    prevImageUrlsRef.current = imageUrls;
+    prevOpenRef.current = open;
+  }, [api, open, imageUrls, initialIndex]);
+
+  // Effect to handle swiping past the edges to switch words
+  useEffect(() => {
+    if (!api || (!onNextWord && !onPreviousWord)) return;
+
+    const handleScroll = () => {
+      if (hasTriggeredWordSwitch.current) return;
+
+      const progress = api.scrollProgress();
+      
+      // Threshold to detect swipe beyond the last slide (e.g., > 15% over-scroll)
+      if (progress > 1.15) {
+        if (onNextWord) {
+          hasTriggeredWordSwitch.current = true;
+          onNextWord();
+        }
+      } 
+      // Threshold to detect swipe beyond the first slide (e.g., < -15% over-scroll)
+      else if (progress < -0.15) {
+        if (onPreviousWord) {
+          hasTriggeredWordSwitch.current = true;
+          onPreviousWord();
+        }
+      }
+    };
+
+    const handleSettle = () => {
+      // Reset the flag when the carousel settles on a slide
+      hasTriggeredWordSwitch.current = false;
+    };
+    
+    const handlePointerUp = () => {
+        // also reset on pointer up
+        setTimeout(() => {
+            hasTriggeredWordSwitch.current = false;
+        }, 100)
+    }
+
+    api.on("scroll", handleScroll);
+    api.on("settle", handleSettle);
+    api.containerNode().addEventListener("pointerup", handlePointerUp)
+
+    return () => {
+      api.off("scroll", handleScroll);
+      api.off("settle", handleSettle);
+      if (api.containerNode()) {
+        api.containerNode().removeEventListener("pointerup", handlePointerUp)
+      }
+    };
+  }, [api, onNextWord, onPreviousWord]);
 
   // Keyboard navigation for enlarged dialog
   useEffect(() => {

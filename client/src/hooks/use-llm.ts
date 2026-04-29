@@ -119,7 +119,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export type Llm = {
   id: number;
-  platform: 'deepseek' | 'gemini' | 'openai' | 'doubao' | 'jimeng' | 'seedream' | 'dreamina' | 'scraper';
+  platform: 'deepseek' | 'gemini' | 'openai' | 'doubao' | 'jimeng' | 'seedream' | 'dreamina' | 'scraper' | 'eink';
   endpoint: string;
   token: string;
   model: string;

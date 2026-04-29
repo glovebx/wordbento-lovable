@@ -95,114 +95,15 @@ const initialApis: BaseApiConfig[] = [
         description: "for data extraction.",
         active: true,
         isModelRequired: false
+    },
+    {
+        platform: "eink",
+        title: "E-ink",
+        description: "for e-ink push.",
+        active: true,
+        isModelRequired: false
     }
 ];
-
-// // Helper function to create initial state from a list of APIs
-// const createInitialState = (apis: ApiConfig[]) => {
-//     return apis.reduce((acc, api) => {
-//         acc[api.platform] = {
-//             endpoint: api.endpoint,
-//             apiKey: api.apiKey,
-//             ...(api.isModelRequired && { model: api.model }) // 仅在需要时添加 model
-//         };
-//         return acc;
-//     }, {} as Record<string, any>);
-// };
-
-// const createInitialSavingState = (apis: ApiConfig[]) => {
-//     return apis.reduce((acc, api) => {
-//         acc[api.platform] = false;
-//         return acc;
-//     }, {} as Record<string, boolean>);
-// };
-
-// const UserProfile = () => {
-//     const [apiConfigs, setApiConfigs] = useState(createInitialState(initialApis));
-//     const [isSaving, setIsSaving] = useState(createInitialSavingState(initialApis));
-//     const [languageSettings, setLanguageSettings] = useState({
-//         nativeLanguage: "chinese",
-//         targetLanguage: "english",
-//         isSaving: false
-//     });
-
-//     const handleSaveLanguageSettings = async () => {
-//         setLanguageSettings(prev => ({ ...prev, isSaving: true }));
-//         console.log("Saving Language Settings:", languageSettings);
-//         await new Promise(resolve => setTimeout(resolve, 1000));
-//         setLanguageSettings(prev => ({ ...prev, isSaving: false }));
-//         toast({
-//             title: "Language Settings Saved",
-//             description: "Your language settings have been updated.",
-//         });
-//     };
-
-//     // This generic handler now accepts an optional model field
-//     const handleSaveApiSettings = async (id: string, newConfig: { endpoint: string, apiKey: string, model?: string }) => {
-//         setIsSaving(prev => ({ ...prev, [id]: true }));
-        
-//         console.log(`Saving ${id} Settings:`, newConfig);
-//         await new Promise(resolve => setTimeout(resolve, 1000));
-        
-//         setApiConfigs(prev => ({ ...prev, [id]: newConfig }));
-//         setIsSaving(prev => ({ ...prev, [id]: false }));
-        
-//         toast({
-//             title: `${id.charAt(0).toUpperCase() + id.slice(1)} Settings Saved`,
-//             description: `Your ${id} API settings have been updated.`,
-//         });
-//     };
-
-//     return (
-//         <div className="p-6 relative">
-//             <div className="absolute top-4 right-4 z-30">
-//                 <Button variant="outline" asChild>
-//                     <Link to="/" className="flex items-center gap-2">
-//                         <Home className="h-4 w-4" />
-//                         Back to Home
-//                     </Link>
-//                 </Button>
-//             </div>
-            
-//             <div className="space-y-16 mt-12">
-//                 <div id="language-section" className="scroll-mt-12">
-//                     <LanguageSettings 
-//                         nativeLanguage={languageSettings.nativeLanguage}
-//                         setNativeLanguage={(lang) => setLanguageSettings(prev => ({ ...prev, nativeLanguage: lang }))}
-//                         targetLanguage={languageSettings.targetLanguage}
-//                         setTargetLanguage={(lang) => setLanguageSettings(prev => ({ ...prev, targetLanguage: lang }))}
-//                         onSave={handleSaveLanguageSettings}
-//                         isSaving={languageSettings.isSaving}
-//                     />
-//                 </div>
-                
-//                 {initialApis.map(api => (
-//                     <div key={api.platform} id={`${api.platform}-section`} className="scroll-mt-12">
-//                         <ApiSettings 
-//                             title={api.title}
-//                             endpoint={apiConfigs[api.platform].endpoint}
-//                             setEndpoint={(val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], endpoint: val } }))}
-//                             apiKey={apiConfigs[api.platform].apiKey}
-//                             setApiKey={(val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], apiKey: val } }))}
-//                             endpointId={`${api.platform}-endpoint`}
-//                             apiKeyId={`${api.platform}-api-key`}
-//                             onSave={(endpoint, apiKey, model) => handleSaveApiSettings(api.platform, { endpoint, apiKey, model })}
-//                             isSaving={isSaving[api.platform]}
-//                             // 根据 isModelRequired 属性动态传递 model 相关 props
-//                             isModelRequired={api.isModelRequired}
-//                             model={apiConfigs[api.platform]?.model}
-//                             setModel={api.isModelRequired ? (val) => setApiConfigs(prev => ({ ...prev, [api.platform]: { ...prev[api.platform], model: val } })) : undefined}
-//                             modelId={`${api.platform}-model`}
-//                         />
-//                     </div>
-//                 ))}
-//             </div>
-//         </div>
-//     );
-// };
-
-// export default UserProfile;
-// --- 辅助函数：将后端数据与默认配置合并 ---
 
 /**
  * 将初始配置、后端数据与前端状态进行合并，并初始化 isSaving 状态。
