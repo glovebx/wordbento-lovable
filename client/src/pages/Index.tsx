@@ -521,6 +521,7 @@ const Index = () => {
           <FloatingImageCarousel
             wordText={floatingCarouselWord}
             position={floatingCarouselPosition}
+            onSearchWord={handleSearch}
             onClose={handleCloseFloatingCarousel}
           />
         )}

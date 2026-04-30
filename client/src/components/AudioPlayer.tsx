@@ -1,7 +1,7 @@
 // components/AudioPlayer.tsx
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Volume2, VolumeX, Subtitles, X, Settings, Repeat, Repeat1 } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Subtitles, X, Settings, Repeat, Repeat1, RotateCcw, RotateCw } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -278,6 +278,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       audio[isPlaying ? 'pause' : 'play']();
     }
   }, [isPlaying, isLoading]);
+
+  const handleSeek = useCallback((amount: number) => {
+    const audio = audioRef.current;
+    if (audio && duration) {
+      const newTime = Math.max(0, Math.min(duration, audio.currentTime + amount));
+      audio.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  }, [duration]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -789,6 +798,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
         </div>
 
         <div className="flex items-center gap-2 grow w-full md:w-auto">
+          <Button variant="ghost" size="icon" onClick={() => handleSeek(-10)} disabled={isLoading || !duration}>
+            <div className="relative">
+              <RotateCcw className="h-5 w-5" />
+              <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[6px] font-bold">
+                10
+              </span>
+            </div>
+          </Button>
           <span className="text-sm w-12 text-right">
             {formatTime(isSliderDragging ? tempSliderValue : currentTime)}
           </span>
@@ -802,6 +819,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
             disabled={!duration || isLoading}
           />
           <span className="text-sm w-12 text-left">{formatTime(duration)}</span>
+          <Button variant="ghost" size="icon" onClick={() => handleSeek(10)} disabled={isLoading || !duration}>
+            <div className="relative">
+              <RotateCw className="h-5 w-5" />
+              <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[6px] font-bold">
+                10
+              </span>
+            </div>
+          </Button>
         </div>
 
         <Button

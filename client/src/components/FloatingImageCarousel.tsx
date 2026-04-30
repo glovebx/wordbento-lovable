@@ -19,12 +19,14 @@ type CarouselApi = any;
 interface FloatingImageCarouselProps {
   wordText: string;
   position: { top: number; left: number; width: number; height: number; };
+  onSearchWord?: (word: string) => void;
   onClose: () => void;
 }
 
 const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
   wordText,
   position,
+  onSearchWord,
   onClose,
 }) => {
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -57,10 +59,10 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
     fetchAndSetImages(false); // Initial fetch, don't force generation
   }, [fetchAndSetImages]);
 
-  // Handle click on the generate button
-  const handleGenerateClick = () => {
-    fetchAndSetImages(true); // Force generation
-  };
+  // // Handle click on the generate button
+  // const handleGenerateClick = () => {
+  //   fetchAndSetImages(true); // Force generation
+  // };
 
   // Handle image click to open the enlarged view
   const handleImageClick = useCallback((index: number) => {
@@ -162,7 +164,13 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
         ) : (
           <div className="flex flex-col items-center justify-center text-white text-center p-4">
             <p className="mb-4">暂无数据</p>
-            <Button onClick={handleGenerateClick} disabled={isGeneratingImages}>
+            <Button           
+            onClick={() => {
+              if (onSearchWord && wordText) {
+                onSearchWord(wordText);
+              }
+            }}
+            disabled={isGeneratingImages}>
               {isGeneratingImages ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> 正在生成...</>
               ) : (
