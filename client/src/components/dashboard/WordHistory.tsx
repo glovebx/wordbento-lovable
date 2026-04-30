@@ -8,9 +8,14 @@ import LoadingFallback from '@/components/LoadingFallback';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
-import { Home, Loader2, FileDown } from 'lucide-react';
+import { Home, Loader2, FileDown, Send } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { usePdfExporter } from '@/hooks/use-pdf-exporter'; // Import the new hook
+import { usePdfExporter } from '@/hooks/use-pdf-exporter';
+import { useEinkStatus } from '@/hooks/use-llm';
+import { useEinkPusher } from '@/hooks/use-eink-pusher';
+import { axiosPrivate } from '@/lib/axios';
+import { useToast } from '@/hooks/use-toast';
+import EnlargedImageCarouselDialog from '@/components/EnlargedImageCarouselDialog';
 
 const WordHistoryPage: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -18,6 +23,15 @@ const WordHistoryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const { isExporting, exportToPdf } = usePdfExporter();
+  const { toast } = useToast();
+
+  // Eink Pusher State and Hooks
+  const { isEinkConfigured, einkEndpoint, einkToken } = useEinkStatus(isAuthenticated);
+  const { isPushing, pushImage } = useEinkPusher({ einkEndpoint, einkToken });
+  const [isFetchingReviewImages, setIsFetchingReviewImages] = useState(false);
+  const [pushImageUrls, setPushImageUrls] = useState<string[]>([]);
+  const [isPushDialogOpen, setIsPushDialogOpen] = useState(false);
+  const [currentPushImageIndex, setCurrentPushImageIndex] = useState(0);
   
   const { 
     history, 
@@ -26,6 +40,32 @@ const WordHistoryPage: React.FC = () => {
     pagination, 
     fetchWordHistory 
   } = useProfile(isAuthenticated);
+
+  const handleFetchReviewImages = async () => {
+    setIsFetchingReviewImages(true);
+    try {
+      const response = await axiosPrivate.post<string[]>('/api/word/review/push');
+      if (response.data && response.data.length > 0) {
+        setPushImageUrls(response.data);
+        setCurrentPushImageIndex(0); // Reset index
+        setIsPushDialogOpen(true);
+      } else {
+        toast({ title: "没有可推送的图片", description: "无法获取最近浏览单词的图片。" });
+      }
+    } catch (error) {
+      console.error("获取推送图片失败:", error);
+      toast({ title: "获取图片失败", description: "无法从服务器获取图片列表。", variant: "destructive" });
+    } finally {
+      setIsFetchingReviewImages(false);
+    }
+  };
+
+  const handlePushToEink = () => {
+    if (pushImageUrls.length > 0) {
+      const imageUrlToPush = pushImageUrls[currentPushImageIndex];
+      pushImage(imageUrlToPush);
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -93,6 +133,14 @@ const WordHistoryPage: React.FC = () => {
                 )}
                 导出为PDF
               </Button>
+              <Button onClick={handleFetchReviewImages} disabled={isFetchingReviewImages || !isEinkConfigured}>
+                {isFetchingReviewImages ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                推送到 E-ink
+              </Button>
               <div className="w-full max-w-sm">
                 <Input
                   type="search"
@@ -130,6 +178,20 @@ const WordHistoryPage: React.FC = () => {
             )}
           </CardContent>
         </Card>
+
+        {isPushDialogOpen && (
+          <EnlargedImageCarouselDialog
+            open={isPushDialogOpen}
+            onOpenChange={setIsPushDialogOpen}
+            imageUrls={pushImageUrls}
+            wordText="推送预览"
+            initialIndex={0}
+            onIndexChange={setCurrentPushImageIndex}
+            showPushButton={true}
+            isPushing={isPushing}
+            onPush={handlePushToEink}
+          />
+        )}
 
       </div>
     </div>

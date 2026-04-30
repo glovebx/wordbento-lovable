@@ -1,6 +1,13 @@
 import { and, eq, gt, desc } from 'drizzle-orm';
 import * as schema from '../db/schema';
 
+// Converts a Date object to a UTC string in 'YYYY-MM-DD HH:MM:SS' format for SQLite.
+const toSqliteUtcString = (date) => {
+    const pad = (num) => num.toString().padStart(2, '0');
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ` +
+           `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
+};
+
 export const formatDbResultToWordResponse = (c, word, contentRecords, imageRecords) => {
     const content = {};
     contentRecords.forEach(record => {
@@ -52,14 +59,15 @@ export const log2WordViews = async (db, userId, wordId) => {
     try {
         // Calculate the timestamp for one hour ago.
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const oneHourAgoUtcString = toSqliteUtcString(oneHourAgo);
 
-        // Check for a recent view within the last hour.
+        // Check for a recent view within the last hour using UTC string comparison.
         const recentView = await db.select()
             .from(schema.word_views)
             .where(and(
                 eq(schema.word_views.user_id, userId),
                 eq(schema.word_views.word_id, wordId),
-                gt(schema.word_views.created_at, oneHourAgo.toISOString())
+                gt(schema.word_views.created_at, oneHourAgoUtcString)
             ))
             .limit(1);
 

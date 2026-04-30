@@ -61,7 +61,7 @@ export const WordHistoryTable: React.FC<WordHistoryTableProps> = ({ history }) =
                     </TableCell>
                   )}
                   <TableCell className="text-right">
-                    {formatDistanceToNow(new Date(record.viewedAt), { addSuffix: true, locale: zhCN })}
+                    {formatDistanceToNow(new Date(record.viewedAt + 'Z'), { addSuffix: true, locale: zhCN })}
                   </TableCell>
                 </TableRow>
               </CollapsibleTrigger>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Loader2, Send } from 'lucide-react';
 import {
   Carousel,
   CarouselContent,
@@ -21,6 +21,10 @@ interface EnlargedImageCarouselDialogProps {
   initialIndex: number | null;
   onNextWord?: () => void;
   onPreviousWord?: () => void;
+  onIndexChange?: (index: number) => void;
+  showPushButton?: boolean;
+  onPush?: () => void;
+  isPushing?: boolean;
 }
 
 const EnlargedImageCarouselDialog: React.FC<EnlargedImageCarouselDialogProps> = ({
@@ -31,13 +35,17 @@ const EnlargedImageCarouselDialog: React.FC<EnlargedImageCarouselDialogProps> = 
   initialIndex,
   onNextWord,
   onPreviousWord,
+  onIndexChange,
+  showPushButton = false,
+  onPush,
+  isPushing = false,
 }) => {
   const [api, setApi] = useState<CarouselApi | null>(null); // State to hold the carousel API instance
   const hasTriggeredWordSwitch = useRef(false);
   const prevImageUrlsRef = useRef<string[] | undefined>(undefined);
   const prevOpenRef = useRef(open);
 
-  // Effect to scroll to the correct image when dialog opens or word changes
+  // Effect to scroll to the correct image and handle index changes
   useEffect(() => {
     if (!api) return;
 
@@ -58,7 +66,25 @@ const EnlargedImageCarouselDialog: React.FC<EnlargedImageCarouselDialogProps> = 
     // Update refs for the next render
     prevImageUrlsRef.current = imageUrls;
     prevOpenRef.current = open;
-  }, [api, open, imageUrls, initialIndex]);
+
+    // --- Handle index change reporting ---
+    if (onIndexChange) {
+      const handleSelect = () => {
+        if (api) {
+          onIndexChange(api.selectedScrollSnap());
+        }
+      };
+
+      api.on('select', handleSelect);
+      // Initial call to set index
+      handleSelect(); 
+
+      return () => {
+        api.off('select', handleSelect);
+      };
+    }
+
+  }, [api, open, imageUrls, initialIndex, onIndexChange]);
 
   // Effect to handle swiping past the edges to switch words
   useEffect(() => {
@@ -239,6 +265,19 @@ const EnlargedImageCarouselDialog: React.FC<EnlargedImageCarouselDialogProps> = 
           )}
           
         </Carousel>
+
+        {showPushButton && (
+          <div className="mt-4 flex justify-center">
+            <Button onClick={onPush} disabled={isPushing}>
+                {isPushing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+              {isPushing ? '推送中...' : '推送到 E-ink'}
+            </Button>
+          </div>
+        )}
 
         {/* Close button for the enlarged dialog */}
         {/* <Button

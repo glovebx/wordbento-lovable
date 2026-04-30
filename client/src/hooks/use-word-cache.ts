@@ -125,6 +125,14 @@ export const useWordCache = () => {
                 const cachedData = wordCacheRef.current.get(nextSlug)!; // 返回缓存数据 (使用非空断言，因为 has() 已检查存在性)
                 setCurrentWord(cachedData);
                 setIsLoading(false);
+                // 报告log-view
+                if (isAuthenticated && cachedData.id) {
+                    axiosPrivate.post('/api/profile/log-view', { wordId: cachedData.id })
+                      .catch(err => {
+                        // Don't bother the user, just log it for developers
+                        console.error("Fire-and-forget logging failed:", err);
+                      });
+                }
                 return;           
               }
             }
