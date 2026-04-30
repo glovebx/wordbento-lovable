@@ -7,7 +7,7 @@ import { Jimp } from 'jimp';
 import { isQuoted, removeQuotes } from '../../utils/languageParser';
 import LanguageUtils from '../../utils/languageUtils';
 import { toSqliteUtcString } from '../../utils/dateUtils';
-import { generateImageByAi } from './ai';
+import { generateImageByAi, generatePushImageByAi } from './ai';
 import { checkAndConsumeFreeQuota } from '../../utils/security';
 import { NavigationMode } from '../../utils/constants';
 import { generateWordCard } from '../../utils/aiService';
@@ -381,6 +381,36 @@ export const markWordAsMastered = async (db, userId, wordId) => {
     }
 
     await db.insert(schema.archives).values({ user_id: userId, word_id: wordId });
+};
+
+export const getReviewWords4Push = async (c, db, userId) => {
+    // This query finds the 10 most recently viewed unique words for a user.
+    // It groups by the word to get unique words, then orders by the most recent view ID for each word.
+    const recentWords = await db.select({
+        word_text: schema.words.word_text
+      })
+      .from(schema.word_views)
+      .innerJoin(schema.words, eq(schema.word_views.word_id, schema.words.id))
+      .where(eq(schema.word_views.user_id, userId))
+      .groupBy(schema.words.id, schema.words.word_text) // Group by word to ensure uniqueness
+      .orderBy(desc(sql`MAX(${schema.word_views.id})`)) // Order by the most recent view
+      .limit(10);
+
+    const words = recentWords.map(w => w.word_text);
+
+    let hasFreeQuota = false;
+    try {
+        hasFreeQuota = await checkAndConsumeFreeQuota(c, userId);
+    } catch (error) {
+        console.error(error.message);
+        throw error;
+    }
+
+    const language = LanguageUtils.detectLanguage(words.join(', '));
+    const imageUrls = await generatePushImageByAi(c, userId, words, language, hasFreeQuota);
+
+    // We map this to an array of strings as requested.
+    return imageUrls;
 };
 
 export const getTodayWords = async (c, db, userId, maxViewsId) => {

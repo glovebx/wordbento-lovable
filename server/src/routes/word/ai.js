@@ -102,6 +102,10 @@ const jaPrompt = `给你一个日文单词，返回下列json格式的数据:
 }
 单词:`;
 
+const pushPosterPrompt = `生成一张9:16竖版海报。必须包含以下 {word_count} 个不重复的单词，每个单词仅出现一次，不得重复： {word_list} 。所有单词清晰易读，分布在画面不同位置，可有大有小，但每个词只出现一次。
+风格描述：
+{word_style}
+比例9:16。`
 // const posterStyle = [
 // {
 //     "style": "vintage travel poster",
@@ -312,15 +316,17 @@ export const generateImageByAi = async (c, userId, word, phonetic, example, lang
     for (const platform of platforms) {
         const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
         if (llm[1]) {
+          const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+          const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
             switch (platform) {
                 case 'dreamina':
-                    imageUrls = await generateImageByDreaminaAi(c, llm, word, phonetic, example, language);
+                    imageUrls = await generateImageByDreaminaAi(c, llm, prompt);
                     break;
                 case 'jimeng':
-                    imageUrls = await generateImageByJiMengAi(c, llm, word, phonetic, example, language);
+                    imageUrls = await generateImageByJiMengAi(c, llm, prompt);
                     break;
                 case 'seedream':
-                    imageUrls = await generateImageBySeeDreamAi(c, llm, word, phonetic, example, language);
+                    imageUrls = await generateImageBySeeDreamAi(c, llm, prompt);
                     break;
             }
             if (imageUrls && imageUrls.length > 0) {
@@ -331,24 +337,24 @@ export const generateImageByAi = async (c, userId, word, phonetic, example, lang
     return null;
 };
 
-const generateImageByDreaminaAi = async (c, llm, word, phonetic, example, language) => {
-    const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
-    const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
+const generateImageByDreaminaAi = async (c, llm, prompt) => {
+    // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+    // const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
     const jsonData = { model: llm[3] || '', prompt, ratio: "9:16", resolution: "1k" };
     return callImageApi(llm, jsonData);
 };
 
-const generateImageByJiMengAi = async (c, llm, word, phonetic, example, language) => {
-    const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
-    const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
+const generateImageByJiMengAi = async (c, llm, prompt) => {
+    // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+    // const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
     const jsonData = { model: llm[3], stream: false, resolution: "1k", ratio: "9:16", messages: [{ role: 'user', content: prompt }] };
     const response = await callImageApi(llm, jsonData, true);
     return response ? extractHttpLinks(response) : null;
 };
 
-const generateImageBySeeDreamAi = async (c, llm, word, phonetic, example, language) => {
-    const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
-    const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
+const generateImageBySeeDreamAi = async (c, llm, prompt) => {
+    // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+    // const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
     const jsonData = { model: llm[3], prompt, size: '1440x2560', response_format: "url", sequential_image_generation: "disabled", stream: false, watermark: false };
     const response = await callImageApi(llm, jsonData, true);
     return response ? [response.url] : null;
@@ -390,12 +396,48 @@ export const repairAiResponseToJson = (messageContent) => {
     }
 };
 
+export const generatePushImageByAi = async (c, userId, words, language, hasFreeQuota) => {
+    let imageUrls = [];
+    const platforms = ['dreamina', 'jimeng', 'seedream'];
+    for (const platform of platforms) {
+        const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
+        if (llm[1]) {
+          const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+          const prompt = generatePushPosterPrompt(words, language, style);
+            switch (platform) {
+                case 'dreamina':
+                    imageUrls = await generateImageByDreaminaAi(c, llm, prompt);
+                    break;
+                case 'jimeng':
+                    imageUrls = await generateImageByJiMengAi(c, llm, prompt);
+                    break;
+                case 'seedream':
+                    imageUrls = await generateImageBySeeDreamAi(c, llm, prompt);
+                    break;
+            }
+            if (imageUrls && imageUrls.length > 0) {
+                return imageUrls;
+            }
+        }
+    }
+    return null;
+};
+
 const generatePosterPromptWithExample = (word, language, pronunciation, exampleSentence, style) => {
     return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Subtitle: "${pronunciation}" (smaller, elegant, below title). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate all text seamlessly. Crucial: sentence must be highly legible. Style: ${style}. Additionally, the full sentence must appear as text on the poster.`;
 };
 
 const generatePosterPromptWithoutExample = (word, language, pronunciation, style) => {
     return `Conceptual poster for ${language} word "${word}": visually define its essence. Title "${word}" large/bold as focal point; pronunciation "${pronunciation}" below elegantly. Imagery conveys concept intuitively to non-speakers via evocative metaphor. Style: ${style}. Additionally, the full sentence must appear as text on the poster. `;
+};
+
+const generatePushPosterPrompt = (words, language, style) => {
+    return `A vertical poster in 9:16 aspect ratio. Must include exactly ${words.length} distinct ${language} words, each only once, no repetition: ${words.join(', ')}. All words must be clearly legible, placed only once in the composition. Arrange every words across the layout — some large and bold, others smaller — without repeating any word. No word appears twice. Sharp edges, high text contrast.
+
+[STYLE DESCRIPTION]
+${style}
+
+--ar 9:16`;
 };
 
 function extractHttpLinks(text) {

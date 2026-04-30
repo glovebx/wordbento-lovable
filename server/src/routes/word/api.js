@@ -10,7 +10,8 @@ import {
   generateWordImage, 
   markWordAsMastered, 
   getTodayWords, 
-  getSequenceWords
+  getSequenceWords,
+  getReviewWords4Push
 } from './service';
 import { NavigationMode } from '../../utils/constants';
 
@@ -219,6 +220,27 @@ word.post('/tts', async (c) => {
     return c.json({ message: 'Internal Server Error during TTS proxy' }, 500);
   }
 
+});
+
+word.post('/review/push', async (c) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ message: 'Forbidden' }, 403);
+    }
+
+    const db = drizzle(c.env.DB, { schema });
+
+    try {
+        const imageUrls = await getReviewWords4Push(c, db, user.id);
+        if (imageUrls && imageUrls.length > 0) {
+          return c.json(imageUrls, 200);
+        } else {
+          return c.json({ message: `Failed to generate image for e-ink.` }, 500);        
+        }
+    } catch (error) {
+        console.error("Failed to get review words for e-ink:", error);
+        return c.json({ message: 'Failed to get review words for e-ink.' }, 500);
+    }
 });
 
 word.post('/today', async (c) => {
