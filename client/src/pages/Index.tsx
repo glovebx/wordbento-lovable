@@ -16,9 +16,14 @@ import { baseURL } from "@/lib/axios";
 import FloatingImageCarousel from '@/components/FloatingImageCarousel';
 import { useGenerateImages } from '@/hooks/use-generate-images';
 import { useViewMode } from '@/hooks/use-view-mode'; // Import the new hook
+import SEO from '@/components/SEO'; // Import the SEO component
+
+import { useParams, useNavigate } from 'react-router-dom';
 
 const Index = () => {
-  const [viewMode, setViewMode] = useViewMode('grid'); // Use the custom hook
+  const { wordSlug } = useParams<{ wordSlug: string }>();
+  const navigate = useNavigate();
+  const [viewMode, setViewMode] = useViewMode('grid');
   const {
     currentWord: wordData, // Rename for consistency with existing components
     isLoading: isWordLoading,
@@ -29,39 +34,32 @@ const Index = () => {
     updateWordImageUrls
   } = useWordCache();
 
-  const [lastSearchedWord, setLastSearchedWord] = useState('');
+  // const [lastSearchedWord, setLastSearchedWord] = useState('');
 
   // Effect for initial word fetch
   useEffect(() => {
-    if (!wordData && !isWordLoading) { // Only fetch if there's no word and not already loading
-      fetchWord('', NavigationMode.Search, viewMode === 'flashcard');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    // 清除错误
-    if (generationError) {
-      clearGenerationError();
-    }
-  }, [wordData]);
+    fetchWord(wordSlug || '', NavigationMode.Search, viewMode === 'flashcard');
+  }, [wordSlug, fetchWord, viewMode]);
 
   const handleSearch = useCallback((word: string) => {
-    setLastSearchedWord(word);
-    fetchWord(word, NavigationMode.Search, viewMode === 'flashcard');
-  }, [fetchWord, viewMode]);
+    navigate(`/word/${word}`);
+  }, [navigate]);
 
   const handleNext = useCallback(() => {
     if (wordData) {
-      fetchWord(wordData.word_text, NavigationMode.Next, viewMode === 'flashcard');
+      fetchWord(wordData.word_text, NavigationMode.Next, viewMode === 'flashcard').then(nextWord => {
+        if (nextWord) navigate(`/word/${nextWord.word_text}`, { replace: true });
+      });
     }
-  }, [fetchWord, viewMode, wordData]);
+  }, [fetchWord, viewMode, wordData, navigate]);
 
   const handlePrevious = useCallback(() => {
     if (wordData) {
-      fetchWord(wordData.word_text, NavigationMode.Previous, viewMode === 'flashcard');
+      fetchWord(wordData.word_text, NavigationMode.Previous, viewMode === 'flashcard').then(prevWord => {
+        if (prevWord) navigate(`/word/${prevWord.word_text}`, { replace: true });
+      });
     }
-  }, [fetchWord, viewMode, wordData]);
+  }, [fetchWord, viewMode, wordData, navigate]);
 
 
   // All other states and hooks that are not related to word fetching remain here
@@ -80,7 +78,7 @@ const Index = () => {
   const [isImageDialogShowing, setIsImageDialogShowing] = useState(false);
   const [isExampleDialogShowing, setIsExampleDialogShowing] = useState(false);
   // Image generation state managed here and passed down to WordImageDisplay
-  const { generateImages, isGeneratingImages, generationError, clearGenerationError } = useGenerateImages();
+  const { generateImages, isGeneratingImages, generationError } = useGenerateImages();
 
   const handleImageDialogStateChange = useCallback((isOpen: boolean) => {
     setIsImageDialogShowing(isOpen);
@@ -472,7 +470,7 @@ const Index = () => {
           <div className="text-center p-8">
             <h1 className="text-3xl font-bold mb-4">单词未找到</h1>
             <p className="text-gray-600 mb-8">
-              抱歉，数据库中找不到 "{lastSearchedWord}" 这个单词。请尝试搜索其他单词。
+              抱歉，数据库中找不到 "{wordSlug}" 这个单词。请尝试搜索其他单词。
             </p>
           </div>
         </div>
@@ -481,7 +479,7 @@ const Index = () => {
 
     // Main content rendering
     return (
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto p-4">
         {viewMode === 'grid' ? (
           <>
             <AnalysisForm
@@ -558,6 +556,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col relative">
+      <SEO 
+        title={wordData ? `${wordData.word_text} - WordBento` : 'WordBento - 智能英语单词学习'}
+        description={wordData?.meaning ? `${wordData.word_text}: ${wordData.meaning}` : '通过 AI 生成的图片和真实语境，让英语单词学习变得直观、有趣且高效。'}
+        wordData={wordData}
+      />
       {isGenerating && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
           <LoadingFallback message="正在生成中..." />

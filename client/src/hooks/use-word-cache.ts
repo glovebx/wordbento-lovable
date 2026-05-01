@@ -82,7 +82,7 @@ export const useWordCache = () => {
         }
     }, []);
 
-    const fetchWord = useCallback(async (slug: string, mode: NavigationMode, mhi: boolean) => {
+    const fetchWord = useCallback(async (slug: string, mode: NavigationMode, mhi: boolean): Promise<WordDataType | null> => {
         // console.log(`[useWordCache] fetchWord called with slug: '${slug}', mode: ${mode}`);
         // CRITICAL: Reset task ID at the very beginning of a new fetch operation.
         setTaskId(null);
@@ -99,7 +99,7 @@ export const useWordCache = () => {
             setCurrentWord(cachedData);
             addToCache(slug_to_search, cachedData); // Update LRU
             setIsLoading(false);
-            return;
+            return cachedData;
         }
 
         let nextSlug = slug_to_search;      
@@ -133,7 +133,7 @@ export const useWordCache = () => {
                         console.error("Fire-and-forget logging failed:", err);
                       });
                 }
-                return;           
+                return cachedData;
               }
             }
           }
@@ -147,6 +147,7 @@ export const useWordCache = () => {
                 // Word generation is pending
                 setTaskId(response.data.taskId);
                 // isLoading remains true, UI will be handled by taskResult effect
+                return null; // Return null as data is not yet available
             } else if (response.data?.content) {
                 // Word found
                 const data = response.data as WordDataType;
@@ -162,19 +163,22 @@ export const useWordCache = () => {
                         console.error("Fire-and-forget logging failed:", err);
                       });
                 }
+                return data;
             } else {
                 // Should not happen with 200 OK, but as a fallback
                 setError(mode === NavigationMode.Search ? `'${nextSlug}' not found.`: 'No word found.');
                 // setCurrentWord(null);
                 setIsLoading(false);
+                return null;
             }
         } catch (err) {
             const message = err instanceof AxiosError ? err.response?.data?.message : 'An unknown error occurred.';
             setError(message || 'Failed to fetch word.');
             setCurrentWord(null);
             setIsLoading(false);
+            return null;
         }
-    }, [addToCache]);
+    }, [addToCache, isAuthenticated]);
 
     const getWordDetails = useCallback(async (slug: string): Promise<WordDataType | null> => {
         const slug_to_search = slug.trim().toLowerCase();

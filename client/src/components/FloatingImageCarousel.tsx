@@ -168,6 +168,7 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
             onClick={() => {
               if (onSearchWord && wordText) {
                 onSearchWord(wordText);
+                onClose();
               }
             }}
             disabled={isGeneratingImages}>

@@ -1,0 +1,11 @@
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      
+        <sitemap>
+          <loc>https://word.metaerp.ai/sitemap-static.xml</loc>
+        </sitemap>
+      
+        <sitemap>
+          <loc>https://word.metaerp.ai/sitemap-words-1.xml</loc>
+        </sitemap>
+      
+    </sitemapindex>

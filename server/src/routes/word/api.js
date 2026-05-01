@@ -222,6 +222,26 @@ word.post('/tts', async (c) => {
 
 });
 
+// word.get('/slugs', async (c) => {
+//   const db = drizzle(c.env.DB, { schema });
+//   const { limit = 1000, offset = 0 } = c.req.query();
+//   const limitNum = parseInt(limit, 10);
+//   const offsetNum = parseInt(offset, 10);
+
+//   try {
+//     const allWords = await db.select({ word_text: schema.words.word_text })
+//       .from(schema.words)
+//       .limit(limitNum)
+//       .offset(offsetNum);
+      
+//     const slugs = allWords.map(w => w.word_text);
+//     return c.json(slugs);
+//   } catch (error) {
+//     console.error("Failed to get all word slugs:", error);
+//     return c.json({ message: 'Internal Server Error' }, 500);
+//   }
+// });
+
 word.post('/review/push', async (c) => {
     const user = c.get('user');
     if (!user) {
