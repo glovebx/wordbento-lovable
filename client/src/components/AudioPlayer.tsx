@@ -700,10 +700,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   }, [highlightRegex, highlightWords, onHighlightedWordClick]);
 
   const getSubtitlesToDisplay = useMemo(() => {
-    if (currentActiveCueIndex === null || !showSubtitles || parsedCues.length == 0) {
+    // Defensive check to prevent out-of-bounds access during state transitions
+    if (
+      currentActiveCueIndex === null || 
+      !showSubtitles || 
+      !parsedCues ||
+      parsedCues.length === 0 ||
+      currentActiveCueIndex >= parsedCues.length
+    ) {
       return [];
     }
-    return [parsedCues[currentActiveCueIndex]];
+    const cue = parsedCues[currentActiveCueIndex];
+    // Ensure the cue itself is not undefined or null before returning
+    return cue ? [cue] : [];
   }, [currentActiveCueIndex, parsedCues, showSubtitles]);
 
 
