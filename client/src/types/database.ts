@@ -25,6 +25,9 @@ export interface Attachment {
 
 export interface ResourceWithAttachments extends Resource {  
   attachments: Attachment[];
+  thumbnail?: string | null;
+  source_type?: 'url' | 'article' | 'pdf' | 'image';
+  created_at?: string;
 }
 
 export interface UiResourceWithAttachment {  

@@ -122,9 +122,9 @@ const WordHistoryPage: React.FC = () => {
 
       <div className="mt-12">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <CardTitle>浏览历史</CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               <Button onClick={handleExport} disabled={isExporting || history.length === 0}>
                 {isExporting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -141,7 +141,7 @@ const WordHistoryPage: React.FC = () => {
                 )}
                 推送到 E-ink
               </Button>
-              <div className="w-full max-w-sm">
+              <div className="w-full sm:max-w-xs">
                 <Input
                   type="search"
                   placeholder="搜索单词..."

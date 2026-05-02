@@ -3,10 +3,10 @@ import { and, eq, inArray, gt, gte, lt, lte, isNull, asc, desc, sql as dsql, not
 import * as schema from '../../db/schema';
 import { sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { Jimp } from 'jimp';
 import { isQuoted, removeQuotes } from '../../utils/languageParser';
 import LanguageUtils from '../../utils/languageUtils';
 import { toSqliteUtcString } from '../../utils/dateUtils';
+import { compressImageBuffer } from '../../utils/imageUtils'; // Import the new image utility
 import { generateImageByAi, generatePushImageByAi } from './ai';
 import { checkAndConsumeFreeQuota } from '../../utils/security';
 import { NavigationMode } from '../../utils/constants';
@@ -224,42 +224,6 @@ export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
 
 };
 
-const MAX_IMAGE_SIZE = 200 * 1024; // 200KB
-
-async function compressImageBuffer(buffer) {
-    if (buffer.byteLength <= MAX_IMAGE_SIZE) {
-        return buffer; // No need to compress
-    }
-
-    try {
-        console.log(`Image size (${(buffer.byteLength / 1024).toFixed(2)} KB) exceeds limit, attempting to compress...`);
-        const image = await Jimp.read(buffer);
-        let quality = 90;
-        let lastCompressedBuffer = null;
-
-        for (let q = quality; q >= 10; q -= 10) {
-            const compressedBuffer = await image.quality(q).getBufferAsync(Jimp.MIME_JPEG);
-            lastCompressedBuffer = compressedBuffer;
-            console.log(`  - Trying quality ${q}, size: ${(compressedBuffer.length / 1024).toFixed(2)} KB`);
-
-            if (compressedBuffer.length <= MAX_IMAGE_SIZE) {
-                console.log(`  - Compression successful.`);
-                return compressedBuffer;
-            }
-        }
-
-        if (lastCompressedBuffer) {
-            console.log(`  - [Warning] Could not compress below target size. Using last compressed result.`);
-            return lastCompressedBuffer;
-        }
-
-    } catch (error) {
-        console.error("Image compression with Jimp failed:", error);
-    }
-
-    return buffer; // Fallback, Return original buffer on failure
-}
-
 /**
  * Takes a flat array of results from a JOIN query and aggregates them
  * into a single word object with nested content and images.
@@ -302,7 +266,7 @@ const getWordDetails = async (c, db, word) => {
     return formatDbResultToWordResponse(c, word, contentRecords, imageRecords);
 };
 
-
+const WORD_IMAGE_SIZE = 200 * 1024; // 200KB
 
 export const generateWordImage = async (c, db, userId, slug, example, force) => {
     if (!slug) throw new Error('Slug is required.');
@@ -348,7 +312,6 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
     const imageUrls = await generateImageByAi(c, userId, wordToGenerate, existingWord[0].phonetic, example.trim(), language, hasFreeQuota);
 
     if (imageUrls && imageUrls.length > 0) {
-        const allImageResults = await readImageBinaryStreams(imageUrls);
         if (force) {
             const imageRecords = await db.select({ image_key: schema.images.image_key }).from(schema.images).where(eq(schema.images.word_id, existingWord[0].id));
             for (const record of imageRecords) {
@@ -357,9 +320,10 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
             await db.delete(schema.images).where(eq(schema.images.word_id, existingWord[0].id));
         }
 
+        const allImageResults = await readImageBinaryStreams(imageUrls);
         const savedImageUrls = await Promise.all(allImageResults.filter(img => img.data).map(async (imageBinaryData) => {
             const objectKey = `${nanoid(10)}.jpeg`;
-            const compressedData = await compressImageBuffer(imageBinaryData.data);
+            const compressedData = await compressImageBuffer(imageBinaryData.data, WORD_IMAGE_SIZE);
             await c.env.WORDBENTO_R2.put(objectKey, compressedData, { contentType: 'image/jpeg' });
             await db.insert(schema.images).values({ word_id: existingWord[0].id, image_key: objectKey, prompt: example.trim() });
             return `${c.env.VITE_IMG_URL}/${objectKey}`;
@@ -464,8 +428,6 @@ export const getSequenceWords = async (c, db, limit, maxWordsId) => {
     };
 };
 
-
-
 const readImageBinaryStreams = async (imageUrls) => {
     const promises = imageUrls.map(async (url) => {
         try {
@@ -481,3 +443,5 @@ const readImageBinaryStreams = async (imageUrls) => {
     });
     return Promise.all(promises);
 };
+
+

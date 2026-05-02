@@ -2,6 +2,7 @@ import * as schema from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { extractTextFromSrt } from '../../utils/languageParser';
 import { simulateAnalysisTask } from './service';
+import { processImage2Base64 } from '../../utils/imageUtils';
 
 export const extractWordsByScraper = async (c, url) => {
   console.log(`Calling Youtube Scraper API for url: ${url}`);
@@ -229,6 +230,46 @@ export const getAudioFromScraperThenExtractWords = async (c, db, task, examType)
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
 
+  let videoInfo = {}
+  const YOUTUBE_SCRAPER_JSON_ENDPOINT = c.env.YOUTUBE_SCRAPER_ENDPOINT + '/tasks/' + task.uuid + '/json';
+  try {
+      const response = await fetch(YOUTUBE_SCRAPER_JSON_ENDPOINT, {
+          method: 'GET',
+        //   headers: {
+        //       'Content-Type': 'application/octet-stream',
+        //   }
+      });
+
+      if (!response.ok) {
+          console.error(`Youtube Scraper Audio API call failed: ${response.status} ${response.statusText}`);
+          return null;
+      }
+
+      const srtContent = await response.text();
+      console.log(srtContent);
+
+      videoInfo = JSON.parse(srtContent);
+      console.log('Original video info:', videoInfo);
+
+      // Process the thumbnail
+      if (videoInfo && videoInfo.thumbnail) {
+        console.log(`Processing thumbnail for: ${videoInfo.title}`);
+        const thumbnailBase64 = await processImage2Base64(videoInfo.thumbnail);
+        if (thumbnailBase64) {
+          videoInfo.thumbnail = thumbnailBase64; // Replace URL with Base64 data
+          console.log(`Thumbnail successfully processed and replaced.`);
+        } else {
+          console.warn(`Failed to process thumbnail for: ${videoInfo.title}`);
+          // Optionally, nullify the thumbnail if processing fails
+          videoInfo.thumbnail = null; 
+        }
+      }
+
+  } catch (error) {
+      console.error('Network error calling Youtube Scraper Audio API:', error);
+    //   return null;
+  }
+
   const YOUTUBE_SCRAPER_SRT_ENDPOINT = c.env.YOUTUBE_SCRAPER_ENDPOINT + '/tasks/' + task.uuid + '/audio';
 
   try {
@@ -310,16 +351,36 @@ export const getAudioFromScraperThenExtractWords = async (c, db, task, examType)
       .limit(1); // We only need to find one match
 
       if (existingAttachments.length > 0) {
-        await db.update(schema.attachments)
-            .set({
+        const values = {
                 audio_key: r2ObjectKey
-            })
+            }
+        if (videoInfo.title) {
+          values.title = videoInfo.title;
+        }
+        if (videoInfo.thumbnail) {
+          values.thumbnail = videoInfo.thumbnail;
+        }
+        if (videoInfo.duration) {
+          values.duration = videoInfo.duration;
+        }
+        await db.update(schema.attachments)
+            .set(values)
             .where(eq(schema.attachments.id, existingAttachments[0].id));
       } else {
-        const insertedResult = await db.insert(schema.attachments).values({
+        const values = {
             resource_id: task.id, // Associate with public user ID 0
             audio_key: r2ObjectKey,
-        })
+        }
+        if (videoInfo.title) {
+          values.title = videoInfo.title;
+        }
+        if (videoInfo.thumbnail) {
+          values.thumbnail = videoInfo.thumbnail;
+        }
+        if (videoInfo.duration) {
+          values.duration = videoInfo.duration;
+        }
+        const insertedResult = await db.insert(schema.attachments).values(values)
         // Use .returning() in Drizzle for D1 to get the inserted row
         .returning()
         .get(); // .get() for a single row

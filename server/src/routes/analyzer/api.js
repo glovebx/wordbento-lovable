@@ -304,6 +304,9 @@ analyze.get('/history', async (c) => {
           words: schema.resources.result,
           audioKey: schema.attachments.audio_key,
           captionSrt: schema.attachments.caption_srt,
+          title: schema.resources.title,
+          attachmentTitle: schema.attachments.title,
+          thumbnail: schema.attachments.thumbnail,
       })
       .from(schema.resources)
         .leftJoin(schema.attachments,
@@ -320,6 +323,8 @@ analyze.get('/history', async (c) => {
 
       if (existingResources.length > 0) {
         existingResources.forEach(r => {
+            r.title = r.attachmentTitle || r.title || '';
+            r.thumbnail = r.thumbnail || '';
             r.content = r.content.length > 64 ? r.content.substring(0, 64) + '...' : r.content;
             r.audioKey = !!r.audioKey;
             r.captionSrt = !!r.captionSrt;
@@ -363,61 +368,36 @@ analyze.get('/list/:limit/:page', async (c) => {
   const db = drizzle(c.env.DB, { schema });
   
   try {
-    // 1.1. 获取总记录数
-    const countResult = await db.select({
-        count: sql`count(${schema.resources.id})`
-    })
-    .from(schema.resources)
-    .where(eq(schema.resources.user_id, user.id));
+        const results = await db.select({
+            id: schema.resources.id,
+            source_type: schema.resources.source_type,
+            status: schema.resources.status,
+            created_at: schema.resources.created_at,
+            content: schema.resources.content,                 // Content from resources
+            attachment_title: schema.attachments.title,      // Aliased title from attachments
+            thumbnail: schema.attachments.thumbnail,           // Thumbnail from attachments
+        })
+        .from(schema.resources)
+        .leftJoin(schema.attachments, eq(schema.resources.id, schema.attachments.resource_id))
+        .where(eq(schema.resources.user_id, user.id))
+        .orderBy(desc(schema.resources.id))
+        .limit(limit)
+        .offset(offset);
 
-    const totalCount = countResult[0].count;
-        
-    const paginatedResources = await db.select({
-        id: schema.resources.id,
-        uuid: schema.resources.uuid,
-        title: schema.resources.title,
-        sourceType: schema.resources.source_type,
-        examType: schema.resources.exam_type,
-        content: schema.resources.content, 
-        words: schema.resources.result,
-        status: schema.resources.status,
-        error: schema.resources.error,
-        createdAt: schema.resources.created_at,
-        audioKey: schema.attachments.audio_key,
-        captionSrt: schema.attachments.caption_srt,
-    })
-    .from(schema.resources)
-      .leftJoin(schema.attachments,
-          and(
-              eq(schema.attachments.resource_id, schema.resources.id)
-          )
-      )      
-    .where(eq(schema.resources.user_id, user.id))
-    .orderBy(desc(schema.resources.id))
-    .limit(limit)
-    .offset(offset);
+        const finalData = results.map(row => ({
+            ...row, // Keep all fields from the select
+            content: row.attachment_title || row.content // Use aliased title, fallback to resource content
+        }));
 
-    if (paginatedResources.length > 0) {
-      paginatedResources.forEach(r => {
-          r.content = r.content.length > 64 ? r.content.substring(0, 64) + '...' : r.content;
-          r.audioKey = !!r.audioKey;
-          r.captionSrt = !!r.captionSrt;
-      });
-        // Record exists, return its UUID
-        console.log(`Existing resource found with length: ${paginatedResources.length}`);
-        // return c.json(existingResources, 200); // Return 200 OK for existing
+        const totalCountResult = await db.select({ count: sql`count(*)` }).from(schema.resources).where(eq(schema.resources.user_id, user.id));
+        const totalCount = totalCountResult[0].count;
+
+        return c.json({ data: finalData, totalCount });
+
+    } catch (error) {
+        console.error("Failed to fetch analysis history:", error);
+        return c.json({ message: 'Internal Server Error' }, 500);
     }
-
-    // 返回分页数据和总记录数
-    return c.json({
-      data: paginatedResources,
-      totalCount: totalCount
-    }, 200);    
-
-  } catch (checkError) {
-      console.error("Failed to check for existing resource in DB:", checkError);
-      return c.json({ message: 'Failed to list existing resources.' }, 500);
-  }
 
 });
 

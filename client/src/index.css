@@ -147,6 +147,13 @@
   --bento-pronunciation: 220 70% 15%;
 }
 
+/* Set a more intuitive box-sizing model on every element */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* Base 层样式 */
 @layer base {
   * {

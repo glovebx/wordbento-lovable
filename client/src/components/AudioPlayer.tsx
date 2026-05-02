@@ -910,7 +910,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
               id="subtitle-font-size"
               value={[subtitleFontSize]}
               min={12} // Minimum font size
-              max={36} // Maximum font size
+              max={72} // Maximum font size
               step={1} // Step by 1px
               onValueChange={(val) => setSubtitleFontSize(val[0])}
               className="flex-1 w-full sm:w-auto"

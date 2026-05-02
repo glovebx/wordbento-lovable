@@ -44,6 +44,9 @@ export const useEinkPusher = ({ einkEndpoint, einkToken }: UseEinkPusherProps) =
         throw new Error(`HTTP 错误! 状态: ${pushResponse.status}, 响应: ${errorBody}`);
       }
 
+      // 等待10秒，e-ink刷新需要时间
+      await new Promise(r => setTimeout(r, 10000));
+
       toast({
         title: "推送成功",
         description: "图片已发送到您的 e-ink 设备。",

@@ -11,6 +11,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, XCircle, Search } from 'lucide-react';
+import { useInView } from 'react-intersection-observer'; // For infinite scroll
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +63,8 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   const [searchInput, setSearchInput] = useState('');
   // 从 useRecentAnalysis 钩子中解构出 hasMore 和 loadMore
   const { recentSubmissions, isLoading: isLoadingHistory, hasMore, loadMore } = useRecentAnalysis();
+  const { ref: loadMoreRef, inView: loadMoreInView } = useInView(); // Ref for the sentinel
+
   const [words, setWords] = useState<string[]>([]);
   const [showAllWords, setShowAllWords] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -77,6 +80,13 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
     }
     setShowAllWords(false);
   }, [analysisResult]);
+
+  // Effect for infinite scroll
+  useEffect(() => {
+    if (loadMoreInView && hasMore && !isLoadingHistory) {
+      loadMore();
+    }
+  }, [loadMoreInView, hasMore, isLoadingHistory, loadMore]);
 
   const form = useForm<AnalysisData>({
     resolver: zodResolver(analysisFormSchema),
@@ -314,46 +324,38 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                   </div>
                 ) : recentSubmissions.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {recentSubmissions.map((submission, _) => (
-                      <div 
-                        key={submission.uuid} // Use uuid as key for stability
-                        className="py-1.5 px-2.5 text-xs bg-muted/50 rounded-md flex items-center cursor-pointer hover:bg-muted/80 transition-colors max-w-full"
-                        onClick={() => handleAnalysisManualResult(submission)}
-                      >
-                        <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs mr-1.5 whitespace-nowrap">
-                          {submission.sourceType === 'url' ? 'URL' : '文章'}
-                        </span>
-                        <span className="truncate hover:text-primary transition-colors">
-                          {submission.content}
-                        </span>
+                  <div className="flex overflow-x-auto pb-4 space-x-4 scrollbar-hide">
+                {recentSubmissions.map((submission) => (
+                  <div 
+                    key={submission.uuid} 
+                    className="relative flex-shrink-0 w-40 h-24 bg-cover bg-center rounded-lg overflow-hidden cursor-pointer group"
+                    onClick={() => handleAnalysisManualResult(submission)}
+                  >
+                    {submission.thumbnail ? (
+                      <img src={submission.thumbnail} alt={submission.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground">无图</span>
                       </div>
-                    ))}
+                    )}
+                    <div className="absolute inset-0 bg-black/50 flex items-end p-2">
+                      <h4 className="text-white text-sm font-medium truncate" title={submission.title}>
+                        {submission.title}
+                      </h4>
+                    </div>
                   </div>
+                ))}
+                {/* Sentinel for infinite scroll */}
+                {hasMore && (
+                  <div ref={loadMoreRef} className="flex-shrink-0 w-px">
+                    {isLoadingHistory && <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />}
+                  </div>
+                )}
+              </div>
                 ) : (
                   <div/>
                 )}
                 
-                {/* "更多" 按钮 */}
-                {hasMore && ( // 只有当 hasMore 为 true 才显示
-                  <div className="mt-4 text-center">
-                    <Button 
-                      variant="outline" 
-                      onClick={loadMore} 
-                      disabled={isLoadingHistory} // 如果正在加载历史记录，则禁用
-                      className="px-6 py-2 rounded-md shadow-sm"
-                    >
-                      {isLoadingHistory ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          加载中...
-                        </>
-                      ) : (
-                        "更多"
-                      )}
-                    </Button>
-                  </div>
-                )}
               </div>
             </form>
 

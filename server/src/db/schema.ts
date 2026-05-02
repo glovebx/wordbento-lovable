@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { duration } from 'drizzle-orm/gel-core';
 import { sqliteTable, text, integer, unique, index } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
@@ -84,6 +85,8 @@ export const attachments = sqliteTable('attachments', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   resource_id: integer('resource_id').notNull().references(() => resources.id, { onDelete: 'cascade' }), // 定义外键和级联删除
   title: text('title'),
+  thumbnail: text('thumbnail'),
+  duration: integer('duration'),
   audio_key: text('audio_key'),
   video_key: text('video_key'),
   caption_txt: text('caption_txt'),

@@ -9,6 +9,9 @@ export type Submission = {
   examType: string;
   content: string;
   words: string;
+  title: string;
+  thumbnail: string;
+  attachmentTitle: string;
   audioKey: boolean;
   captionSrt: boolean;
   timestamp: number; // Ensure timestamp exists for ordering
