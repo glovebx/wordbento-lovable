@@ -187,7 +187,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
               <table className="w-full table-fixed">
                 <tbody>
                   <tr>
-                    <td className="w-20 align-middle">
+                    <td className="w-16 align-middle">
                       {resource.thumbnail ? (
                         <img src={resource.thumbnail} alt="Thumbnail" className="w-16 h-16 object-cover rounded-md" />
                       ) : (
@@ -196,11 +196,11 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
                     </td>
                     <td className="align-middle px-2">
                       <div className="font-medium text-sm mb-1 whitespace-normal break-words" title={resource.content}>
-                        {truncateContent(resource.content || '', 50)}
+                        {truncateContent(resource.content || '', 80)}
                       </div>
                       <div>{getStatusIcon(resource.status)}</div>
                     </td>
-                    <td className="w-24 align-middle text-right">
+                    <td className="w-20 align-middle text-right">
                       <HistoryActions
                         resource={resource}
                         onEditResource={onEditResource}
@@ -226,7 +226,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
                     <TableHead className="whitespace-nowrap">状态</TableHead>
                     <TableHead className="hidden md:table-cell whitespace-nowrap">错误</TableHead>
                     <TableHead className="hidden lg:table-cell whitespace-nowrap">创建时间</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">操作</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">操作</TableHead>
                 </TableRow>
             </TableHeader>
             {/* Desktop Table Body */}

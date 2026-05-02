@@ -36,7 +36,7 @@ export const HistoryActions: React.FC<HistoryActionsProps> = ({
   };
 
   return (
-    <div className="flex items-center space-x-2">
+    <div className="flex items-center justify-center space-x-2">
       {/* Removed Audio Play Button */}
       {/* {resource.attachments.some(att => att.audio_key) && (
         <Button variant="ghost" size="icon" onClick={() => onPlayAudio(resource.attachments.find(att => att.audio_key)?.audio_key || '')}>
