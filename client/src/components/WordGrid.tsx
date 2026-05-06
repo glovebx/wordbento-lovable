@@ -305,51 +305,6 @@ const WordGrid: React.FC<WordGridProps> = ({
           className="bg-bento-affixes"
         />)}
 
-        {/* History Card */}
-        {(word.content.history && <GridCard
-          id="history"
-          title={{
-            en: "Historical Background",
-            zh: "发展历史和文化背景"
-          }}
-          content={{
-            en: word.content.history.en,
-            zh: word.content.history.zh
-          }}
-          icon={<History className="h-5 w-5 text-orange-500" />}
-          className="bg-bento-history"
-        />)}
-
-        {/* Word Forms Card */}
-        {(word.content.forms && <GridCard
-          id="forms"
-          title={{
-            en: "Word Forms",
-            zh: "单词变形"
-          }}
-          content={{
-            en: word.content.forms.en,
-            zh: word.content.forms.zh
-          }}
-          icon={<ArrowUpDown className="h-5 w-5 text-green-500" />}
-          className="bg-bento-forms"
-        />)}
-
-        {/* Memory Aid Card */}
-        {(word.content.memory_aid && <GridCard
-          id="memoryAid"
-          title={{
-            en: "Memory Aid",
-            zh: "记忆辅助"
-          }}
-          content={{
-            en: word.content.memory_aid.en,
-            zh: word.content.memory_aid.zh
-          }}
-          icon={<Lightbulb className="h-5 w-5 text-pink-500" />}
-          className="bg-bento-memory"
-        />)}
-
         {/* Examples Card */}
         <GridCard
           id="examples"
@@ -388,6 +343,52 @@ const WordGrid: React.FC<WordGridProps> = ({
           icon={<FileText className="h-5 w-5 text-amber-500" />}
           className="bg-bento-examples"
         />
+
+        {/* Word Forms Card */}
+        {(word.content.forms && <GridCard
+          id="forms"
+          title={{
+            en: "Word Forms",
+            zh: "单词变形"
+          }}
+          content={{
+            en: word.content.forms.en,
+            zh: word.content.forms.zh
+          }}
+          icon={<ArrowUpDown className="h-5 w-5 text-green-500" />}
+          className="bg-bento-forms"
+        />)}
+
+        {/* Memory Aid Card */}
+        {(word.content.memory_aid && <GridCard
+          id="memoryAid"
+          title={{
+            en: "Memory Aid",
+            zh: "记忆辅助"
+          }}
+          content={{
+            en: word.content.memory_aid.en,
+            zh: word.content.memory_aid.zh
+          }}
+          icon={<Lightbulb className="h-5 w-5 text-pink-500" />}
+          className="bg-bento-memory"
+        />)}
+
+
+        {/* History Card */}
+        {(word.content.history && <GridCard
+          id="history"
+          title={{
+            en: "Historical Background",
+            zh: "发展历史和文化背景"
+          }}
+          content={{
+            en: word.content.history.en,
+            zh: word.content.history.zh
+          }}
+          icon={<History className="h-5 w-5 text-orange-500" />}
+          className="bg-bento-history"
+        />)}
 
         {/* Trending Story Card */}
         {(word.content.trending_story && <GridCard
