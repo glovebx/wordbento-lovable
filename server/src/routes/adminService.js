@@ -78,3 +78,17 @@ export const deleteWord = async (c, db, wordId) => {
 
     console.log(`Successfully deleted wordId: ${wordId} and associated data.`);
 };
+
+// Service to get all words with pagination and search
+export const getWordImages = async (c, db, wordId) => {
+    // Base query
+    const images = await db.select({ image_key: schema.images.image_key, prompt: schema.images.prompt })
+    .from(schema.images)
+    .where(eq(schema.images.word_id, wordId));
+
+    images.map(img => img.url = `${c.env.VITE_IMG_URL}/${img.image_key}`);
+
+    return {
+        data: images,
+    };
+};

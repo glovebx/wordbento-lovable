@@ -200,6 +200,65 @@ class WordBentoClient:
         self._save_state()
         print(f"状态已保存: latestViewsId = {latest_views_id}")
 
+    def generate_cover_images(self, words: List[str]) -> Optional[List[str]]:
+        """
+        请求AI生成封面图片
+
+        Args:
+            words: 用于生成图片的单词列表
+
+        Returns:
+            List[str]: 包含图片URL的列表，失败返回None
+        """
+        url = f"{self.base_url}/api/word/review/push"
+        payload = {"words": words}
+
+        print(f"正在为单词 {words} 请求生成封面图片...")
+
+        try:
+            response = self.session.post(url, headers=self.headers, json=payload, timeout=self.timeout)
+            response.raise_for_status()
+            image_urls = response.json()
+            print(f"成功获取 {len(image_urls)} 张候选图片URL")
+            return image_urls
+        except requests.exceptions.RequestException as e:
+            print(f"请求封面图片生成接口失败: {e}")
+            return None
+        except json.JSONDecodeError as e:
+            print(f"解析封面图片响应JSON失败: {e}")
+            return None
+
+    def get_word_image_prompt(self, wordId: int) -> str:
+        """
+        获取生成图片时用的例句
+
+        Args:
+            wordId: 单词ID
+
+        Returns:
+            str: 图片时用的例句
+        """
+        url = f"{self.base_url}/api/admin/word/images/{wordId}"
+        
+        print(f"正在为单词 {wordId} 请求图片...")
+
+        try:
+            response = self.session.get(url, headers=self.headers, timeout=self.timeout)
+            response.raise_for_status()
+            result = response.json()
+
+            images = result['data']
+
+            image_prompt = images[0]['prompt']
+            print(f"成功获取单词 {wordId} 的图片 prompt: {image_prompt}")   
+            return image_prompt 
+        except requests.exceptions.RequestException as e:
+            print(f"请求单词图片接口失败: {e}")
+            return None
+        except json.JSONDecodeError as e:
+            print(f"解析单词图片响应JSON失败: {e}")
+            return None
+
     def get_today_words(self, max_id: int) -> Optional[Dict]:
         """
         获取今日单词列表

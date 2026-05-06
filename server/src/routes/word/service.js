@@ -347,20 +347,27 @@ export const markWordAsMastered = async (db, userId, wordId) => {
     await db.insert(schema.archives).values({ user_id: userId, word_id: wordId });
 };
 
-export const getReviewWords4Push = async (c, db, userId) => {
-    // This query finds the 10 most recently viewed unique words for a user.
-    // It groups by the word to get unique words, then orders by the most recent view ID for each word.
-    const recentWords = await db.select({
-        word_text: schema.words.word_text
-      })
-      .from(schema.word_views)
-      .innerJoin(schema.words, eq(schema.word_views.word_id, schema.words.id))
-      .where(eq(schema.word_views.user_id, userId))
-      .groupBy(schema.words.id, schema.words.word_text) // Group by word to ensure uniqueness
-      .orderBy(desc(sql`MAX(${schema.word_views.id})`)) // Order by the most recent view
-      .limit(10);
+export const getReviewWords4Push = async (c, db, userId, words) => {
+    let wordsForPush = words;
 
-    const words = recentWords.map(w => w.word_text);
+    if (!wordsForPush || wordsForPush.length === 0) {
+        // Fallback to fetching recent words if none are provided
+        const recentWords = await db.select({
+            word_text: schema.words.word_text
+        })
+        .from(schema.word_views)
+        .innerJoin(schema.words, eq(schema.word_views.word_id, schema.words.id))
+        .where(eq(schema.word_views.user_id, userId))
+        .groupBy(schema.words.id, schema.words.word_text)
+        .orderBy(desc(sql`MAX(${schema.word_views.id})`))
+        .limit(10);
+        wordsForPush = recentWords.map(w => w.word_text);
+    }
+
+    if (!wordsForPush || wordsForPush.length === 0) {
+        // No words found, return empty
+        return [];
+    }
 
     let hasFreeQuota = false;
     try {
@@ -370,8 +377,8 @@ export const getReviewWords4Push = async (c, db, userId) => {
         throw error;
     }
 
-    const language = LanguageUtils.detectLanguage(words.join(', '));
-    const imageUrls = await generatePushImageByAi(c, userId, words, language, hasFreeQuota);
+    const language = LanguageUtils.detectLanguage(wordsForPush.join(', '));
+    const imageUrls = await generatePushImageByAi(c, userId, wordsForPush, language, hasFreeQuota);
 
     // We map this to an array of strings as requested.
     return imageUrls;

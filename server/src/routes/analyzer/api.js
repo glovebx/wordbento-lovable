@@ -180,7 +180,7 @@ analyze.post('/update', async (c) => {
       if (!analysisData || !analysisData.id) {
           return c.json({ message: 'Invalid analysis data provided.' }, 400);
       }
-      if (analysisData.audioKey === undefined && analysisData.captionSrt === undefined && analysisData.fee === undefined) {
+      if (analysisData.audioKey === undefined && analysisData.captionSrt === undefined && analysisData.fee === undefined && analysisData.thumbnail === undefined && analysisData.title === undefined) {
         return c.json({ message: 'Invalid data types in analysis request.' }, 400);
       }
   } catch (e) {
@@ -222,7 +222,14 @@ analyze.post('/update', async (c) => {
     }
   }
 
-  if (values.audio_key || values.caption_srt || values.caption_txt) {
+  if ('thumbnail' in analysisData) {
+    values.thumbnail = analysisData.thumbnail;
+  }
+  if ('title' in analysisData) {
+    values.title = analysisData.title;
+  }
+
+  if (values.audio_key || values.caption_srt || values.caption_txt || values.thumbnail || values.title) {
     // 3. Check if a record with the same exam_type and content_md5 already exists
     try {
         const existingAttachments = await db.select({
@@ -323,7 +330,7 @@ analyze.get('/history', async (c) => {
 
       if (existingResources.length > 0) {
         existingResources.forEach(r => {
-            r.title = r.attachmentTitle || r.title || '';
+            r.title = r.attachmentTitle || r.title || r.content ||'';
             r.thumbnail = r.thumbnail || '';
             r.content = r.content.length > 64 ? r.content.substring(0, 64) + '...' : r.content;
             r.audioKey = !!r.audioKey;
@@ -370,6 +377,7 @@ analyze.get('/list/:limit/:page', async (c) => {
   try {
         const results = await db.select({
             id: schema.resources.id,
+            title: schema.resources.title,
             source_type: schema.resources.source_type,
             status: schema.resources.status,
             created_at: schema.resources.created_at,
@@ -386,7 +394,7 @@ analyze.get('/list/:limit/:page', async (c) => {
 
         const finalData = results.map(row => ({
             ...row, // Keep all fields from the select
-            content: row.attachment_title || row.content // Use aliased title, fallback to resource content
+            content: row.attachment_title || row.title || row.content // Use aliased title, fallback to resource content
         }));
 
         const totalCountResult = await db.select({ count: sql`count(*)` }).from(schema.resources).where(eq(schema.resources.user_id, user.id));

@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../db/schema.js';
 import { adminRequired } from '../middleware/adminAuth.js';
-import { getAllWords, deleteWord } from './adminService.js';
+import { getAllWords, deleteWord, getWordImages } from './adminService.js';
 
 const admin = new Hono();
 
@@ -38,6 +38,24 @@ admin.delete('/words/:id', async (c) => {
     } catch (error) {
         console.error(`Failed to delete word with id ${id}:`, error);
         return c.json({ message: 'Failed to delete word.' }, 500);
+    }
+});
+
+// Route to get all word's images
+admin.get('/word/images/:id', async (c) => {
+    const id = parseInt(c.req.param('id'), 10);
+    if (isNaN(id)) {
+        return c.json({ message: 'Invalid word ID.' }, 400);
+    }
+
+    const db = drizzle(c.env.DB, { schema });
+
+    try {
+        const data = await getWordImages(c, db, id);
+        return c.json(data);
+    } catch (error) {
+        console.error(`Failed to fetch images for word with id ${id}:`, error);
+        return c.json({ message: 'Failed to fetch images.' }, 500);
     }
 });
 

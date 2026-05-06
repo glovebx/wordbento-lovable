@@ -432,7 +432,7 @@ const generatePosterPromptWithoutExample = (word, language, pronunciation, style
 };
 
 const generatePushPosterPrompt = (words, language, style) => {
-    return `A vertical poster in 9:16 aspect ratio. Must include exactly ${words.length} distinct ${language} words, each only once, no repetition: ${words.join(', ')}. All words must be clearly legible, placed only once in the composition. Arrange every words across the layout — some large and bold, others smaller — without repeating any word. No word appears twice. Sharp edges, high text contrast.
+    return `A vertical poster in 9:16 aspect ratio. Must include exactly ${words.length} distinct ${language} words, each only once, no repetition: ${words.join(', ')}. All words must be clearly legible, placed only once in the composition. Arrange every words across the layout — some large and bold, others smaller — without repeating any word. No word appears twice. Sharp edges, high text contrast.No color codes, no hex codes, no stray text or symbols.
 
 [STYLE DESCRIPTION]
 ${style}

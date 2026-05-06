@@ -248,10 +248,24 @@ word.post('/review/push', async (c) => {
         return c.json({ message: 'Forbidden' }, 403);
     }
 
+    let words = [];
+    // Check if the request has a body and if it's JSON
+    if (c.req.header('Content-Type')?.includes('application/json')) {
+        try {
+            const body = await c.req.json();
+            if (body && Array.isArray(body.words)) {
+                words = body.words;
+            }
+        } catch (e) {
+            // Ignore parsing error, proceed as if no body was sent
+            console.warn('Could not parse JSON body for /review/push, proceeding without words.');
+        }
+    }
+
     const db = drizzle(c.env.DB, { schema });
 
     try {
-        const imageUrls = await getReviewWords4Push(c, db, user.id);
+        const imageUrls = await getReviewWords4Push(c, db, user.id, words);
         if (imageUrls && imageUrls.length > 0) {
           return c.json(imageUrls, 200);
         } else {
