@@ -11,21 +11,21 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Edit, Trash2 } from "lucide-react"; // Import Edit and Trash2 icons
+import { Edit, Trash2, ListPlus } from "lucide-react"; // Import Edit and Trash2 icons
 import { ResourceWithAttachments } from "@/types/database";
 
 interface HistoryActionsProps {
   resource: ResourceWithAttachments;
-  // Removed onPlayAudio and onPlayVideo props
   onEditResource: (resourceId: number) => void;
-  onDeleteResource: (resourceId: number) => void; // Added onDeleteResource prop
+  onDeleteResource: (resourceId: number) => void;
+  onEditPlaylist: (resourceId: number) => void;
 }
 
 export const HistoryActions: React.FC<HistoryActionsProps> = ({
   resource,
-  // Removed onPlayAudio, onPlayVideo from destructuring
   onEditResource,
   onDeleteResource,
+  onEditPlaylist,
 }) => {
   const handleEditClick = () => {
     onEditResource(resource.id);
@@ -35,21 +35,15 @@ export const HistoryActions: React.FC<HistoryActionsProps> = ({
     onDeleteResource(resource.id);
   };
 
+  const handlePlaylistClick = () => {
+    onEditPlaylist(resource.id);
+  };
+
   return (
     <div className="flex items-center justify-center space-x-2">
-      {/* Removed Audio Play Button */}
-      {/* {resource.attachments.some(att => att.audio_key) && (
-        <Button variant="ghost" size="icon" onClick={() => onPlayAudio(resource.attachments.find(att => att.audio_key)?.audio_key || '')}>
-          <FileAudio className="h-4 w-4" />
-        </Button>
-      )} */}
-
-      {/* Removed Video Play Button */}
-      {/* {resource.attachments.some(att => att.video_key) && (
-        <Button variant="ghost" size="icon" onClick={() => onPlayVideo(resource.attachments.find(att => att.video_key)?.video_key || '')}>
-          <FileVideo className="h-4 w-4" />
-        </Button>
-      )} */}
+      <Button variant="ghost" size="icon" onClick={handlePlaylistClick} title="编辑播放列表">
+        <ListPlus className="h-4 w-4" />
+      </Button>
 
       <Button variant="ghost" size="icon" onClick={handleEditClick} title="编辑">
         <Edit className="h-4 w-4" />

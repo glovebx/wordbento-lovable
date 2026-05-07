@@ -6,7 +6,12 @@ import { sql, eq, and, or, ne, desc } from 'drizzle-orm';
 import { calculateMD5 } from '../../utils/passwords';
 import { extractTextFromSrt } from '../../utils/languageParser';
 import { isYouTubeLinkRegex, extractWordsByScraper } from './youtube';
-import { simulateAnalysisTask } from './service';
+import { 
+    simulateAnalysisTask,
+    getRelatedResources,
+    updateRelatedResources,
+    getResourcesByIds
+} from './service';
 import { handleWebSocket } from './websocket';
 
 const analyze = new Hono();
@@ -359,7 +364,8 @@ analyze.get('/list/:limit/:page', async (c) => {
 
   // 从查询参数中提取 page 和 limit
   const page = parseInt(c.req.param('page') || '1', 10);
-  const limit = parseInt(c.req.param('limit') || '20', 10); // 每页20条数据
+  const limit = parseInt(c.req.param('limit') || '20', 10);
+  const searchTerm = c.req.query('search');
 
     console.log(`page and limit: ${page} ${limit}`)
   // 验证 page 和 limit
@@ -375,6 +381,11 @@ analyze.get('/list/:limit/:page', async (c) => {
   const db = drizzle(c.env.DB, { schema });
   
   try {
+        const conditions = [eq(schema.resources.user_id, user.id)];
+        if (searchTerm) {
+            conditions.push(sql`(${schema.resources.content} LIKE ${`%${searchTerm}%`} OR ${schema.attachments.title} LIKE ${`%${searchTerm}%`})`);
+        }
+
         const results = await db.select({
             id: schema.resources.id,
             title: schema.resources.title,
@@ -387,7 +398,7 @@ analyze.get('/list/:limit/:page', async (c) => {
         })
         .from(schema.resources)
         .leftJoin(schema.attachments, eq(schema.resources.id, schema.attachments.resource_id))
-        .where(eq(schema.resources.user_id, user.id))
+        .where(and(...conditions))
         .orderBy(desc(schema.resources.id))
         .limit(limit)
         .offset(offset);
@@ -397,7 +408,13 @@ analyze.get('/list/:limit/:page', async (c) => {
             content: row.attachment_title || row.title || row.content // Use aliased title, fallback to resource content
         }));
 
-        const totalCountResult = await db.select({ count: sql`count(*)` }).from(schema.resources).where(eq(schema.resources.user_id, user.id));
+        // The count query also needs the join to filter by attachment title
+        const totalCountQuery = db.select({ count: sql`count(DISTINCT ${schema.resources.id})` })
+            .from(schema.resources)
+            .leftJoin(schema.attachments, eq(schema.resources.id, schema.attachments.resource_id))
+            .where(and(...conditions));
+
+        const totalCountResult = await totalCountQuery;
         const totalCount = totalCountResult[0].count;
 
         return c.json({ data: finalData, totalCount });
@@ -754,5 +771,83 @@ analyze.get('/content/:uuid', async (c) => {
 });
 
 analyze.get('/:taskId', handleWebSocket);
+
+analyze.get('/related-resources/:resourceId', async (c) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ message: 'Forbidden' }, 403);
+    }
+    const resourceId = parseInt(c.req.param('resourceId'), 10);
+    if (isNaN(resourceId)) {
+        return c.json({ message: 'Invalid resource ID.' }, 400);
+    }
+
+    const db = drizzle(c.env.DB, { schema });
+    try {
+        const relatedItems = await getRelatedResources(db, resourceId);
+        return c.json(relatedItems, 200);
+    } catch (error) {
+        console.error(`Failed to fetch related resources for ID ${resourceId}:`, error);
+        return c.json({ message: 'Internal Server Error' }, 500);
+    }
+});
+
+analyze.post('/related-resources/:resourceId', async (c) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ message: 'Forbidden' }, 403);
+    }
+    const resourceId = parseInt(c.req.param('resourceId'), 10);
+    if (isNaN(resourceId)) {
+        return c.json({ message: 'Invalid resource ID.' }, 400);
+    }
+
+    let relatedIds;
+    try {
+        const body = await c.req.json();
+        relatedIds = body.relatedIds;
+        if (!Array.isArray(relatedIds)) {
+            return c.json({ message: 'Invalid payload. Expected { relatedIds: [...] }' }, 400);
+        }
+    } catch (e) {
+        return c.json({ message: 'Invalid JSON body' }, 400);
+    }
+
+    const db = drizzle(c.env.DB, { schema });
+    try {
+        await updateRelatedResources(db, resourceId, relatedIds);
+        return c.json({ message: 'Playlist updated successfully.' }, 200);
+    } catch (error) {
+        console.error(`Failed to update related resources for ID ${resourceId}:`, error);
+        return c.json({ message: 'Internal Server Error' }, 500);
+    }
+});
+
+analyze.post('/resources-by-ids', async (c) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ message: 'Forbidden' }, 403);
+    }
+
+    let ids;
+    try {
+        const body = await c.req.json();
+        ids = body.ids;
+        if (!Array.isArray(ids) || ids.some(id => typeof id !== 'number')) {
+            return c.json({ message: 'Invalid payload. Expected { ids: [1, 2, 3] }' }, 400);
+        }
+    } catch (e) {
+        return c.json({ message: 'Invalid JSON body' }, 400);
+    }
+
+    const db = drizzle(c.env.DB, { schema });
+    try {
+        const resources = await getResourcesByIds(db, ids);
+        return c.json(resources, 200);
+    } catch (error) {
+        console.error(`Failed to fetch resources by IDs:`, error);
+        return c.json({ message: 'Internal Server Error' }, 500);
+    }
+});
 
 export default analyze;

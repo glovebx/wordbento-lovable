@@ -1,6 +1,6 @@
 
 import * as schema from '../../db/schema';
-import { sql, eq } from 'drizzle-orm';
+import { sql, eq, inArray } from 'drizzle-orm';
 import { checkAndConsumeFreeQuota } from '../../utils/security';
 import { extractWordsByAi } from './ai';
 
@@ -77,4 +77,66 @@ export const simulateAnalysisTask = async (c, taskId, db, analysisData) => {
       .where(eq(schema.resources.uuid, taskId));
 
   return candidates;
+};
+
+export const getRelatedResources = async (db, resourceId) => {
+    const results = await db.select({
+        id: schema.resources.id,
+        content: schema.resources.content,
+        attachment_title: schema.attachments.title,
+        thumbnail: schema.attachments.thumbnail,
+        position: schema.related_resources.position,
+    })
+    .from(schema.related_resources)
+    .leftJoin(schema.resources, eq(schema.related_resources.related_resource_id, schema.resources.id))
+    .leftJoin(schema.attachments, eq(schema.related_resources.related_resource_id, schema.attachments.resource_id))
+    .where(eq(schema.related_resources.resource_id, resourceId))
+    .orderBy(schema.related_resources.position);
+
+    return results.map(row => ({
+        id: row.id,
+        content: row.attachment_title || row.content,
+        thumbnail: row.thumbnail,
+    }));
+};
+
+export const updateRelatedResources = async (db, resourceId, relatedIds) => {
+      // 1. Delete existing relations for the main resource
+      await db.delete(schema.related_resources)
+          .where(eq(schema.related_resources.resource_id, resourceId));
+
+      // 2. If there are new IDs, insert them
+      if (relatedIds && relatedIds.length > 0) {
+          const valuesToInsert = relatedIds.map((id, index) => ({
+              resource_id: resourceId,
+              related_resource_id: id,
+              position: index,
+          }));
+          await db.insert(schema.related_resources).values(valuesToInsert);
+      }
+};
+
+export const getResourcesByIds = async (db, ids) => {
+    if (!ids || ids.length === 0) {
+        return [];
+    }
+
+    const results = await db.select({
+        id: schema.resources.id,
+        content: schema.resources.content,
+        attachment_title: schema.attachments.title,
+        thumbnail: schema.attachments.thumbnail,
+    })
+    .from(schema.resources)
+    .leftJoin(schema.attachments, eq(schema.resources.id, schema.attachments.resource_id))
+    .where(inArray(schema.resources.id, ids));
+
+    // Create a map for efficient lookup
+    const resultsMap = new Map(results.map(row => [row.id, {
+        ...row,
+        content: row.attachment_title || row.content,
+    }]));
+
+    // Return results in the same order as the original IDs
+    return ids.map(id => resultsMap.get(id)).filter(Boolean);
 };

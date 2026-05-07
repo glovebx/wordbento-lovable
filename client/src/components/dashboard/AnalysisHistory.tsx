@@ -15,10 +15,14 @@ import {
 } from '@/types/analysisTypes'; // Import types
 
 // 移除不必要的 props 和状态
+import { PlaylistEditor } from "@/components/history/PlaylistEditor";
+
 const AnalysisHistory = () => {
   const { isAuthenticated } = useAuth();
   const [editingResource, setEditingResource] = useState<ResourceWithAttachments | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isPlaylistEditorOpen, setIsPlaylistEditorOpen] = useState(false);
+  const [selectedResourceForPlaylist, setSelectedResourceForPlaylist] = useState<ResourceWithAttachments | null>(null);
   const [isAddingNewResource, setIsAddingNewResource] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -146,6 +150,14 @@ const AnalysisHistory = () => {
     setCurrentPage(page);
   }, []);
 
+  const handleEditPlaylist = useCallback(async (resourceId: number) => {
+    const resource = resources.find(r => r.id === resourceId);
+    if (resource) {
+        setSelectedResourceForPlaylist(resource);
+        setIsPlaylistEditorOpen(true);
+    }
+  }, [resources]);
+
   // 移除所有侧边栏相关的 UI 代码，只保留 Card 内容
   return (
     <div className="p-6 relative">
@@ -182,6 +194,7 @@ const AnalysisHistory = () => {
                 resources={resources}
                 onEditResource={handleEditResource}
                 onDeleteResource={handleDeleteResource}
+                onEditPlaylist={handleEditPlaylist} // Pass the new handler
                 totalCount={totalCount}
                 currentPage={currentPage}
                 onPageChange={handlePageChange}
@@ -204,6 +217,12 @@ const AnalysisHistory = () => {
         isSyncing={isSyncing}
         resource={isAddingNewResource ? null : editingResource}
         onSave={handleSaveResource}
+      />
+
+      <PlaylistEditor
+        isOpen={isPlaylistEditorOpen}
+        onClose={() => setIsPlaylistEditorOpen(false)}
+        resource={selectedResourceForPlaylist}
       />
     </div>
   );

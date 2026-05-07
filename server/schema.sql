@@ -165,6 +165,17 @@ CREATE TABLE IF NOT EXISTS attachments (
     FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE CASCADE
 );
 
+-- related_resources 表：关联解析资源的其他资源，例如视频合集等
+CREATE TABLE IF NOT EXISTS related_resources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    resource_id INTEGER NOT NULL,       -- 外键，关联到 resources 表的 id
+    related_resource_id INTEGER NOT NULL,       -- 外键，关联到 resources 表的 id
+    position INTEGER,                   -- 排序
+
+    FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE CASCADE,
+    FOREIGN KEY (related_resource_id) REFERENCES resources(id) ON DELETE CASCADE
+);
+
 -- temp_attachments 表：临时手动上传的音频和视频
 CREATE TABLE IF NOT EXISTS temp_attachments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -93,6 +93,13 @@ export const attachments = sqliteTable('attachments', {
   caption_srt: text('caption_srt'),
 });
 
+export const related_resources = sqliteTable('related_resources', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  resource_id: integer('resource_id').notNull().references(() => resources.id, { onDelete: 'cascade' }), // 定义外键和级联删除
+  related_resource_id: integer('related_resource_id').notNull().references(() => resources.id, { onDelete: 'cascade' }), // 定义外键和级联删除
+  position: integer('position'),  // 定义排序
+});
+
 export const temp_attachments = sqliteTable('temp_attachments', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   user_id: integer('user_id'),
