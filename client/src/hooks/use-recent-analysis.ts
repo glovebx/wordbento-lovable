@@ -10,6 +10,7 @@ export type Submission = {
   content: string;
   words: string;
   title: string;
+  relatedUuids: string[];
   thumbnail: string;
   attachmentTitle: string;
   audioKey: boolean;

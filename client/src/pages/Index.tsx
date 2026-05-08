@@ -237,8 +237,8 @@ const Index = () => {
   }, [currentSrtResource]);
 
   const handleManualAnalysisResult = useCallback((submission: Submission) => {
-    setAnalysisResult({ words: JSON.parse(submission.words) });
-    // console.log("Analysis result reset manually.");
+    setAnalysisResult({ words: JSON.parse(submission.words), relatedUuids: submission.relatedUuids });
+    console.log("Analysis result reset manually.");
 
     if (submission.audioKey) {
       setCurrentAudioUrl(`${baseURL}/api/analyze/audio/${submission.uuid}`)
@@ -529,6 +529,7 @@ const Index = () => {
             audioUrl={currentAudioUrl}
             subtitleContent={currentSubtitleContent}
             highlightWords={analysisResult?.words || []}
+            relatedUuids={analysisResult?.relatedUuids || []}
             onClose={handleCloseAudioPlayer}
             onHighlightedWordClick={handleHighlightedWordClick}
             onSearchWord={handleSearch}

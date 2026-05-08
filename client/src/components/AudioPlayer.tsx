@@ -24,6 +24,7 @@ interface AudioPlayerProps {
   audioUrl: string;
   subtitleContent?: string;
   highlightWords?: string[];
+  relatedUuids?: string[];
   onClose: () => void;
   // New prop: Callback when a highlighted word is clicked (used for FloatingImageCarousel)
   onHighlightedWordClick?: (word: string, rect: DOMRect) => void;
@@ -31,7 +32,7 @@ interface AudioPlayerProps {
   onSearchWord?: (word: string) => void;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, highlightWords = [], onClose, onHighlightedWordClick, onSearchWord }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, highlightWords = [], relatedUuids = [], onClose, onHighlightedWordClick, onSearchWord }) => {
   const isMobile = useIsMobile();
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -782,6 +783,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
           >
             {isLooping ? <Repeat1 className="h-5 w-5 text-blue-300" /> : <Repeat className="h-5 w-5" />}
           </Button>
+
+          {relatedUuids.length > 0 && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => console.log("根据 relatedUuids，获得播放列表然后显示")}
+                title="播放列表"
+              >
+            {/* 播放列表图标 */}
+                </Button>            
+            </>
+          )}
 
           {parsedCues.length > 0 && (
             <>
