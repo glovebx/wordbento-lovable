@@ -108,12 +108,22 @@ export const updateRelatedResources = async (db, resourceId, relatedIds) => {
       // 根据relatedIds从resources表中获取uuid列表，必须按relatedIds的顺序
       // 否则在更新resources表的related_uuids时，顺序会被打乱
       const results = await db.select({
+        id: schema.resources.id,
         uuid: schema.resources.uuid,
       })
       .from(schema.resources)
       .where(inArray(schema.resources.id, relatedIds))
-      .orderBy(inArray(schema.resources.id, relatedIds));
-      const relatedUuids = results.map(row => row.uuid);
+
+      // 建立一个 Map 方便查找：id -> uuid
+      const uuidMap = new Map(results.map(r => [r.id, r.uuid]));
+
+      // 按 relatedIds 的原顺序提取 uuid
+      const relatedUuids = relatedIds
+        .map(id => uuidMap.get(id))
+        .filter(uuid => uuid !== undefined);  // 防止某些 ID 未找到
+
+      console.log('relatedIds', relatedIds);
+      console.log('relatedUuids', relatedUuids);
 
       // 3. Update related_uuids in resources table
       await db.update(schema.resources)

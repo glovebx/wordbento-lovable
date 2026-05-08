@@ -68,7 +68,8 @@ const Index = () => {
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | undefined>(undefined);
   const [currentSubtitleContent, setCurrentSubtitleContent] = useState<string | undefined>(undefined);
   const [currentSrtResource, setCurrentSrtResource] = useState<string | undefined>(undefined);
-  const { getSrt } = useRecentAnalysis();
+  const [currentResource, setCurrentResource] = useState<Submission | undefined>(undefined);  
+  const { getSrt, getResource } = useRecentAnalysis();
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const { startAnalysis, isLoading: isAnalysisLoading } = useAnalysisTask();
   const bentoGridRef = useRef<HTMLDivElement>(null);
@@ -447,6 +448,15 @@ const Index = () => {
   }, []);
   // --- End new callback ---
 
+  const handleResourceClick = useCallback(async (uuid: string) => {
+    // 传入
+    console.log(uuid);
+    const resource = await getResource(uuid); // 等待数据获取或从缓存返回
+    if (resource) {
+      setCurrentResource(resource);
+    }
+  }, []);
+
   // 根据加载状态、错误状态和数据状态渲染不同的内容
   const renderContent = () => {
     if (isWordLoading && !wordData) {
@@ -487,6 +497,8 @@ const Index = () => {
               isWordLoading={isWordLoading}
               isAnalysisLoading={isAnalysisLoading}
               analysisResult={analysisResult}
+              analysisResource={currentResource || null}
+              refreshAnalysisResource={handleResourceClick}
               onWordClick={handleSearch}
               onClearAnalysisResult={handleClearAnalysisResult}
               onManualAnalysisResult={handleManualAnalysisResult}
@@ -533,6 +545,7 @@ const Index = () => {
             onClose={handleCloseAudioPlayer}
             onHighlightedWordClick={handleHighlightedWordClick}
             onSearchWord={handleSearch}
+            onSelectResource={handleResourceClick}
           />
         )}
 

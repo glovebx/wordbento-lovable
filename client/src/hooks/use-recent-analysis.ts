@@ -110,6 +110,19 @@ export const useRecentAnalysis = () => {
     });
   }, []);
 
+  const getResource = useCallback(async (uuid: string) => {
+      try {
+        const response = await axiosPrivate.get(`/api/analyze/resource/${uuid}`);
+        if (response.status === 200) {
+          return response.data;
+        }
+        return null;
+      } catch (error) {
+          console.error('Failed to get resource:', error);
+          return null;
+      }    
+  }, []);
+
   const getSrt = useCallback(async (uuid: string) => {
       try {
         const response = await axiosPrivate.get(`/api/analyze/srt/${uuid}`);
@@ -136,5 +149,5 @@ export const useRecentAnalysis = () => {
       }    
   }, []);  
 
-  return { recentSubmissions, isLoading, addSubmission, getSrt, getFullContent, hasMore, loadMore };
+  return { recentSubmissions, isLoading, addSubmission, getResource, getSrt, getFullContent, hasMore, loadMore };
 };

@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../../db/schema';
-import { sql, eq, and, or, ne, desc } from 'drizzle-orm';
+import { sql, eq, and, or, ne, desc, inArray } from 'drizzle-orm';
 import { calculateMD5 } from '../../utils/passwords';
 import { extractTextFromSrt } from '../../utils/languageParser';
 import { isYouTubeLinkRegex, extractWordsByScraper } from './youtube';
@@ -13,6 +13,7 @@ import {
     getResourcesByIds
 } from './service';
 import { handleWebSocket } from './websocket';
+import { runInThisContext } from 'node:vm';
 
 const analyze = new Hono();
 
@@ -309,15 +310,14 @@ analyze.get('/history', async (c) => {
 
   try {
       const existingResources = await db.select({
-        id: schema.resources.id,
         uuid: schema.resources.uuid,
         related_uuids: schema.resources.related_uuids,
-        sourceType: schema.resources.source_type,
-        examType: schema.resources.exam_type,
-        content: schema.resources.content, 
-        words: schema.resources.result,
-        audioKey: schema.attachments.audio_key,
-        captionSrt: schema.attachments.caption_srt,
+        // sourceType: schema.resources.source_type,
+        // examType: schema.resources.exam_type,
+        // content: schema.resources.content, 
+        // words: schema.resources.result,
+        // audioKey: schema.attachments.audio_key,
+        // captionSrt: schema.attachments.caption_srt,
         title: schema.resources.title,
         attachmentTitle: schema.attachments.title,
         thumbnail: schema.attachments.thumbnail,
@@ -333,57 +333,21 @@ analyze.get('/history', async (c) => {
       .offset(offset)
       .limit(limit);
 
-      console.log('existingResources', existingResources);
+      // console.log('existingResources', existingResources);
 
       if (existingResources.length == 0) {
         return [];
       }
 
-      // // 从related_resources获得related_resource_id包含existingResources.id的列表
-      // const rowsWithGivenIds = await db.select({
-      //     resourceId: schema.related_resources.resource_id
-      // })
-      // .from(schema.related_resources)
-      // .where(inArray(schema.related_resources.related_resource_id, existingResources.map(r => r.id)));
-
-      // // 提取唯一的 resource_id
-      // const resourceIds = [...new Set(rowsWithGivenIds.map(r => r.resourceId))];
-
-      // let relatedResources = {};
-      // // 3. 用这些 resourceId 查出它们所有的 related_resource_id（可按 position 排序）
-      // if (resourceIds.length > 0) {
-      //   const relatedResourceIds = await db
-      //     .select({
-      //       resourceId: schema.related_resources.resource_id,
-      //       relatedResourceId: schema.related_resources.related_resource_id,
-      //     })
-      //     .from(schema.related_resources)
-      //     .where(inArray(schema.related_resources.resource_id, resourceIds))
-      //     .orderBy(schema.related_resources.position); // 保持排序
-
-      //   if (relatedResourceIds.length > 0) {
-      //     relatedResources = relatedResourceIds.reduce((acc, row) => {
-      //       const { resourceId, relatedResourceId } = row;
-      //       if (!acc[resourceId]) {
-      //         acc[resourceId] = [];
-      //       }
-      //       acc[resourceId].push(relatedResourceId);
-      //       return acc;
-      //     }, {});
-      //   }
-      // }
-
-      // console.log('GOT relatedResources', relatedResources);
-
       const resultResources = existingResources.map((r) => {
-        const { id, ...rest } = r;
+        const {related_uuids, attachmentTitle, ...rest} = r
         return {
           ...rest,
           title: r.attachmentTitle || r.title || r.content ||'',
           thumbnail: r.thumbnail || '',
-          content: r.content.length > 64 ? r.content.substring(0, 64) + '...' : r.content,
-          audioKey: !!r.audioKey,
-          captionSrt: !!r.captionSrt,
+          // content: r.content.length > 64 ? r.content.substring(0, 64) + '...' : r.content,
+          // audioKey: !!r.audioKey,
+          // captionSrt: !!r.captionSrt,
           relatedUuids: r.related_uuids ? r.related_uuids.split(',') : [],
         };
       });
@@ -473,7 +437,7 @@ analyze.get('/list/:limit/:page', async (c) => {
 });
 
 
-// 2. /resource/:id 端点：获取单个资源的完整详细信息，包括所有附件
+// 2. /detail/:id 端点：获取单个资源的完整详细信息，包括所有附件
 // 返回 ResourceWithAttachments
 analyze.get('/detail/:id', async (c) => {
   const user = c.get('user');
@@ -640,6 +604,67 @@ analyze.delete('/detail/:id', async (c) => {
   }
 });
 
+// 获取资源
+analyze.get('/resource/:uuid', async (c) => {
+  const uuid = c.req.param('uuid');
+  // If objectKey is empty, it's a bad request
+  if (!uuid) {
+    return new Response('Bad Request: Missing uuid.', { status: 400 });
+  }  
+
+  console.log(`Attempting to retrieve full resource from DB with uuid: "${uuid}"`);
+
+  const db = drizzle(c.env.DB, { schema });
+  try {
+      const existingResources = await db.select({
+        uuid: schema.resources.uuid,
+        related_uuids: schema.resources.related_uuids,
+        sourceType: schema.resources.source_type,
+        examType: schema.resources.exam_type,
+        content: schema.resources.content, 
+        words: schema.resources.result,
+        audioKey: schema.attachments.audio_key,
+        captionSrt: schema.attachments.caption_srt,
+        title: schema.resources.title,
+        attachmentTitle: schema.attachments.title,
+        thumbnail: schema.attachments.thumbnail,
+      })
+      .from(schema.resources)
+        .leftJoin(schema.attachments,
+            and(
+                eq(schema.attachments.resource_id, schema.resources.id)
+            )
+        )      
+      .where(eq(schema.resources.uuid, uuid))
+      .limit(1);
+
+      // console.log('existingResources', existingResources);
+
+      if (existingResources.length == 0) {
+        return {};
+      }
+
+      const resultResources = existingResources.map((r) => {
+        const { id, ...rest } = r;
+        return {
+          ...rest,
+          title: r.attachmentTitle || r.title || r.content ||'',
+          thumbnail: r.thumbnail || '',
+          content: r.content.length > 64 ? r.content.substring(0, 64) + '...' : r.content,
+          audioKey: !!r.audioKey,
+          captionSrt: !!r.captionSrt,
+          relatedUuids: r.related_uuids ? r.related_uuids.split(',') : [],
+        };
+      });
+
+    return c.json(resultResources[0], 200);
+
+  } catch (error) {
+    console.error(`Error retrieving full resource "${uuid}" from DB:`, error);
+    return new Response('Internal Server Error: Failed to retrieve resource.', { status: 500 });
+  }
+});
+
 // 获取资源关联的音频
 analyze.get('/audio/:uuid', async (c) => {
 
@@ -773,11 +798,8 @@ analyze.get('/srt/:uuid', async (c) => {
   }
 });
 
-
 // 获取资源关联的完整文本
 analyze.get('/content/:uuid', async (c) => {
-  console.log('Attempting to retrieve full content from DB');
-
   const uuid = c.req.param('uuid');
   // If objectKey is empty, it's a bad request
   if (!uuid) {
@@ -892,6 +914,46 @@ analyze.post('/resources-by-ids', async (c) => {
         return c.json(resources, 200);
     } catch (error) {
         console.error(`Failed to fetch resources by IDs:`, error);
+        return c.json({ message: 'Internal Server Error' }, 500);
+    }
+});
+
+analyze.post('/resources-by-uuids', async (c) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ message: 'Forbidden' }, 403);
+    }
+
+    let uuids;
+    try {
+        const body = await c.req.json();
+        uuids = body.uuids;
+        if (!Array.isArray(uuids) || uuids.some(id => typeof id !== 'string')) {
+            return c.json({ message: 'Invalid payload. Expected { uuids: ["uuid1", "uuid2"] }' }, 400);
+        }
+    } catch (e) {
+        return c.json({ message: 'Invalid JSON body' }, 400);
+    }
+
+    const db = drizzle(c.env.DB, { schema });
+    try {
+        const resources = await db.select({
+            uuid: schema.resources.uuid,
+            title: schema.resources.title,
+            attachmentTitle: schema.attachments.title,
+            thumbnail: schema.attachments.thumbnail,
+        })
+        .from(schema.resources)
+        .leftJoin(schema.attachments, eq(schema.resources.id, schema.attachments.resource_id))
+        .where(inArray(schema.resources.uuid, uuids));
+
+        resources.forEach(r => {
+          r.title = r.attachmentTitle || r.title || r.content || ''
+        })
+
+        return c.json(resources, 200);
+    } catch (error) {
+        console.error(`Failed to fetch resources by UUIDs:`, error);
         return c.json({ message: 'Internal Server Error' }, 500);
     }
 });

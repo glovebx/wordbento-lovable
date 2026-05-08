@@ -11,6 +11,11 @@ import { throttle } from 'lodash-es';
 import { useIsMobile } from '@/hooks/use-mobile';
 import LocalStorageManager from '../utils/storage';
 import LanguageUtils from '../utils/languageUtils';
+import { axiosPrivate } from '@/lib/axios';
+import { ResourceWithAttachments } from '@/types/database';
+import { ListMusic, Loader2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
 
 // Define your specific keys for AudioPlayer here, no longer in storage.ts
 const AUDIO_PLAYER_KEYS = {
@@ -30,10 +35,15 @@ interface AudioPlayerProps {
   onHighlightedWordClick?: (word: string, rect: DOMRect) => void;
   // NEW prop: Callback when the search button above a highlighted word is clicked
   onSearchWord?: (word: string) => void;
+  // NEW prop: Callback when a resource is selected from the playlist
+  onSelectResource?: (uuid: string) => void;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, highlightWords = [], relatedUuids = [], onClose, onHighlightedWordClick, onSearchWord }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, highlightWords = [], relatedUuids = [], onClose, onHighlightedWordClick, onSearchWord, onSelectResource }) => {
   const isMobile = useIsMobile();
+
+  const [playlist, setPlaylist] = useState<ResourceWithAttachments[]>([]);
+  const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -348,6 +358,27 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       window.removeEventListener('keydown', handleSpacebarToggle);
     };
   }, [handlePlayPause, isLoading]);
+
+  useEffect(() => {
+    if (relatedUuids.length > 0) {
+      setIsLoadingPlaylist(true);
+      axiosPrivate.post('/api/analyze/resources-by-uuids', { uuids: relatedUuids })
+        .then(response => {
+          const resourcesByUuid = new Map(response.data.map((r: ResourceWithAttachments) => [r.uuid, r]));
+          const sortedPlaylist = relatedUuids.map(uuid => resourcesByUuid.get(uuid)).filter(Boolean);
+          setPlaylist(sortedPlaylist as ResourceWithAttachments[]);
+        })
+        .catch(error => {
+          console.error("Failed to fetch playlist:", error);
+          setPlaylist([]);
+        })
+        .finally(() => {
+          setIsLoadingPlaylist(false);
+        });
+    } else {
+      setPlaylist([]);
+    }
+  }, [relatedUuids]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -784,17 +815,41 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
             {isLooping ? <Repeat1 className="h-5 w-5 text-blue-300" /> : <Repeat className="h-5 w-5" />}
           </Button>
 
-          {relatedUuids.length > 0 && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => console.log("根据 relatedUuids，获得播放列表然后显示")}
-                title="播放列表"
-              >
-            {/* 播放列表图标 */}
-                </Button>            
-            </>
+          {playlist.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" title="播放列表">
+                  {isLoadingPlaylist ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <ListMusic className="h-5 w-5" />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 max-h-96 overflow-y-auto p-2" align="start">
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none px-2 py-1.5 text-sm">播放列表</h4>
+                  {playlist.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => onSelectResource?.(item.uuid)}
+                      className={cn(
+                        "w-full flex items-center gap-3 text-left p-2 rounded-md hover:bg-muted transition-colors",
+                        audioUrl.includes(item.uuid) && "bg-muted"
+                      )}
+                    >
+                      <img 
+                        src={item.thumbnail || ''} 
+                        alt={item.title}
+                        className="w-16 h-9 object-cover rounded-sm flex-shrink-0 bg-muted-foreground"
+                      />
+                      <span className="text-sm truncate flex-grow">{item.title}</span>
+                      {audioUrl.includes(item.uuid) && <Play className="h-4 w-4 text-primary flex-shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
 
           {parsedCues.length > 0 && (

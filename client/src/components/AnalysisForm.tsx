@@ -38,6 +38,8 @@ interface AnalysisFormProps {
   isWordLoading: boolean;
   isAnalysisLoading: boolean;
   analysisResult: AnalysisResult | null;
+  analysisResource: Submission | null;
+  refreshAnalysisResource: (uuid: string) => void;
   onWordClick: (word: string, examType: string) => void;
   onClearAnalysisResult: () => void;  
   onManualAnalysisResult: (submission: Submission) => void;
@@ -50,6 +52,8 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   isWordLoading, 
   isAnalysisLoading, 
   analysisResult, 
+  analysisResource,
+  refreshAnalysisResource,
   onWordClick, 
   onClearAnalysisResult, 
   onManualAnalysisResult, 
@@ -80,6 +84,18 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
     }
     setShowAllWords(false);
   }, [analysisResult]);
+
+  useEffect(() => {
+    if (!analysisResource) return;
+    if (analysisResource?.words && analysisResource.words.startsWith("[")) {
+      onManualAnalysisResult(analysisResource);
+    }
+    // Set form fields based on the selected submission for easier re-analysis/viewing
+    form.setValue('sourceType', analysisResource.sourceType);
+    form.setValue('content', analysisResource.content);
+    form.setValue('examType', analysisResource.examType);
+    setSourceType(analysisResource.sourceType); // Also update local state for radio group display
+  }, [analysisResource]);
 
   // Effect for infinite scroll
   useEffect(() => {
@@ -137,16 +153,16 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
     onWordSearch(searchInput.trim());
   };
 
-  const handleAnalysisManualResult = (submission: Submission) => {
-    if (submission.words && submission.words.startsWith("[")) {
-      onManualAnalysisResult(submission);
-    }
-    // Set form fields based on the selected submission for easier re-analysis/viewing
-    form.setValue('sourceType', submission.sourceType);
-    form.setValue('content', submission.content);
-    form.setValue('examType', submission.examType);
-    setSourceType(submission.sourceType); // Also update local state for radio group display
-  };
+  // const handleAnalysisManualResult = (submission: Submission) => {
+  //   if (submission.words && submission.words.startsWith("[")) {
+  //     onManualAnalysisResult(submission);
+  //   }
+  //   // Set form fields based on the selected submission for easier re-analysis/viewing
+  //   form.setValue('sourceType', submission.sourceType);
+  //   form.setValue('content', submission.content);
+  //   form.setValue('examType', submission.examType);
+  //   setSourceType(submission.sourceType); // Also update local state for radio group display
+  // };
 
   // const displayLimit = 25;
   // const wordsToDisplay = showAllWords ? words : words.slice(0, displayLimit);
@@ -329,7 +345,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                   <div 
                     key={submission.uuid} 
                     className="relative flex-shrink-0 w-40 h-24 bg-cover bg-center rounded-lg overflow-hidden cursor-pointer group"
-                    onClick={() => handleAnalysisManualResult(submission)}
+                    onClick={() => refreshAnalysisResource(submission.uuid)}
                   >
                     {submission.thumbnail ? (
                       <img src={submission.thumbnail} alt={submission.title} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
