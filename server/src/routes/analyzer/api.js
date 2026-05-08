@@ -309,16 +309,18 @@ analyze.get('/history', async (c) => {
 
   try {
       const existingResources = await db.select({
-          uuid: schema.resources.uuid,
-          sourceType: schema.resources.source_type,
-          examType: schema.resources.exam_type,
-          content: schema.resources.content, 
-          words: schema.resources.result,
-          audioKey: schema.attachments.audio_key,
-          captionSrt: schema.attachments.caption_srt,
-          title: schema.resources.title,
-          attachmentTitle: schema.attachments.title,
-          thumbnail: schema.attachments.thumbnail,
+        id: schema.resources.id,
+        uuid: schema.resources.uuid,
+        related_uuids: schema.resources.related_uuids,
+        sourceType: schema.resources.source_type,
+        examType: schema.resources.exam_type,
+        content: schema.resources.content, 
+        words: schema.resources.result,
+        audioKey: schema.attachments.audio_key,
+        captionSrt: schema.attachments.caption_srt,
+        title: schema.resources.title,
+        attachmentTitle: schema.attachments.title,
+        thumbnail: schema.attachments.thumbnail,
       })
       .from(schema.resources)
         .leftJoin(schema.attachments,
@@ -333,18 +335,62 @@ analyze.get('/history', async (c) => {
 
       console.log('existingResources', existingResources);
 
-      if (existingResources.length > 0) {
-        existingResources.forEach(r => {
-            r.title = r.attachmentTitle || r.title || r.content ||'';
-            r.thumbnail = r.thumbnail || '';
-            r.content = r.content.length > 64 ? r.content.substring(0, 64) + '...' : r.content;
-            r.audioKey = !!r.audioKey;
-            r.captionSrt = !!r.captionSrt;
-        });
-        // Record exists, return its UUID
-        console.log(`Existing resource found with length: ${existingResources.length}`);
+      if (existingResources.length == 0) {
+        return [];
       }
-      return c.json(existingResources, 200); // Return 200 OK for existing
+
+      // // 从related_resources获得related_resource_id包含existingResources.id的列表
+      // const rowsWithGivenIds = await db.select({
+      //     resourceId: schema.related_resources.resource_id
+      // })
+      // .from(schema.related_resources)
+      // .where(inArray(schema.related_resources.related_resource_id, existingResources.map(r => r.id)));
+
+      // // 提取唯一的 resource_id
+      // const resourceIds = [...new Set(rowsWithGivenIds.map(r => r.resourceId))];
+
+      // let relatedResources = {};
+      // // 3. 用这些 resourceId 查出它们所有的 related_resource_id（可按 position 排序）
+      // if (resourceIds.length > 0) {
+      //   const relatedResourceIds = await db
+      //     .select({
+      //       resourceId: schema.related_resources.resource_id,
+      //       relatedResourceId: schema.related_resources.related_resource_id,
+      //     })
+      //     .from(schema.related_resources)
+      //     .where(inArray(schema.related_resources.resource_id, resourceIds))
+      //     .orderBy(schema.related_resources.position); // 保持排序
+
+      //   if (relatedResourceIds.length > 0) {
+      //     relatedResources = relatedResourceIds.reduce((acc, row) => {
+      //       const { resourceId, relatedResourceId } = row;
+      //       if (!acc[resourceId]) {
+      //         acc[resourceId] = [];
+      //       }
+      //       acc[resourceId].push(relatedResourceId);
+      //       return acc;
+      //     }, {});
+      //   }
+      // }
+
+      // console.log('GOT relatedResources', relatedResources);
+
+      const resultResources = existingResources.map((r) => {
+        const { id, ...rest } = r;
+        return {
+          ...rest,
+          title: r.attachmentTitle || r.title || r.content ||'',
+          thumbnail: r.thumbnail || '',
+          content: r.content.length > 64 ? r.content.substring(0, 64) + '...' : r.content,
+          audioKey: !!r.audioKey,
+          captionSrt: !!r.captionSrt,
+          relatedUuids: r.related_uuids ? r.related_uuids.split(',') : [],
+        };
+      });
+      // Record exists, return its UUID
+      console.log(`Existing resource found with length: ${existingResources.length}`);
+
+      return c.json(resultResources, 200); // Return 200 OK for existing
 
   } catch (checkError) {
       console.error("Failed to check for existing resource in DB:", checkError);

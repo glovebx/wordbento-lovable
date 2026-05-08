@@ -140,9 +140,10 @@ CREATE TABLE IF NOT EXISTS resources (
     result TEXT, -- Stored as TEXT, you'll need to handle JSON parsing in your application
     error TEXT,
     fee INTEGER DEFAULT 0,  -- download fee, 0 means free to download
+    uuid TEXT UNIQUE,    
+    related_uuids TEXT, -- 关联的其他资源uuid列表，逗号分隔
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    uuid TEXT UNIQUE,
 
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

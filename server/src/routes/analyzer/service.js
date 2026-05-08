@@ -105,6 +105,23 @@ export const updateRelatedResources = async (db, resourceId, relatedIds) => {
       await db.delete(schema.related_resources)
           .where(eq(schema.related_resources.resource_id, resourceId));
 
+      // 根据relatedIds从resources表中获取uuid列表，必须按relatedIds的顺序
+      // 否则在更新resources表的related_uuids时，顺序会被打乱
+      const results = await db.select({
+        uuid: schema.resources.uuid,
+      })
+      .from(schema.resources)
+      .where(inArray(schema.resources.id, relatedIds))
+      .orderBy(inArray(schema.resources.id, relatedIds));
+      const relatedUuids = results.map(row => row.uuid);
+
+      // 3. Update related_uuids in resources table
+      await db.update(schema.resources)
+          .set({
+              related_uuids: relatedUuids.join(','),
+          })
+          .where(inArray(schema.resources.id, relatedIds));
+
       // 2. If there are new IDs, insert them
       if (relatedIds && relatedIds.length > 0) {
           const valuesToInsert = relatedIds.map((id, index) => ({

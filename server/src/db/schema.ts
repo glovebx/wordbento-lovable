@@ -73,8 +73,9 @@ export const resources = sqliteTable('resources', {
   status: text('status', { enum: ['pending', 'processing', 'completed', 'failed'] }).notNull().default('pending'), // Task status
   result: text('result', { mode: 'json' }), // Store JSON result on completion
   error: text('error'), // Store error message on failure
-  fee: integer('fee').default(0),
+  fee: integer('fee').default(0), // download fee, 0 means free to download
   uuid: text("uuid").unique(),
+  related_uuids: text('related_uuids'), // 关联的其他资源uuid列表，逗号分隔
   created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
   updated_at: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
