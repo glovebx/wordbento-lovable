@@ -53,19 +53,33 @@ async function getAggregatedWord(db, whereClause) {
 }
 
 async function findRandomAggregatedWord(db, userId, mustHaveImage) {
-    // 1. Get the max ID from the words table.
-    const maxIdResult = await db.select({ value: dsql`max(${schema.words.id})` }).from(schema.words);
-    const maxId = maxIdResult[0].value;
-    if (!maxId) return null;
+    // 如果userId有效，则从word_views中获得最后一个word_id
+    let lastViewedWordId = null;
+    if (userId) {
+        const lastViewedResult = await db.select({ word_id: schema.word_views.word_id })
+            .from(schema.word_views)
+            .where(eq(schema.word_views.user_id, userId))
+            .orderBy(desc(schema.word_views.id))
+            .limit(1);
+        lastViewedWordId = lastViewedResult[0]?.word_id;
+    } 
 
-    // for (let i = 0; i < 10; i++) { // Try up to 10 times to find a word
-    // 2. Pick a random ID between 1 and maxId.
-    const randomId = Math.floor(Math.random() * maxId) - 1;
+    if (!lastViewedWordId) {
+        // 1. Get the max ID from the words table.
+        const maxIdResult = await db.select({ value: dsql`max(${schema.words.id})` }).from(schema.words);
+        const maxId = maxIdResult[0].value;
+        // // 应该不存在吧？
+        // if (!maxId) return null;
+
+        // for (let i = 0; i < 10; i++) { // Try up to 10 times to find a word
+        // 2. Pick a random ID between 1 and maxId.
+        lastViewedWordId = Math.floor(Math.random() * maxId) - 1;
+    }
 
     // 3. Find the first word with an ID >= randomId that meets the criteria.
     let query = db.select({ id: schema.words.id })
         .from(schema.words)
-        .where(gte(schema.words.id, randomId));
+        .where(gte(schema.words.id, lastViewedWordId));
 
     if (mustHaveImage) {
         query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
