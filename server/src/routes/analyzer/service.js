@@ -172,6 +172,7 @@ export const getResourcesByIds = async (db, ids) => {
 };
 
 export const getCoverImageByTitle = async (c, db, userId, title) => {
+  console.log('title => ', title);
     if (!title) {
         return [];
     }
@@ -184,7 +185,7 @@ export const getCoverImageByTitle = async (c, db, userId, title) => {
         throw error;
     }
 
-    const language = LanguageUtils.detectLanguage(title.join(', '));
+    const language = LanguageUtils.detectLanguage(title);
     const imageUrls = await generateCoverImageByAi(c, userId, title, language, hasFreeQuota);
 
     // We map this to an array of strings as requested.

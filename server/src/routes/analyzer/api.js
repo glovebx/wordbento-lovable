@@ -6,6 +6,7 @@ import { sql, eq, and, or, ne, desc, inArray } from 'drizzle-orm';
 import { calculateMD5 } from '../../utils/passwords';
 import { extractTextFromSrt } from '../../utils/languageParser';
 import { isYouTubeLinkRegex, extractWordsByScraper } from './youtube';
+import { processImage2Base64 } from '../../utils/imageUtils';
 import { 
     simulateAnalysisTask,
     getRelatedResources,
@@ -233,6 +234,16 @@ analyze.post('/update', async (c) => {
   }
   if ('title' in analysisData) {
     values.title = analysisData.title;
+  }
+
+  if (values.thumbnail) {
+    const base64Image = await processImage2Base64(values.thumbnail);
+    if (base64Image) {
+      values.thumbnail = base64Image;
+    } else {
+      // If image processing fails, do not update the thumbnail
+      delete values.thumbnail;
+    }
   }
 
   if (values.audio_key || values.caption_srt || values.caption_txt || values.thumbnail || values.title) {
@@ -964,12 +975,13 @@ analyze.post('/generate-cover', async (c) => {
         return c.json({ message: 'Forbidden' }, 403);
     }
 
-    let resourceId;
+    let resourceId, title;
     try {
         const body = await c.req.json();
         resourceId = parseInt(body.resourceId, 10);
-        if (isNaN(resourceId)) {
-            return c.json({ message: 'Invalid payload. Expected { resourceId: 123 }' }, 400);
+        title = body.title;
+        if (isNaN(resourceId) || !title) {
+            return c.json({ message: 'Invalid payload. Expected { resourceId: 123, title: "..." }' }, 400);
         }
     } catch (e) {
         return c.json({ message: 'Invalid JSON body' }, 400);
@@ -977,14 +989,10 @@ analyze.post('/generate-cover', async (c) => {
 
     const db = drizzle(c.env.DB, { schema });
     try {
-        const [ resource ]= await getResourcesByIds(db, [resourceId]);
-        let imageUrls = []
-        if (resource) {
-          imageUrls = getCoverImageByTitle(c, db, resource.title);
-        }
+        const imageUrls = await getCoverImageByTitle(c, db, user.id, title);
         return c.json(imageUrls, 200);
     } catch (error) {
-        console.error(`Failed to fetch resource by ID ${resourceId}:`, error);
+        console.error(`Failed to generate cover for resource ${resourceId}:`, error);
         return c.json({ message: 'Internal Server Error' }, 500);
     }
 });

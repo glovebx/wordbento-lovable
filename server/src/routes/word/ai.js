@@ -310,7 +310,7 @@ const generateBentoByPlatformAi = async (c, llm, word, isJapanese) => {
   }
 };
 
-export const generateImageByAi = async (c, userId, word, phonetic, example, language, hasFreeQuota) => {
+export const generateImageByAi = async (c, userId, word, phonetic, example, language, hasFreeQuota, ratio="9:16") => {
     let imageUrls = [];
     const platforms = ['dreamina', 'jimeng', 'seedream'];
     for (const platform of platforms) {
@@ -320,13 +320,13 @@ export const generateImageByAi = async (c, userId, word, phonetic, example, lang
           const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
             switch (platform) {
                 case 'dreamina':
-                    imageUrls = await generateImageByDreaminaAi(c, llm, prompt);
+                    imageUrls = await generateImageByDreaminaAi(c, llm, prompt, ratio);
                     break;
                 case 'jimeng':
-                    imageUrls = await generateImageByJiMengAi(c, llm, prompt);
+                    imageUrls = await generateImageByJiMengAi(c, llm, prompt, ratio);
                     break;
                 case 'seedream':
-                    imageUrls = await generateImageBySeeDreamAi(c, llm, prompt);
+                    imageUrls = await generateImageBySeeDreamAi(c, llm, prompt, ratio);
                     break;
             }
             if (imageUrls && imageUrls.length > 0) {
@@ -337,25 +337,27 @@ export const generateImageByAi = async (c, userId, word, phonetic, example, lang
     return null;
 };
 
-const generateImageByDreaminaAi = async (c, llm, prompt) => {
+const generateImageByDreaminaAi = async (c, llm, prompt, ratio="9:16") => {
     // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
     // const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
-    const jsonData = { model: llm[3] || '', prompt, ratio: "9:16", resolution: "1k" };
+    const jsonData = { model: llm[3] || '', prompt, ratio: ratio, resolution: "1k" };
     return callImageApi(llm, jsonData);
 };
 
-const generateImageByJiMengAi = async (c, llm, prompt) => {
+const generateImageByJiMengAi = async (c, llm, prompt, ratio="9:16") => {
     // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
     // const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
-    const jsonData = { model: llm[3], stream: false, resolution: "1k", ratio: "9:16", messages: [{ role: 'user', content: prompt }] };
+    const jsonData = { model: llm[3], stream: false, resolution: "1k", ratio: ratio, messages: [{ role: 'user', content: prompt }] };
     const response = await callImageApi(llm, jsonData, true);
     return response ? extractHttpLinks(response) : null;
 };
 
-const generateImageBySeeDreamAi = async (c, llm, prompt) => {
+const ratio2size = {'9:16': '1440x2560', '16:9': '2560x1440'};
+const generateImageBySeeDreamAi = async (c, llm, prompt, ratio="9:16") => {
     // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
     // const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
-    const jsonData = { model: llm[3], prompt, size: '1440x2560', response_format: "url", sequential_image_generation: "disabled", stream: false, watermark: false };
+    const size = ratio2size[ratio] || "1440x2560";
+    const jsonData = { model: llm[3], prompt, size: size, response_format: "url", sequential_image_generation: "disabled", stream: false, watermark: false };
     const response = await callImageApi(llm, jsonData, true);
     return response ? [response.url] : null;
 };
@@ -424,7 +426,7 @@ export const generatePushImageByAi = async (c, userId, words, language, hasFreeQ
 };
 
 
-export const generateCoverImageByAi = async (c, userId, title, language, hasFreeQuota) => {
+export const generateCoverImageByAi = async (c, userId, title, language, hasFreeQuota, ratio="16:9") => {
     let imageUrls = [];
     const platforms = ['dreamina', 'jimeng', 'seedream'];
     for (const platform of platforms) {
@@ -434,13 +436,13 @@ export const generateCoverImageByAi = async (c, userId, title, language, hasFree
           const prompt = generateCoverPosterPrompt(title, language, style);
             switch (platform) {
                 case 'dreamina':
-                    imageUrls = await generateImageByDreaminaAi(c, llm, prompt);
+                    imageUrls = await generateImageByDreaminaAi(c, llm, prompt, ratio);
                     break;
                 case 'jimeng':
-                    imageUrls = await generateImageByJiMengAi(c, llm, prompt);
+                    imageUrls = await generateImageByJiMengAi(c, llm, prompt, ratio);
                     break;
                 case 'seedream':
-                    imageUrls = await generateImageBySeeDreamAi(c, llm, prompt);
+                    imageUrls = await generateImageBySeeDreamAi(c, llm, prompt, ratio);
                     break;
             }
             if (imageUrls && imageUrls.length > 0) {
@@ -469,7 +471,7 @@ ${style}
 };
 
 const generateCoverPosterPrompt = (title, language, style) => {
-    return `A video cover in 16:9 aspect ratio. Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${title}". All words must be clearly legible. Sharp edges, high text contrast.No color codes, no hex codes, no stray text or symbols.
+    return `A video cover in 16:9 aspect ratio. Background scene must VISUALLY DEPICT the situation, action, or context of the title: "${title}". the title text "${title}" appears in fragmented, rotated, or layered letters, high contrast black and white or bold colors, sharp edges, no blending into background. No extra stray text, no symbols, no hex codes.
     
 [STYLE DESCRIPTION]
 ${style}

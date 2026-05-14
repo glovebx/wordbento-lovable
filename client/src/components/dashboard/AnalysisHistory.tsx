@@ -86,28 +86,17 @@ const AnalysisHistory = () => {
     }
   };
 
-  const handleSaveResource = async (updatedData: Partial<ResourceWithAttachments>) => {
+  const handleUpdateResource = async (id: number, values: Partial<ResourceWithAttachments>) => {
     try {
-      if (updatedData.id) {
-        // console.log('Updating resource:', updatedData);
-        // toast({ title: "更新成功", description: "资源信息已更新。" });
-      } else {
-        // console.log('Creating new resource:', updatedData);
-        // toast({ title: "创建成功", description: "新资源已添加。" });
-        return;
-      }
-      // await new Promise(resolve => setTimeout(resolve, 500));
+      const updatedData = { id, ...values };
+      // console.log('Updating resource:', updatedData);
+      
       const submissionResponse = await axiosPrivate.post<AnalysisSubmissionResponse>('/api/analyze/update', updatedData);
 
       if (submissionResponse.status === 200 || submissionResponse.status === 201) {
-        const submittedTask = submissionResponse.data;
-        if (submittedTask?.uuid) {
-          toast({ title: "更新成功", description: "资源信息已更新。" });
-        } else {
-          throw new Error(`Failed to update resource: ${updatedData.id}`);
-        }
+        toast({ title: "更新成功", description: "资源信息已更新。" });
       } else {
-        throw new Error(`Failed to update resource: ${updatedData.id}`);
+        throw new Error(`Failed to update resource: ${id}`);
       }
 
       fetchAnalysisHistory(currentPage, itemsPerPage);
@@ -195,6 +184,7 @@ const AnalysisHistory = () => {
                 onEditResource={handleEditResource}
                 onDeleteResource={handleDeleteResource}
                 onEditPlaylist={handleEditPlaylist} // Pass the new handler
+                onUpdateResource={handleUpdateResource}
                 totalCount={totalCount}
                 currentPage={currentPage}
                 onPageChange={handlePageChange}
@@ -216,7 +206,12 @@ const AnalysisHistory = () => {
         onReSync={handleReSyncResource}
         isSyncing={isSyncing}
         resource={isAddingNewResource ? null : editingResource}
-        onSave={handleSaveResource}
+        onSave={(updatedResource) => {
+          if (updatedResource.id) {
+            const { id, ...values } = updatedResource;
+            handleUpdateResource(id, values);
+          }
+        }}
       />
 
       <PlaylistEditor
