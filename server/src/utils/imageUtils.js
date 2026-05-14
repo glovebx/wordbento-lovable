@@ -51,12 +51,23 @@ export async function processImage2Base64(url, maxImageSize = MAX_IMAGE_SIZE) {
     if (!url) return null;
 
     try {
+        console.log(`Downloading image from ${url}`);
         // 1. Download image
-        const response = await axios.get(url, { responseType: 'arraybuffer' });
+        const response = await axios.get(url, { 
+            responseType: 'arraybuffer',
+            // proxy: {
+            //     host: '127.0.0.1',
+            //     port: 8001,
+            //     protocol: 'http'
+            // },
+            timeout: 60000 // 60 seconds timeout
+        });
         const originalBuffer = Buffer.from(response.data, 'binary');
-
+        console.log(`Original image size: ${(originalBuffer.byteLength / 1024).toFixed(2)} KB`);
+        
         // 2. Compress image
         const compressedBuffer = await compressImageBuffer(originalBuffer, maxImageSize);
+        console.log(`Compressed image size: ${(compressedBuffer.byteLength / 1024).toFixed(2)} KB`);    
 
         // 3. Convert to Base64
         const base64 = compressedBuffer.toString('base64');

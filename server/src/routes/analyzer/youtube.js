@@ -78,7 +78,7 @@ export const pollingStatusFromScraper = async (c, taskId) => {
         console.error("Youtube Scraper Polling API call failed: Response does not contain task_id.");
         // Handle this case
         // You might want to log the full response here to debug what was received
-        console.log("Full response:", data);
+        console.log("pollingStatusFromScraper Full response:", data);
         return null; // Or throw an error
       }
 
@@ -173,16 +173,18 @@ export const getSrtFromScraperThenExtractWords = async (c, db, task, examType) =
       try {
 
           const existingAttachments = await db.select({
-              id: schema.attachments.id
+              id: schema.attachments.id,
+              title: schema.attachments.title
           })
           .from(schema.attachments)
           .where(eq(schema.attachments.resource_id, task.id))
           .limit(1); // We only need to find one match
           
           if (existingAttachments.length > 0) {
+            download_title = existingAttachments[0].title || download_title;
               await db.update(schema.attachments)
                   .set({
-                      title: download_title,
+                      // title: download_title,
                       caption_srt: srtContent,
                       caption_txt: txtContent
                   })
@@ -253,7 +255,7 @@ export const getAudioFromScraperThenExtractWords = async (c, db, task, examType)
 
       // Process the thumbnail
       if (videoInfo && videoInfo.thumbnail) {
-        console.log(`Processing thumbnail for: ${videoInfo.title}`);
+        console.log(`Processing thumbnail for: ${videoInfo.thumbnail}`);
         const thumbnailBase64 = await processImage2Base64(videoInfo.thumbnail);
         if (thumbnailBase64) {
           videoInfo.thumbnail = thumbnailBase64; // Replace URL with Base64 data
@@ -266,7 +268,7 @@ export const getAudioFromScraperThenExtractWords = async (c, db, task, examType)
       }
 
   } catch (error) {
-      console.error('Network error calling Youtube Scraper Audio API:', error);
+      console.error('Network error calling Youtube Scraper JSON API:', error);
     //   return null;
   }
 

@@ -3,6 +3,8 @@ import * as schema from '../../db/schema';
 import { sql, eq, inArray } from 'drizzle-orm';
 import { checkAndConsumeFreeQuota } from '../../utils/security';
 import { extractWordsByAi } from './ai';
+import { generateCoverImageByAi } from '../word/ai'
+import LanguageUtils from '../../utils/languageUtils';
 
 // --- Simulation of Background Analysis Task (For Demonstration) ---
 // In a real application, this logic would be in a separate background worker
@@ -150,6 +152,7 @@ export const getResourcesByIds = async (db, ids) => {
 
     const results = await db.select({
         id: schema.resources.id,
+        title: schema.resources.title,
         content: schema.resources.content,
         attachment_title: schema.attachments.title,
         thumbnail: schema.attachments.thumbnail,
@@ -161,9 +164,29 @@ export const getResourcesByIds = async (db, ids) => {
     // Create a map for efficient lookup
     const resultsMap = new Map(results.map(row => [row.id, {
         ...row,
-        content: row.attachment_title || row.content,
+        title: row.attachment_title || row.title || row.content,
     }]));
 
     // Return results in the same order as the original IDs
     return ids.map(id => resultsMap.get(id)).filter(Boolean);
+};
+
+export const getCoverImageByTitle = async (c, db, userId, title) => {
+    if (!title) {
+        return [];
+    }
+
+    let hasFreeQuota = false;
+    try {
+        hasFreeQuota = await checkAndConsumeFreeQuota(c, userId);
+    } catch (error) {
+        console.error(error.message);
+        throw error;
+    }
+
+    const language = LanguageUtils.detectLanguage(title.join(', '));
+    const imageUrls = await generateCoverImageByAi(c, userId, title, language, hasFreeQuota);
+
+    // We map this to an array of strings as requested.
+    return imageUrls;
 };

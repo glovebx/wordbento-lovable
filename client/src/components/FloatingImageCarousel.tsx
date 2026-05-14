@@ -72,7 +72,7 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
 
   // ... (position calculation logic remains the same) ...
   const carouselWidth = 320;
-  const carouselHeight = 200;
+  const carouselHeight = 220;
   const margin = 20;
 
   let calculatedTop = 0;
@@ -180,6 +180,19 @@ const FloatingImageCarousel: React.FC<FloatingImageCarouselProps> = ({
             </Button>
           </div>
         )}
+
+{imageUrls.length > 0 && (
+            <Button         
+            className="mt-2"  
+            onClick={() => {
+              if (onSearchWord && wordText) {
+                onSearchWord(wordText);
+                onClose();
+              }
+            }}>
+                搜索单词
+            </Button>
+)}
       </div>
 
       {/* Enlarged Image Dialog */}

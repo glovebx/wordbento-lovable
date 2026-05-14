@@ -70,8 +70,9 @@ export const handleWebSocket = async (c) => {
 
               if (isYoutube && (task.status !== 'completed' && task.status !== 'failed')) {
                   const scraperResult = await pollingStatusFromScraper(c, taskId)
-                  console.log(`scraperResult ${JSON.stringify(scraperResult)}`)
                   if (scraperResult) {
+                    console.log(`pollingStatusFromScraper scraperResult ${JSON.stringify(scraperResult)}`)
+
                       // 返回了mp3和字幕，需要再次调用获得最终结果
                       if (scraperResult.status == 'success') {
                           // 获取字幕，然后调用ai获取结果
@@ -92,6 +93,7 @@ export const handleWebSocket = async (c) => {
                           //     })
                           //     .where(eq(schema.resources.uuid, taskId));
                       } else if (scraperResult.status == 'failed') {
+                        alreadyScraped.clear();
                           // 成功
                           await db.update(schema.resources)
                               .set({
@@ -175,6 +177,7 @@ export const handleWebSocket = async (c) => {
               }
               clearInterval(pollingInterval);
               pollingInterval = null;
+              alreadyScraped.clear();
               server.close(1011, 'Polling error'); // 1011: Internal Error
           }
       }, 5000); // Poll every 5 seconds (adjust as needed)

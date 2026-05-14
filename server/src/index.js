@@ -37,25 +37,8 @@ app.use(
   })
 );
 
-// // WebSocket route for task status
-// // IMPORTANT: This must be defined BEFORE the authentication middleware that intercepts '/api/*'
-// app.get(
-//   '/api/ws/tasks/:taskId',
-//   upgradeWebSocket(async (c) => {
-//         const taskId = c.req.param('taskId');
-//         return {
-//           onOpen: (evt, ws) => {
-//             registerWebSocket(taskId, ws);
-//           },
-//       onError: (err) => {
-//         console.error(`WebSocket error for task ${taskId}:`, err);
-//       },
-//     };
-//   })
-// );
-
 // Public Routes
-const publicRoutes = ['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/word/image', '/api/word/tts', '/api/test/check-db', '/api/test-kv-direct', '/ws/analyze', '/api/analyze/resource', '/api/analyze/audio', '/api/analyze/srt'];
+const publicRoutes = ['/api/auth/register', '/api/auth/login', '/api/auth/session', '/api/word/image', '/api/word/tts', '/api/test/check-db', '/api/test-kv-direct', '/ws/analyze', '/api/analyze/resource/', '/api/analyze/audio/', '/api/analyze/srt/'];
 // 如果不登录则用public，否则用登录用户信息
 const publicButPrivateRoutes = ['/api/word/search', '/api/word/imagize', '/api/analyze/history'];
 

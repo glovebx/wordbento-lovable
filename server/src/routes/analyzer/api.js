@@ -10,10 +10,10 @@ import {
     simulateAnalysisTask,
     getRelatedResources,
     updateRelatedResources,
-    getResourcesByIds
+    getResourcesByIds,
+    getCoverImageByTitle
 } from './service';
 import { handleWebSocket } from './websocket';
-import { runInThisContext } from 'node:vm';
 
 const analyze = new Hono();
 
@@ -954,6 +954,37 @@ analyze.post('/resources-by-uuids', async (c) => {
         return c.json(resources, 200);
     } catch (error) {
         console.error(`Failed to fetch resources by UUIDs:`, error);
+        return c.json({ message: 'Internal Server Error' }, 500);
+    }
+});
+
+analyze.post('/generate-cover', async (c) => {
+    const user = c.get('user');
+    if (!user) {
+        return c.json({ message: 'Forbidden' }, 403);
+    }
+
+    let resourceId;
+    try {
+        const body = await c.req.json();
+        resourceId = parseInt(body.resourceId, 10);
+        if (isNaN(resourceId)) {
+            return c.json({ message: 'Invalid payload. Expected { resourceId: 123 }' }, 400);
+        }
+    } catch (e) {
+        return c.json({ message: 'Invalid JSON body' }, 400);
+    }
+
+    const db = drizzle(c.env.DB, { schema });
+    try {
+        const [ resource ]= await getResourcesByIds(db, [resourceId]);
+        let imageUrls = []
+        if (resource) {
+          imageUrls = getCoverImageByTitle(c, db, resource.title);
+        }
+        return c.json(imageUrls, 200);
+    } catch (error) {
+        console.error(`Failed to fetch resource by ID ${resourceId}:`, error);
         return c.json({ message: 'Internal Server Error' }, 500);
     }
 });

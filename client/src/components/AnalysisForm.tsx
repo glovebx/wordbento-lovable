@@ -344,6 +344,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
                 {recentSubmissions.map((submission) => (
                   <div 
                     key={submission.uuid} 
+                    title={submission.title}
                     className="relative flex-shrink-0 w-40 h-24 bg-cover bg-center rounded-lg overflow-hidden cursor-pointer group"
                     onClick={() => refreshAnalysisResource(submission.uuid)}
                   >

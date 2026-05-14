@@ -423,6 +423,34 @@ export const generatePushImageByAi = async (c, userId, words, language, hasFreeQ
     return null;
 };
 
+
+export const generateCoverImageByAi = async (c, userId, title, language, hasFreeQuota) => {
+    let imageUrls = [];
+    const platforms = ['dreamina', 'jimeng', 'seedream'];
+    for (const platform of platforms) {
+        const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
+        if (llm[1]) {
+          const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+          const prompt = generateCoverPosterPrompt(title, language, style);
+            switch (platform) {
+                case 'dreamina':
+                    imageUrls = await generateImageByDreaminaAi(c, llm, prompt);
+                    break;
+                case 'jimeng':
+                    imageUrls = await generateImageByJiMengAi(c, llm, prompt);
+                    break;
+                case 'seedream':
+                    imageUrls = await generateImageBySeeDreamAi(c, llm, prompt);
+                    break;
+            }
+            if (imageUrls && imageUrls.length > 0) {
+                return imageUrls;
+            }
+        }
+    }
+    return null;
+};
+
 const generatePosterPromptWithExample = (word, language, pronunciation, exampleSentence, style) => {
     return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Subtitle: "${pronunciation}" (smaller, elegant, below title). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate all text seamlessly. Crucial: sentence must be highly legible. Style: ${style}. Additionally, the full sentence must appear as text on the poster.`;
 };
@@ -433,11 +461,20 @@ const generatePosterPromptWithoutExample = (word, language, pronunciation, style
 
 const generatePushPosterPrompt = (words, language, style) => {
     return `A vertical poster in 9:16 aspect ratio. Must include exactly ${words.length} distinct ${language} words, each only once, no repetition: ${words.join(', ')}. All words must be clearly legible, placed only once in the composition. Arrange every words across the layout — some large and bold, others smaller — without repeating any word. No word appears twice. Sharp edges, high text contrast.No color codes, no hex codes, no stray text or symbols.
-
+    
 [STYLE DESCRIPTION]
 ${style}
 
 --ar 9:16`;
+};
+
+const generateCoverPosterPrompt = (title, language, style) => {
+    return `A video cover in 16:9 aspect ratio. Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${title}". All words must be clearly legible. Sharp edges, high text contrast.No color codes, no hex codes, no stray text or symbols.
+    
+[STYLE DESCRIPTION]
+${style}
+
+--ar 16:9`;
 };
 
 function extractHttpLinks(text) {
