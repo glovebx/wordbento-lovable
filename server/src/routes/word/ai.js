@@ -471,7 +471,7 @@ ${style}
 };
 
 const generateCoverPosterPrompt = (title, language, style) => {
-    return `A video cover in 16:9 aspect ratio. Background scene must VISUALLY DEPICT the situation, action, or context of the title: "${title}". the title text "${title}" appears in fragmented, rotated, or layered letters, high contrast black and white or bold colors, sharp edges, no blending into background. No extra stray text, no symbols, no hex codes.
+    return `A video cover in 16:9 aspect ratio. Background scene must VISUALLY DEPICT the situation, action, or context of the title: "${title}". the text "${title}" appears in fragmented, rotated, or layered letters, high contrast black and white or bold colors, sharp edges, no blending into background. No extra stray text, no symbols, no hex codes.
     
 [STYLE DESCRIPTION]
 ${style}

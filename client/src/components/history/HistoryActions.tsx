@@ -61,32 +61,34 @@ const CoverSelectionDialog: React.FC<CoverSelectionDialogProps> = ({ open, onOpe
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-4xl h-[80vh] flex flex-col"
+        className="max-w-4xl flex flex-col"
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>选择封面图片</DialogTitle>
         </DialogHeader>
-        <Carousel
-          opts={{ align: "start" }}
-          className="w-full flex-1"
-          setApi={setApi}
-        >
-          <CarouselContent className="h-full">
-            {images.map((url, index) => (
-              <CarouselItem key={index} className="flex items-center justify-center">
-                <div className={cn(
-                  "p-1 border-2 rounded-md h-full",
-                  selectedIndex === index ? "border-primary" : "border-transparent"
-                )}>
-                  <img src={url} alt={`Generated cover ${index + 1}`} className="rounded-md aspect-video object-contain h-full" />
-                </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          <CarouselPrevious />
-          <CarouselNext />
-        </Carousel>
+        <div className="relative">
+          <Carousel
+            opts={{ align: "start" }}
+            className="w-full"
+            setApi={setApi}
+          >
+            <CarouselContent>
+              {images.map((url, index) => (
+                <CarouselItem key={index} className="flex items-center justify-center">
+                  <div className={cn(
+                    "p-1 border-2 rounded-md",
+                    selectedIndex === index ? "border-primary" : "border-transparent"
+                  )}>
+                    <img src={url} alt={`Generated cover ${index + 1}`} className="rounded-md aspect-video object-contain max-h-[60vh]" />
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
+            <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
+          </Carousel>
+        </div>
         <DialogFooter>
           <Button onClick={() => onOpenChange(false)} variant="outline">取消</Button>
           <Button onClick={handleConfirm} disabled={selectedIndex === null}>确定</Button>
