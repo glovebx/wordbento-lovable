@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { LanguageSettings } from "@/components/profile/LanguageSettings";
 import { ApiSettings } from "@/components/profile/ApiSettings";
+import { TtsSettings } from "@/components/profile/TtsSettings";
 
 // 引入 useLlms Hook 及其类型
 import { useLlms, Llm, SaveLlmData } from '@/hooks/use-llm'; // 假设 use-llms 路径正确
@@ -298,6 +299,7 @@ const UserProfile = () => {
             <Tabs defaultValue="general" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="general">常规</TabsTrigger>
+                    <TabsTrigger value="tts">TTS</TabsTrigger>                    
                     <TabsTrigger value="security">安全</TabsTrigger>
                     <TabsTrigger value="api">API 设置</TabsTrigger>
                 </TabsList>
@@ -363,6 +365,11 @@ const UserProfile = () => {
                             </div>
                         );
                     })}
+                    </div>
+                </TabsContent>
+                <TabsContent value="tts" className="space-y-4">
+                    <div id="tts-section" className="scroll-mt-12 pt-4">
+                        <TtsSettings />
                     </div>
                 </TabsContent>
             </Tabs>

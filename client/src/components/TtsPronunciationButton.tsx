@@ -109,23 +109,16 @@ const TtsPronunciationButton: React.FC<TtsPronunciationButtonProps> = ({
         return; // Exit after playing from cache
       }
 
-      // --- Simulate fetching audio from a backend endpoint ---
-      // In a real application, your backend would use @andresaya/edge-tts
-      // to generate the audio for 'word' and send it back.
-      const response = await axiosPrivate.post('/api/word/tts', JSON.stringify({
-          text: word,
-          example: example,
-          voice: 'en-US-AriaNeural', // Example voice
-          rate: '0',
-          volume: '0',
-          pitch: '0',
-        })
-      );
+      const savedSettings = localStorage.getItem('tts_settings');
+      const ttsSettings = savedSettings ? JSON.parse(savedSettings) : {};
 
-      if (!response.data) {
-        throw new Error(`Failed to fetch audio: ${response.statusText}`);
-      }
+      const payload = {
+        text: word,
+        example: example,
+        ...ttsSettings,
+      };
 
+      const response = await axiosPrivate.post('/api/word/tts', payload);
       const base64Audio = response.data.base64Audio;
 
       if (!base64Audio || typeof base64Audio !== 'string') {

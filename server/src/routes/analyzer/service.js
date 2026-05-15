@@ -84,7 +84,7 @@ export const simulateAnalysisTask = async (c, taskId, db, analysisData) => {
 export const getRelatedResources = async (db, resourceId) => {
     const results = await db.select({
         id: schema.resources.id,
-        content: schema.resources.content,
+        title: schema.resources.title,
         attachment_title: schema.attachments.title,
         thumbnail: schema.attachments.thumbnail,
         position: schema.related_resources.position,
@@ -97,7 +97,7 @@ export const getRelatedResources = async (db, resourceId) => {
 
     return results.map(row => ({
         id: row.id,
-        content: row.attachment_title || row.content,
+        title: row.attachment_title || row.title || row.content,
         thumbnail: row.thumbnail,
     }));
 };

@@ -29,7 +29,7 @@ const SortableItem = ({ item, onRemove }: { item: ResourceWithAttachments, onRem
         <GripVertical className="h-5 w-5 text-gray-500" />
       </button>
       {item.thumbnail && <img src={item.thumbnail} alt="" className="w-16 h-9 object-cover rounded-sm ml-2" />} 
-      <span className="flex-grow px-4">{item.content}</span>
+      <span className="flex-grow px-4">{item.title}</span>
       <Button variant="ghost" size="sm" onClick={() => onRemove(item.id)}>移除</Button>
     </div>
   );

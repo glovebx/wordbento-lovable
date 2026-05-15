@@ -139,88 +139,7 @@ word.put('/master/:id', async (c) => {
   }
 });
 
-// 创建单词关联的音频
-word.post('/tts', async (c) => {
-  // Ensure the request has a JSON body
-  if (!c.req.header('Content-Type')?.includes('application/json')) {
-      return c.json({ message: 'Invalid Content-Type, expected application/json' }, 415);
-  }
 
-  let text;
-  let example;
-  let voice;
-  let rate;
-  let volume;
-  let pitch;
-  try {
-     const body = await c.req.json();
-     text = body.text;
-     example = body.example;
-     voice = body.voice || 'en-US-AriaNeural';
-     rate = body.rate || '0';
-     volume = body.volume || '0';
-     pitch = body.pitch || '0';
-  } catch (e) {
-      console.error("Failed to parse request body:", e);
-      return c.json({ message: 'Invalid JSON body' }, 400);
-      // return c.text('Invalid JSON body', 500);
-  }
-
-  console.log(`voice text== ${text}`)
-
-  // Check if slug is provided and not empty
-  if (text && typeof text === 'string' && text.trim() !== '') {
-      const textToGenerate = `${text}, ${text}, ${example || text}`
-        const externalTtsResponse = await fetch('https://edge-tts.dayax.net/api/api.php?action=synthesize', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'origin': 'https://edge-tts.dayax.net'
-                // If the external TTS service requires an API key, add it here from your Worker's environment variables:
-                // 'x-api-key': c.env.EXTERNAL_TTS_API_KEY, // Example
-                // 'Authorization': `Bearer ${c.env.EXTERNAL_TTS_API_KEY}`, // Another example
-            },
-            body: JSON.stringify({ text: textToGenerate, voice, rate, volume, pitch }),
-        });
-
-        if (!externalTtsResponse.ok) {
-            const errorText = await externalTtsResponse.text();
-            console.error(`External TTS service error: ${externalTtsResponse.status} - ${errorText}`);
-            // Forward the external service's error status and message to the frontend
-            return c.json({ message: `External TTS service error: ${errorText}` }, externalTtsResponse.status);
-        }
-
-        const externalTtsJson = await externalTtsResponse.json();
-
-        // Assuming externalTtsJson has the format {"base64Audio": "..."}
-        if (!externalTtsJson.base64Audio) {
-            throw new Error("External TTS service did not return base64Audio.");
-        }
-
-        // Return the base64 audio directly to the frontend
-        return c.json({ base64Audio: externalTtsJson.base64Audio }, 200);        
-      //   c.header('Content-Type', 'audio/mpeg');
-      // // return c.body(audioBuffer);        
-      //   return c.body(rawAudioBuffer)
-
-        // --- How to use the raw audio buffer (example for Node.js) ---
-        // You could save it to a file:
-        // const fs = require('fs');
-        // fs.writeFileSync('output_raw.mp3', Buffer.from(rawAudioBuffer));
-        // console.log("Raw audio buffer saved to output_raw.mp3");
-
-        // Or if you were sending this to a client (e.g., via a web server):
-        // res.setHeader('Content-Type', 'audio/mpeg'); // Or 'audio/wav' depending on format
-        // res.send(Buffer.from(rawAudioBuffer));
-
-  } else {
-    // If no exact match, try prefix match
-    console.log(`No word found with prefix: "${searchSlug}"`);
-    // return c.text('Error retrieving audio', 500);
-    return c.json({ message: 'Internal Server Error during TTS proxy' }, 500);
-  }
-
-});
 
 // word.get('/slugs', async (c) => {
 //   const db = drizzle(c.env.DB, { schema });
@@ -327,6 +246,75 @@ word.post('/sequence', async (c) => {
         console.error("Failed to get sequence words:", error);
         return c.json({ message: 'Failed to get sequence words.' }, 500);
     }
+});
+
+word.get('/voices', async (c) => {
+    try {
+        const response = await fetch('https://edge-tts.dayax.net/api/api.php?action=voices');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch voices from upstream: ${response.status}`);
+        }
+        const data = await response.json();
+        return c.json(data, 200);
+    } catch (error) {
+        console.error("Error fetching voices:", error);
+        return c.json({ message: 'Internal Server Error' }, 500);
+    }
+});
+
+word.post('/tts', async (c) => {
+  // const user = c.get('user');
+  // if (!user) {
+  //   return c.json({ message: 'Forbidden' }, 403);
+  // }
+
+  let text, example, voice, rate, pitch, volume;
+  try {
+    const body = await c.req.json();
+    text = body.text;
+    example = body.example || '';
+    voice = body.voice || 'en-US-AriaNeural';
+    rate = body.rate?.toString() || '0';
+    pitch = body.pitch?.toString() || '0';
+    volume = body.volume?.toString() || '0';
+
+    if (!text) {
+      return c.json({ message: 'Invalid payload. Expected { text: "..." }' }, 400);
+    }
+  } catch (e) {
+    return c.json({ message: 'Invalid JSON body' }, 400);
+  }
+
+  try {
+    const fullText = `${text}, ${text}, ${example || text}`;
+    const payload = {
+      text: fullText,
+      voice: voice,
+      rate: rate,
+      volume: volume,
+      pitch: pitch,
+    };
+
+    const ttsResponse = await fetch('https://edge-tts.dayax.net/api/api.php?action=synthesize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'origin': 'https://edge-tts.dayax.net'
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!ttsResponse.ok) {
+      throw new Error(`TTS service failed with status ${ttsResponse.status}`);
+    }
+
+    const ttsResult = await ttsResponse.json();
+    return c.json(ttsResult, 200);
+
+  } catch (error) {
+    console.error(`Failed to synthesize speech for text: "${text}"`, error);
+    return c.json({ message: 'Internal Server Error' }, 500);
+  }
 });
 
 export default word;
