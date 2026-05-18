@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { axiosPrivate } from '@/lib/axios'; // Adjust path as needed
 import { useToast } from '@/components/ui/use-toast'; // Adjust path as needed
-import axios, { AxiosError } from 'axios'; // Import AxiosError for type checking
+import { AxiosError } from 'axios'; // Import AxiosError for type checking
 
 /**
  * Custom hook to handle the process of generating images for a word via the backend API.
@@ -51,7 +51,16 @@ export const useGenerateImages = () => {
 
     } catch (error: any) { // Catch Axios errors or other errors
       console.error("Hook: Error calling image generation API:", error);
-      setGenerationError(axios.isAxiosError(error) ? error : new Error(error.message || 'Unknown error during image generation.'));
+      let message = error.message || 'Unknown error during image generation.';
+      if (error instanceof AxiosError) {
+          const responseData = error.response?.data;
+          if (typeof responseData === 'string') {
+              message = responseData;
+          } else if (responseData && typeof responseData.message === 'string') {
+              message = responseData.message;
+          }
+      }      
+      setGenerationError(new Error(message));
     //    toast({
     //       title: "图片生成失败",
     //       description: `生成图片时发生错误：${error.message || '未知错误'}`,

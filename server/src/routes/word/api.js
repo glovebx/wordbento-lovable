@@ -14,6 +14,7 @@ import {
   getReviewWords4Push
 } from './service';
 import { NavigationMode } from '../../utils/constants';
+import { HTTPException } from 'hono/http-exception';
 
 const word = new Hono();
 
@@ -49,6 +50,9 @@ word.post('/search', async (c) => {
     return response;
   } catch (error) {
     console.error("Error in word search or generation:", error);
+    if (error instanceof HTTPException) {
+      throw error;
+    }
     return c.json({ message: 'An error occurred.' }, 500);
   }
 });
@@ -88,6 +92,9 @@ word.post('/imagize', async (c) => {
     }
   } catch (error) {
     console.error("Error in image generation:", error);
+    if (error instanceof HTTPException) {
+      throw error;
+    }    
     return c.json({ message: 'An error occurred during image generation.' }, 500);
   }
 });

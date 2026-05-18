@@ -171,9 +171,17 @@ export const useWordCache = () => {
                 setIsLoading(false);
                 return null;
             }
-        } catch (err) {
-            const message = err instanceof AxiosError ? err.response?.data?.message : 'An unknown error occurred.';
-            setError(message || 'Failed to fetch word.');
+        } catch (error: any) {
+            let message = error.message || 'Failed to fetch word.';
+            if (error instanceof AxiosError) {
+                const responseData = error.response?.data;
+                if (typeof responseData === 'string') {
+                    message = responseData;
+                } else if (responseData && typeof responseData.message === 'string') {
+                    message = responseData.message;
+                }
+            }
+            setError(message);
             setCurrentWord(null);
             setIsLoading(false);
             return null;
