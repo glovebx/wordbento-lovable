@@ -131,9 +131,19 @@ async function getAdjacentWord(db, slug, mode, userId, mustHaveImage) {
         const nextId = nextIdResult[0].id || wordId;
         // 4. Once we have a valid ID, fetch the full aggregated data.
         return getAggregatedWord(db, eq(schema.words.id, nextId));
+    } else {
+        let nextId;
+        if (mode === NavigationMode.Next) {
+            // 从头开始
+            const minIdResult = await db.select({ value: dsql`min(${schema.words.id})` }).from(schema.words);
+            nextId = minIdResult[0].value;
+        } else {
+            // 最后一个单词
+            const maxIdResult = await db.select({ value: dsql`max(${schema.words.id})` }).from(schema.words);
+            nextId = maxIdResult[0].value;
+        }
+        return getAggregatedWord(db, eq(schema.words.id, nextId));
     }
-
-    return null;
 }
 
 async function getPrefixWordId(db, slug, userId) {
