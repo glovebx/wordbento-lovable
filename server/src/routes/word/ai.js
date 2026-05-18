@@ -274,7 +274,7 @@ export const generateBentoByAi = async (c, userId, word, isJapanese, hasFreeQuot
   const platforms = ['openai', 'gemini', 'deepseek'];
   for (const platform of platforms) {
     const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
-    if (llm[1]) {
+    if (llm.endpoint) {
       aiResponse = await generateBentoByPlatformAi(c, llm, word, isJapanese);
       if (aiResponse && aiResponse[word]) {
         return aiResponse;
@@ -287,7 +287,7 @@ export const generateBentoByAi = async (c, userId, word, isJapanese, hasFreeQuot
 const generateBentoByPlatformAi = async (c, llm, word, isJapanese) => {
   const prompt = (isJapanese ? jaPrompt : enPrompt) + word;
   const jsonData = {
-    model: llm[3],
+    model: llm.model,
     messages: [
       { role: 'system', content: 'You are a professional proficient in multiple languages, including Chinese, English, Japanese, and more.' },
       { role: 'user', content: prompt },
@@ -295,9 +295,9 @@ const generateBentoByPlatformAi = async (c, llm, word, isJapanese) => {
   };
 
   try {
-    const response = await fetch(llm[1], {
+    const response = await fetch(llm.endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${llm[2]}` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${llm.apiKey}` },
       body: JSON.stringify(jsonData),
     });
     if (!response.ok) return null;
@@ -305,7 +305,7 @@ const generateBentoByPlatformAi = async (c, llm, word, isJapanese) => {
     if (!data.choices || data.choices.length === 0 || !data.choices[0].message) return null;
     return repairAiResponseToJson(data.choices[0].message.content);
   } catch (error) {
-    console.error(`Error calling ${llm[0]} AI API:`, error);
+    console.error(`Error calling ${llm.platform} AI API:`, error);
     return null;
   }
 };
@@ -315,7 +315,7 @@ export const generateImageByAi = async (c, userId, word, phonetic, example, lang
     const platforms = ['dreamina', 'jimeng', 'seedream'];
     for (const platform of platforms) {
         const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
-        if (llm[1]) {
+        if (llm.endpoint) {
           const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
           const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
             switch (platform) {
@@ -340,14 +340,14 @@ export const generateImageByAi = async (c, userId, word, phonetic, example, lang
 const generateImageByDreaminaAi = async (c, llm, prompt, ratio="9:16") => {
     // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
     // const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
-    const jsonData = { model: llm[3] || '', prompt, ratio: ratio, resolution: "1k" };
+    const jsonData = { model: llm.model || '', prompt, ratio: ratio, resolution: "1k" };
     return callImageApi(llm, jsonData);
 };
 
 const generateImageByJiMengAi = async (c, llm, prompt, ratio="9:16") => {
     // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
     // const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
-    const jsonData = { model: llm[3], stream: false, resolution: "1k", ratio: ratio, messages: [{ role: 'user', content: prompt }] };
+    const jsonData = { model: llm.model || '', stream: false, resolution: "1k", ratio: ratio, messages: [{ role: 'user', content: prompt }] };
     const response = await callImageApi(llm, jsonData, true);
     return response ? extractHttpLinks(response) : null;
 };
@@ -357,16 +357,16 @@ const generateImageBySeeDreamAi = async (c, llm, prompt, ratio="9:16") => {
     // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
     // const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
     const size = ratio2size[ratio] || "1440x2560";
-    const jsonData = { model: llm[3], prompt, size: size, response_format: "url", sequential_image_generation: "disabled", stream: false, watermark: false };
+    const jsonData = { model: llm.model || '', prompt, size: size, response_format: "url", sequential_image_generation: "disabled", stream: false, watermark: false };
     const response = await callImageApi(llm, jsonData, true);
     return response ? [response.url] : null;
 };
 
 const callImageApi = async (llm, jsonData, isTextResponse = false) => {
     try {
-        const response = await fetch(llm[1], {
+        const response = await fetch(llm.endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${llm[2]}` },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${llm.apiKey}` },
             body: JSON.stringify(jsonData),
         });
         if (!response.ok) return null;
@@ -379,7 +379,7 @@ const callImageApi = async (llm, jsonData, isTextResponse = false) => {
             return data.data.map(d => d.url);
         }
     } catch (error) {
-        console.error(`Error calling ${llm[0]} Image AI API:`, error);
+        console.error(`Error calling ${llm.platform} Image AI API:`, error);
         return null;
     }
 };
@@ -403,7 +403,7 @@ export const generatePushImageByAi = async (c, userId, words, language, hasFreeQ
     const platforms = ['dreamina', 'jimeng', 'seedream'];
     for (const platform of platforms) {
         const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
-        if (llm[1]) {
+        if (llm.endpoint) {
           const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
           const prompt = generatePushPosterPrompt(words, language, style);
             switch (platform) {
@@ -431,7 +431,7 @@ export const generateCoverImageByAi = async (c, userId, title, language, hasFree
     const platforms = ['dreamina', 'jimeng', 'seedream'];
     for (const platform of platforms) {
         const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
-        if (llm[1]) {
+        if (llm.endpoint) {
           const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
           const prompt = generateCoverPosterPrompt(title, language, style);
             switch (platform) {

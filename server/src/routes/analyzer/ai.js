@@ -10,12 +10,12 @@ export const extractWordsByAi = async (c, userId, analysisData, hasFreeQuota) =>
 
   let llm = await getLlmConfig(c, 'gemini', userId, hasFreeQuota);
 
-  if (llm[1]) {
+  if (llm.endpoint) {
     candidates = await extractWordsByPlaformAi(c, llm, analysisData);
   }
   if (!candidates || candidates.length === 0) {
     llm = await getLlmConfig(c, 'deepseek', userId, hasFreeQuota);
-    if (llm[1]) {
+    if (llm.endpoint) {
       candidates = await extractWordsByPlaformAi(c, llm, analysisData);
     }
   }
@@ -24,13 +24,13 @@ export const extractWordsByAi = async (c, userId, analysisData, hasFreeQuota) =>
 }
 
 const extractWordsByPlaformAi = async (c, llm, analysisData) => {
-  console.log(`Calling ${llm[0]} AI for source2: ${analysisData.sourceType}`);
+  console.log(`Calling ${llm.platform} AI for source2: ${analysisData.sourceType}`);
   // This is a placeholder. You need to replace this with your actual API call.
   // Example using fetch:
   
-  let AI_API_ENDPOINT = llm[1]
-  let AI_API_KEY = llm[2]
-  let AI_API_MODEL = llm[3]
+  let AI_API_ENDPOINT = llm.endpoint
+  let AI_API_KEY = llm.apiKey
+  let AI_API_MODEL = llm.model
 
   try {
     const prompt = analysisData.sourceType === 'article' ? `
@@ -59,7 +59,7 @@ URL如下：${analysisData.content}`;
       });
 
       if (!response.ok) {
-          console.error(`${llm[0]} AI API call failed: ${response.status} ${response.statusText}`);
+          console.error(`${llm.platform} AI API call failed: ${response.status} ${response.statusText}`);
           return null;
       }
 
@@ -68,7 +68,7 @@ URL如下：${analysisData.content}`;
 
       // 2. Check if the 'choices' array exists and is not empty
       if (!data.choices || data.choices.length === 0) {
-        console.error(`${llm[0]} API call failed: Response does not contain any choices.`);
+        console.error(`${llm.platform} API call failed: Response does not contain any choices.`);
         // Handle this case
         // You might want to log the full response here to debug what was received
         console.log("Full response:", data);
@@ -77,7 +77,7 @@ URL如下：${analysisData.content}`;
 
       // 3. Check if the first choice contains a message
       if (!data.choices[0].message) {
-          console.error(`${llm[0]} API call failed: The first choice does not contain a message.`);
+          console.error(`${llm.platform} API call failed: The first choice does not contain a message.`);
            // Handle this case
            console.log("Full response:", data);
           return null; // Or throw an error
@@ -102,7 +102,7 @@ URL如下：${analysisData.content}`;
 
       return [];
   } catch (error) {
-      console.error(`Network error calling ${llm[0]} AI API:`, error);
+      console.error(`Network error calling ${llm.platform} AI API:`, error);
       return null;
   }
 };

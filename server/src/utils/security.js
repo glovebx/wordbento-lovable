@@ -14,16 +14,20 @@ const USER_KEY_PREFIX = 'quota-user';
  * @param userId 已登录的用户ID (或 null)
  */
 export const checkAndConsumeFreeQuota = async (c, userId) => {
-    const FREE_CALLS_LIMIT = c.env.FREE_CALLS_LIMIT || 3;
+  // 这是管理员，不检查调用额度
+    if (userId === 1) return true;
+
+    const USER_CALLS_LIMIT = c.env.USER_CALLS_LIMIT || 100;
+    const FREE_CALLS_LIMIT = c.env.FREE_CALLS_LIMIT || 10;
     const TTL_SECONDS = c.env.TTL_SECONDS || 60 * 60 * 24; // 24小时
     const kv = c.env.WORDBENTO_KV;
     let key;
-    let limit = FREE_CALLS_LIMIT;
+    let limit;
 
     if (userId) {
         key = `${USER_KEY_PREFIX}-${userId}`;
         // Potentially different limit for logged-in users
-        limit = c.env.USER_CALLS_LIMIT || 1000;
+        limit = USER_CALLS_LIMIT;
     } else {
         const requestIp = c.req.header('CF-Connecting-IP');
         if (!requestIp) {
@@ -31,6 +35,7 @@ export const checkAndConsumeFreeQuota = async (c, userId) => {
         }
         const ip = requestIp || '127.0.0.1_dev';
         key = `${IP_KEY_PREFIX}-${ip}`;
+        limit = FREE_CALLS_LIMIT;
     }
 
     const quotaData = await kv.get(key, { type: 'json' });
@@ -57,77 +62,150 @@ export const checkAndConsumeFreeQuota = async (c, userId) => {
     return true;
 }
 
-export const getLlmConfig = async (c, platform, userId, hasFreeQuota) => {
-  console.log(`Calling ${platform} AI: ${userId}`);
-  
-  let AI_API_ENDPOINT = '';
-  let AI_API_KEY = '';
-  let AI_API_MODEL = '';
+/**
+ * Represents the configuration for an LLM.
+ */
+class LlmConfig {
+  constructor(platform, endpoint, apiKey, model) {
+    this.platform = platform;
+    this.endpoint = endpoint || '';
+    this.apiKey = apiKey || '';
+    this.model = model || '';
+  }
 
-  if (userId) {
-    const llmKey = `llm-${platform}-${userId}`;
-    let llmData = null;
+  isValid() {
+    console.log(this.endpoint, this.apiKey)
+    // return !!this.endpoint && !!this.apiKey && !!this.model;
+    return !!this.endpoint && !!this.apiKey;
+  }
+
+  toObject() {
+    return {
+      platform: this.platform,
+      endpoint: this.endpoint,
+      apiKey: this.apiKey,
+      model: this.model,
+    };
+  }
+}
+
+/**
+ * Base class for configuration providers.
+ */
+class LlmConfigProvider {
+  constructor(c, platform) {
+    this.c = c;
+    this.platform = platform;
+  }
+
+  async getConfig() {
+    throw new Error("GetConfig method must be implemented by subclasses.");
+  }
+}
+
+/**
+ * Provides LLM config for authenticated users, with KV caching.
+ */
+class UserConfigProvider extends LlmConfigProvider {
+  constructor(c, platform, userId) {
+    super(c, platform);
+    this.userId = userId;
+    this.db = drizzle(c.env.DB, { schema });
+    this.kv = c.env.WORDBENTO_KV;
+    this.cacheKey = `llm-${platform}-${userId}`;
+  }
+
+  async #getFromCache() {
     try {
-      llmData = await c.env.WORDBENTO_KV.get(llmKey, { type: 'json' });
-    } catch (error) {
-      console.error('KV failed:', error.message);      
-    }
-    if (llmData && llmData.endpoint) {
-      // 已登录用户用自己的配置
-      AI_API_ENDPOINT = llmData.endpoint;
-      AI_API_KEY = llmData.token;
-      AI_API_MODEL = llmData.model;
-    } else {
-      // Initialize Drizzle with schema
-      // The schema object needs to be imported and passed here
-      const db = drizzle(c.env.DB, { schema });
-      // 从数据库中获取
-      const existingLlms = await db.select({
-        platform: schema.llms.platform,
-        endpoint: schema.llms.endpoint,
-        token: schema.llms.token,
-        model: schema.llms.model,
-      })
-      .from(schema.llms)
-      .where(and(
-        eq(schema.llms.platform, platform), 
-        eq(schema.llms.user_id, userId),
-        eq(schema.llms.active, 1)
-      ))
-      .limit(1); // We only need to find one match
-
-      if (existingLlms.length > 0) {
-        const existingLlm = existingLlms[0];
-        console.log(`existingLlm is ${JSON.stringify(existingLlm)}`);
-
-        if (existingLlm.endpoint) {
-          const llmKey = `llm-${existingLlm.platform}-${userId}`
-          const llmDataKv = {
-            endpoint: existingLlm.endpoint,
-            token: existingLlm.token,
-            model: existingLlm.model,
-          }
-          await c.env.WORDBENTO_KV.put(llmKey, JSON.stringify(llmDataKv));
-        }
-
-        AI_API_ENDPOINT = existingLlm.endpoint;
-        AI_API_KEY = existingLlm.token;
-        AI_API_MODEL = existingLlm.model;        
-      } else {
-        console.log('LLM does not Exist or not actived!!!!');
+      const cachedData = await this.kv.get(this.cacheKey, { type: 'json' });
+      if (cachedData && cachedData.endpoint) {
+        console.log(`Cache HIT for user ${this.userId}`);
+        return new LlmConfig(this.platform, cachedData.endpoint, cachedData.token, cachedData.model);
       }
+    } catch (error) {
+      console.error(`KV get failed for key ${this.cacheKey}:`, error.message);
     }
-  } else if (hasFreeQuota) {
-    if (platform === 'deepseek') {
-      AI_API_ENDPOINT = c.env.DEEPSEEK_API_ENDPOINT
-      AI_API_KEY = c.env.DEEPSEEK_API_KEY
-      AI_API_MODEL = c.env.DEEPSEEK_API_MODEL
-    } else {
-      AI_API_ENDPOINT = c.env.GEMINI_API_ENDPOINT
-      AI_API_KEY = c.env.GEMINI_API_KEY
-      AI_API_MODEL = c.env.GEMINI_API_MODEL
+    return null;
+  }
+
+  async #getFromDatabase() {
+    const results = await this.db.select()
+      .from(schema.llms)
+      .where(and(eq(schema.llms.platform, this.platform), eq(schema.llms.user_id, this.userId), eq(schema.llms.active, 1)))
+      .limit(1);
+
+    if (results.length > 0) {
+      const dbData = results[0];
+      console.log(`DB HIT for user ${this.userId}`);
+      this.c.executionCtx.waitUntil(this.#updateCache(dbData));
+      return new LlmConfig(this.platform, dbData.endpoint, dbData.token, dbData.model);
+    }
+    
+    console.log(`No active LLM config found in DB for user ${this.userId}`);
+    return null;
+  }
+
+  async #updateCache(data) {
+    const cacheData = { endpoint: data.endpoint, token: data.token, model: data.model };
+    try {
+      await this.kv.put(this.cacheKey, JSON.stringify(cacheData));
+      console.log(`Cache SET for user ${this.userId}`);
+    } catch (error) {
+      console.error(`KV put failed for key ${this.cacheKey}:`, error.message);
     }
   }
 
-  return [platform, AI_API_ENDPOINT, AI_API_KEY, AI_API_MODEL];
+  async getConfig() {
+    const cachedConfig = await this.#getFromCache();
+    if (cachedConfig?.isValid()) return cachedConfig;
+
+    const dbConfig = await this.#getFromDatabase();
+    if (dbConfig?.isValid()) return dbConfig;
+
+    return new LlmConfig(this.platform);
+  }
 }
+
+/**
+ * Provides public/free LLM config from environment variables.
+ */
+class FreeQuotaProvider extends LlmConfigProvider {
+  getConfig() {
+    const platformUpper = this.platform.toUpperCase();
+    const endpoint = this.c.env[`${platformUpper}_API_ENDPOINT`];
+    const apiKey = this.c.env[`${platformUpper}_API_KEY`];
+    const model = this.c.env[`${platformUpper}_API_MODEL`];
+    
+    if (endpoint && apiKey) {
+        return new LlmConfig(this.platform, endpoint, apiKey, model);
+    }
+    
+    console.log(`No env vars for ${this.platform}, falling back to Deepseek.`);
+    return new LlmConfig(
+        'deepseek', 
+        this.c.env.DEEPSEEK_API_ENDPOINT, 
+        this.c.env.DEEPSEEK_API_KEY, 
+        this.c.env.DEEPSEEK_API_MODEL
+    );
+  }
+}
+
+export const getLlmConfig = async (c, platform, userId, hasFreeQuota) => {
+  let provider;
+
+  if (userId) {
+    provider = new UserConfigProvider(c, platform, userId);
+  } else if (hasFreeQuota) {
+    provider = new FreeQuotaProvider(c, platform);
+  } else {
+    return new LlmConfig(platform).toObject();
+  }
+
+  const config = await provider.getConfig();
+  
+  if (!config.isValid()) {
+      // console.warn(`LLM configuration for platform '${platform}' is invalid or not found.`);
+  }
+
+  return config.toObject();
+};
