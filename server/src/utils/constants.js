@@ -87,10 +87,10 @@ export const posterStyle = [
   //   "style": "Cybernetic organic, blending flesh and machinery, intricate details",
   //   "desc": "赛博格有机体，血肉与机械融合，复杂细节 - 适合：探讨人性、科技、进化等深刻主题的单词"
   // },
-  {
-    "style": "Brutalist typography, raw concrete texture, bold geometric forms",
-    "desc": "粗野主义版式，原始混凝土质感，大胆几何形态 - 适合：力量感、工业、反装饰的单词"
-  },
+  // {
+  //   "style": "Brutalist typography, raw concrete texture, bold geometric forms",
+  //   "desc": "粗野主义版式，原始混凝土质感，大胆几何形态 - 适合：力量感、工业、反装饰的单词"
+  // },
   {
     "style": "Etching and engraving style, fine cross-hatching, classical detail",
     "desc": "蚀刻版画风格，精细交叉排线，古典细节 - 适合：精致、古典、历史感强的单词"

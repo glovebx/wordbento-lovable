@@ -1,7 +1,7 @@
 // components/AudioPlayer.tsx
 import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Pause, Volume2, VolumeX, Subtitles, X, Settings, Repeat, Repeat1, RotateCcw, RotateCw } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Subtitles, X, Settings, Repeat, Repeat1, RotateCcw, RotateCw, Shuffle, List } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,8 +22,25 @@ const AUDIO_PLAYER_KEYS = {
   PLAYBACK_RATE: 'playbackRate',
   SUBTITLE_OFFSET: 'subtitleOffset',
   SUBTITLE_FONT_SIZE: 'subtitleFontSize', // New key for font size
-  LAST_PLAYBACK_POSITION: 'lastPlaybackPosition' // New key
+  LAST_PLAYBACK_POSITION: 'lastPlaybackPosition', // New key
+  PLAY_MODE: 'audio_player_play_mode',
 } as const;
+
+enum PlayMode {
+  SEQUENTIAL = 'sequential',
+  LOOP_LIST = 'loop_list',
+  LOOP_SINGLE = 'loop_single',
+  SHUFFLE = 'shuffle',
+}
+
+const playModeIcons = {
+  [PlayMode.SEQUENTIAL]: { icon: List, title: '顺序播放' },
+  [PlayMode.LOOP_LIST]: { icon: Repeat, title: '列表循环' },
+  [PlayMode.LOOP_SINGLE]: { icon: Repeat1, title: '单曲循环' },
+  [PlayMode.SHUFFLE]: { icon: Shuffle, title: '随机播放' },
+};
+
+const playModeOrder: PlayMode[] = [PlayMode.SEQUENTIAL, PlayMode.LOOP_LIST, PlayMode.LOOP_SINGLE, PlayMode.SHUFFLE];
 
 interface AudioPlayerProps {
   audioUrl: string;
@@ -50,7 +67,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
-  const [isLooping, setIsLooping] = useState(false);
   const [showSubtitles, setShowSubtitles] = useState(true);
   const [parsedCues, setParsedCues] = useState<SubtitleCue[]>([]);
   const [currentActiveCueIndex, setCurrentActiveCueIndex] = useState<number | null>(null);
@@ -63,6 +79,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   const [isDragging, setIsDragging] = useState(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
   const playerRef = useRef<HTMLDivElement>(null);
+  const startFromBeginningRef = useRef(false);
   // --- End Draggable State ---
 
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
@@ -73,19 +90,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   const [wordForSearch, setWordForSearch] = useState<string | null>(null);
   const [searchButtonPosition, setSearchButtonPosition] = useState<{ x: number; y: number; width: number; } | null>(null);
 
-
-  // Create a memoized instance of LocalStorageManager,
-  // using audioUrl as the unique scope for this player's settings.
   const localStorageManager = useMemo(() => {
     return new LocalStorageManager(`ap_${audioUrl}`);
   }, [audioUrl]);
 
-  // Common storage for settings that persist across different audio files
   const commonStorageManager = useMemo(() => {
-    return new LocalStorageManager('ap_common'); // Use a generic key for common settings
+    return new LocalStorageManager('ap_common');
   }, []);
 
-  // Use a function for useState initial value to read from localStorage immediately
+  const [playMode, setPlayMode] = useState<PlayMode>(() => {
+    const savedMode = commonStorageManager.getItem<PlayMode>(AUDIO_PLAYER_KEYS.PLAY_MODE);
+    return savedMode && playModeOrder.includes(savedMode) ? savedMode : PlayMode.SEQUENTIAL;
+  });
+
   const [playbackRate, setPlaybackRate] = useState<number>(() => {
     const storedRate = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.PLAYBACK_RATE);
     return storedRate !== null ? storedRate : 1.0;
@@ -96,10 +113,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
     return storedOffset !== null ? storedOffset : 0;
   });
 
-  // State for subtitle font size (common setting)
   const [subtitleFontSize, setSubtitleFontSize] = useState<number>(() => {
     const storedFontSize = commonStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.SUBTITLE_FONT_SIZE);
-    return storedFontSize !== null ? storedFontSize : 24; // Default font size
+    return storedFontSize !== null ? storedFontSize : 24;
   });
 
   // Load settings from local storage on component mount or audioUrl change (for audio-specific settings)
@@ -141,8 +157,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       // audio.currentTime = 0;
       // setCurrentTime(0);
     // Get saved position from localStorage
-      const savedPosition = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.LAST_PLAYBACK_POSITION);
-      const initialTime = savedPosition !== null ? savedPosition : 0;
+      let initialTime = 0;
+      if (startFromBeginningRef.current) {
+        startFromBeginningRef.current = false; // Reset the flag
+      } else {
+        const savedPosition = localStorageManager.getItem<number>(AUDIO_PLAYER_KEYS.LAST_PLAYBACK_POSITION);
+        initialTime = savedPosition !== null ? savedPosition : 0;
+      }
       
       audio.currentTime = initialTime;
       setCurrentTime(initialTime);
@@ -307,17 +328,66 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       setDuration(audio.duration);
       setIsLoading(false);
       audio.playbackRate = playbackRate;
+      // if (isPlaying) {
+        audio.play();
+      // }
     };
 
     const handleAudioPlayPauseEvent = () => setIsPlaying(!audio.paused);
 
     const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentActiveCueIndex(null);
-      setCurrentTime(0);
-      audio.playbackRate = 1.0;
-      // Clear the saved position when audio ends
-      localStorageManager.removeItem(AUDIO_PLAYER_KEYS.LAST_PLAYBACK_POSITION);      
+      if (playMode === PlayMode.LOOP_SINGLE) {
+        audio.currentTime = 0;
+        audio.play();
+        return;
+      }
+
+      if (playlist.length > 0 && onSelectResource) {
+        const currentIndex = playlist.findIndex(item => audioUrl.includes(item.uuid));
+        if (currentIndex === -1) {
+          setIsPlaying(false);
+          return; // Cannot find current track in playlist
+        }
+
+        let nextUuid: string | null = null;
+
+        switch (playMode) {
+          case PlayMode.SEQUENTIAL:
+            if (currentIndex < playlist.length - 1) {
+              nextUuid = playlist[currentIndex + 1].uuid;
+            }
+            break;
+          case PlayMode.LOOP_LIST:
+            const nextIndex = (currentIndex + 1) % playlist.length;
+            nextUuid = playlist[nextIndex].uuid;
+            break;
+          case PlayMode.SHUFFLE:
+            if (playlist.length <= 1) {
+              audio.currentTime = 0;
+              audio.play();
+              return;
+            }
+            let randomIndex;
+            do {
+              randomIndex = Math.floor(Math.random() * playlist.length);
+            } while (randomIndex === currentIndex);
+            nextUuid = playlist[randomIndex].uuid;
+            break;
+        }
+
+        if (nextUuid) {
+          startFromBeginningRef.current = true;
+          onSelectResource(nextUuid);
+        } else {
+          setIsPlaying(false); // End of playlist in sequential mode
+        }
+
+      } else {
+        // Default behavior if no playlist or onSelectResource
+        setIsPlaying(false);
+        setCurrentActiveCueIndex(null);
+        setCurrentTime(0);
+      }
     };
 
     audio.addEventListener('loadeddata', handleLoadedData);
@@ -356,8 +426,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
 
     return () => {
       window.removeEventListener('keydown', handleSpacebarToggle);
-    };
+    }
   }, [handlePlayPause, isLoading]);
+
+  const togglePlayMode = () => {
+    const currentIndex = playModeOrder.indexOf(playMode);
+    const nextIndex = (currentIndex + 1) % playModeOrder.length;
+    const nextMode = playModeOrder[nextIndex];
+    setPlayMode(nextMode);
+    commonStorageManager.setItem(AUDIO_PLAYER_KEYS.PLAY_MODE, nextMode);
+  };
 
   useEffect(() => {
     if (relatedUuids.length > 0) {
@@ -767,7 +845,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
       onTouchStart={handleTouchStart}
     >
       <div className="container mx-auto flex flex-col md:flex-row items-center justify-between pr-8 md:pr-0">
-        <audio ref={audioRef} src={audioUrl} preload="auto" loop={isLooping} />
+        <audio ref={audioRef} src={audioUrl} preload="auto" />
 
         {isLoading && (
           <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -809,10 +887,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsLooping(!isLooping)}
-            title={isLooping ? "取消循环播放" : "循环播放"}
+            onClick={togglePlayMode}
+            title={playModeIcons[playMode].title}
+            disabled={playlist.length === 0}
           >
-            {isLooping ? <Repeat1 className="h-5 w-5 text-blue-300" /> : <Repeat className="h-5 w-5" />}
+            {React.createElement(playModeIcons[playMode].icon, { className: cn("h-5 w-5", playMode !== PlayMode.SEQUENTIAL && "text-blue-300") })}
           </Button>
 
           {playlist.length > 0 && (
@@ -838,11 +917,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
                         audioUrl.includes(item.uuid) && "bg-muted"
                       )}
                     >
-                      <img 
-                        src={item.thumbnail || ''} 
-                        alt={item.title}
-                        className="w-16 h-9 object-cover rounded-sm flex-shrink-0 bg-muted-foreground"
-                      />
+                      {item.thumbnail ? (
+                        <img 
+                          src={item.thumbnail}
+                          alt={item.title}
+                          className="w-16 h-9 object-cover rounded-sm flex-shrink-0 bg-muted-foreground"
+                        />
+                      ) : (
+                        <div className="w-16 h-9 rounded-sm flex-shrink-0 bg-muted-foreground" />
+                      )}
                       <span className="text-sm truncate flex-grow">{item.title}</span>
                       {audioUrl.includes(item.uuid) && <Play className="h-4 w-4 text-primary flex-shrink-0" />}
                     </button>
