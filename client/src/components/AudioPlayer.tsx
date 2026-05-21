@@ -376,6 +376,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
         }
 
         if (nextUuid) {
+          // Reset the ended track's position before switching
+          localStorageManager.setItem(AUDIO_PLAYER_KEYS.LAST_PLAYBACK_POSITION, 0);
           startFromBeginningRef.current = true;
           onSelectResource(nextUuid);
         } else {
@@ -430,9 +432,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
   }, [handlePlayPause, isLoading]);
 
   const togglePlayMode = () => {
-    const currentIndex = playModeOrder.indexOf(playMode);
-    const nextIndex = (currentIndex + 1) % playModeOrder.length;
-    const nextMode = playModeOrder[nextIndex];
+    const availableModes = playlist.length > 0 
+      ? playModeOrder 
+      : [PlayMode.SEQUENTIAL, PlayMode.LOOP_SINGLE];
+
+    const currentModeIndex = availableModes.indexOf(playMode);
+    // If current mode is not in the available modes (e.g. playlist was just emptied), default to first available mode
+    const nextIndex = currentModeIndex === -1 ? 0 : (currentModeIndex + 1) % availableModes.length;
+    const nextMode = availableModes[nextIndex];
+    
     setPlayMode(nextMode);
     commonStorageManager.setItem(AUDIO_PLAYER_KEYS.PLAY_MODE, nextMode);
   };
@@ -889,7 +897,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, subtitleContent, hi
             size="icon"
             onClick={togglePlayMode}
             title={playModeIcons[playMode].title}
-            disabled={playlist.length === 0}
           >
             {React.createElement(playModeIcons[playMode].icon, { className: cn("h-5 w-5", playMode !== PlayMode.SEQUENTIAL && "text-blue-300") })}
           </Button>
