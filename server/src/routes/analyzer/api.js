@@ -79,9 +79,11 @@ analyze.post('/', async (c) => {
 
   console.log(`Content is Youtube??: ${isYoutube}`);
 
+  let existingResourceId = null;
   // 3. Check if a record with the same exam_type and content_md5 already exists
   try {
       const existingResources = await db.select({
+        id: schema.resources.id,
         status: schema.resources.status,
         uuid: schema.resources.uuid // Select only the uuid
       })
@@ -95,6 +97,10 @@ analyze.post('/', async (c) => {
       .limit(1); // We only need to find one match
 
       if (existingResources.length > 0) {
+        if (existingResources[0].status === 'failed') { 
+          // 准备后面删除
+          existingResourceId = existingResources[0].id;
+        }
         console.log(`existingResources: ${isYoutube}, ${JSON.stringify(existingResources[0])}`)
         // if (!isYoutube || (existingResources[0].status == 'completed' || existingResources[0].status == 'failed')) {
         if (!isYoutube || (existingResources[0].status !== 'failed')) {
@@ -132,6 +138,12 @@ analyze.post('/', async (c) => {
 
       // 新增标题
       const title = cleanedContent.length > 50 && cleanedContent.substring(0, 47) + '...' || cleanedContent;
+
+      if (existingResourceId) {
+        // 旧数据存在，且状态是failed，说明之前解析出错，需要删除
+        await db.delete(schema.resources)
+        .where(eq(schema.resources.id, existingResourceId));
+      }
 
       await db.insert(schema.resources).values({
           user_id: userId,
