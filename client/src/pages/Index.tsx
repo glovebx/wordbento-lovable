@@ -13,17 +13,21 @@ import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis';
 import { baseURL } from "@/lib/axios";
+import { WelcomeNotification } from '@/components/WelcomeNotification';
 import FloatingImageCarousel from '@/components/FloatingImageCarousel';
 import { useGenerateImages } from '@/hooks/use-generate-images';
 import { useViewMode } from '@/hooks/use-view-mode'; // Import the new hook
 import SEO from '@/components/SEO'; // Import the SEO component
 
 import { useParams, useNavigate } from 'react-router-dom';
-
 const Index = () => {
   const { wordSlug } = useParams<{ wordSlug: string }>();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useViewMode('grid');
+
+  const [showQrCodeNotification, setShowQrCodeNotification] = useState(false);
+  const QR_CODE_NOTIFICATION_KEY = 'last_qr_code_notification_date';
+  const QR_CODE_URL = 'alex-qr.jpg'; // 固定二维码图片地址
   const {
     currentWord: wordData, // Rename for consistency with existing components
     isLoading: isWordLoading,
@@ -40,6 +44,21 @@ const Index = () => {
   useEffect(() => {
     fetchWord(wordSlug || '', NavigationMode.Search, viewMode === 'flashcard');
   }, [wordSlug, fetchWord, viewMode]);
+
+  // Effect for WelcomeNotification display logic
+  useEffect(() => {
+    const lastShownDate = localStorage.getItem(QR_CODE_NOTIFICATION_KEY);
+    if (!lastShownDate) {
+      setShowQrCodeNotification(true);
+    } else {
+      const lastDate = new Date(lastShownDate);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 3);
+      if (lastDate < sevenDaysAgo) {
+        setShowQrCodeNotification(true);
+      }
+    }
+  }, []);
 
   const handleSearch = useCallback((word: string) => {
     navigate(`/word/${word}`);
@@ -251,6 +270,11 @@ const Index = () => {
       setCurrentSrtResource(undefined);
     }
   }, []); // No dependencies needed as it just sets state to null
+
+  const handleCloseQrCodeNotification = useCallback(() => {
+    setShowQrCodeNotification(false);
+    localStorage.setItem(QR_CODE_NOTIFICATION_KEY, new Date().toISOString());
+  }, []);
 
   const handleExportImage = useCallback(async () => {
     const element = bentoGridRef.current;
@@ -575,6 +599,13 @@ const Index = () => {
         description={wordData?.meaning ? `${wordData.word_text}: ${wordData.meaning}` : '通过 AI 生成的图片和真实语境，让英语单词学习变得直观、有趣且高效。'}
         wordData={wordData}
       />
+      <WelcomeNotification
+        isOpen={showQrCodeNotification}
+        onClose={handleCloseQrCodeNotification}
+        title="欢迎使用 4s背单词"
+        message="扫描二维码关注我们，获取更多学习资源。每天上线新单词、新音频，一起学习，一起进步！"
+        qrCodeUrl={QR_CODE_URL}
+      />      
       {isGenerating && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
           <LoadingFallback message="正在生成中..." />
