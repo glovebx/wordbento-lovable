@@ -287,7 +287,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   //   }
   // };
 
-  const imageAspectRatio = isTouchDevice ? (3 / 3) : (3 / 2);
+  const imageAspectRatio = isTouchDevice ? (3 / 4) : (3 / 2);
 
   return (
     <>
@@ -313,7 +313,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           </div> */}
 
           {/* Image with Navigation */}
-          <div className="relative flex items-center justify-center w-full px-4 lg:max-w-6xl sm:max-w-4xl sm:mx-auto"> 
+          <div className="relative flex items-center justify-center w-full px-0 sm:px-2 lg:max-w-6xl sm:max-w-4xl sm:mx-auto"> 
           {/* Previous/Next Buttons for Desktop */}
           {!isTouchDevice && (
               <>

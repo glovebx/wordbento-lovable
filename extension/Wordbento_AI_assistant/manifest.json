@@ -10,14 +10,11 @@
     "contextMenus"
   ],
   "host_permissions": [
-    "https://www.youtube.com/*",
-    "https://x.com/*",
-    "https://wordbento.metaerp.ai/*",
-    "http://192.168.3.58:1234/*"
+    "<all_urls>"
   ],
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/watch*", "https://x.com/*"],
+      "matches": ["<all_urls>"],
       "js": ["src/content.js"],
       "css": ["css/content.css"],
       "run_at": "document_start"
@@ -33,7 +30,7 @@
   "web_accessible_resources": [
     {
       "resources": ["css/content.css"],
-      "matches": ["https://www.youtube.com/*", "https://x.com/*"]
+      "matches": ["<all_urls>"]
     }
   ]
 }
