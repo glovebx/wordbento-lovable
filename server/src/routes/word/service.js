@@ -179,6 +179,7 @@ export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
     let wordDetails = null;
 
     if (searchSlug) {
+        // console.log(`Searching for word: ${searchSlug} with mode: ${mode}`);
         if (mode !== NavigationMode.Search) {
             // 翻页
             wordDetails = await getAdjacentWord(db, searchSlug, mode, userId, mustHaveImage);
@@ -194,6 +195,7 @@ export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
             }
         }
     } else {
+        // console.log(`No valid slug provided for search.`);
         wordDetails = await findRandomAggregatedWord(db, userId, mustHaveImage);
     }
 

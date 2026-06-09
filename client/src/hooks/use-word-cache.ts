@@ -6,7 +6,7 @@ import { useTaskSubscription } from './use-task-subscription';
 import { preloadImages } from '../utils/preload.ts';
 
 // ... (keep WordDataType and MAX_CACHE_SIZE as they are)
-const MAX_CACHE_SIZE = 20;
+const MAX_CACHE_SIZE = 50;
 
 export enum NavigationMode {
     Search = 0,
@@ -151,6 +151,16 @@ export const useWordCache = () => {
             } else if (response.data?.content) {
                 // Word found
                 const data = response.data as WordDataType;
+
+                // 向前翻页时，去掉缓存中的当前单词，保证向前翻页不会进入死循环 bug fix@2026/06/05
+                if (mode !== NavigationMode.Search) {
+                    const prefetchRef = cachePrefetchRef.current;
+                    const currentIndex = prefetchRef.indexOf(data.word_text);
+                    if (currentIndex > -1) {
+                        prefetchRef.splice(currentIndex, 1);
+                    }
+                }
+
                 setCurrentWord(data);
                 addToCache(data.word_text, data);
                 setIsLoading(false);
@@ -255,14 +265,15 @@ export const useWordCache = () => {
             const prefetchNeighbors = async () => {
                 // Prefetch next word
                 try {
-                    const response = await axiosPrivate.post('/api/word/search', { slug: currentWord.word_text, mode: NavigationMode.Next, mhi: isMustHasImage });
+                    const mode = pageMode === NavigationMode.Previous ? NavigationMode.Previous : NavigationMode.Next;
+                    const response = await axiosPrivate.post('/api/word/search', { slug: currentWord.word_text, mode: mode, mhi: isMustHasImage });
                     if (response.data?.content) {
                         addToCache(response.data.word_text, response.data);
                         if (pageMode === NavigationMode.Next) {
                             addToPrefetchCache(response.data.word_text);
                         } else {
                             // 插入到当前这个单词的前面
-                            prependToPrefetchCache(response.data.word_text, currentWord.word_text);
+                            prependToPrefetchCache(currentWord.word_text, response.data.word_text);
                         }
                         if (response.data.imageUrls && response.data.imageUrls.length > 0) {
                             preloadImages(response.data.imageUrls);
