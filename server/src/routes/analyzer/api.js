@@ -99,6 +99,7 @@ analyze.post('/', async (c) => {
       if (existingResources.length > 0) {
         if (existingResources[0].status === 'failed') { 
           // 准备后面删除
+          // TODO: 文件下载都成功了，唯独抽取单词失败了，这时候直接抽取单词即可，无需重新下载文件
           existingResourceId = existingResources[0].id;
         }
         console.log(`existingResources: ${isYoutube}, ${JSON.stringify(existingResources[0])}`)

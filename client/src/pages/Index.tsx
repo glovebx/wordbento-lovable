@@ -10,10 +10,11 @@ import LoadingFallback from '@/components/LoadingFallback';
 import { useToast } from '@/components/ui/use-toast';
 import { NavigationMode, useWordCache } from '@/hooks/use-word-cache';
 import { Button } from '@/components/ui/button';
-import { Download } from 'lucide-react';
+import { Download, Share2 } from 'lucide-react';
 import { useRecentAnalysis, Submission } from '@/hooks/use-recent-analysis';
 import { baseURL } from "@/lib/axios";
 import { WelcomeNotification } from '@/components/WelcomeNotification';
+import ShareCard from '@/components/ShareCard';
 import FloatingImageCarousel from '@/components/FloatingImageCarousel';
 import { useGenerateImages } from '@/hooks/use-generate-images';
 import { useViewMode } from '@/hooks/use-view-mode'; // Import the new hook
@@ -92,6 +93,7 @@ const Index = () => {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const { startAnalysis, isLoading: isAnalysisLoading } = useAnalysisTask();
   const bentoGridRef = useRef<HTMLDivElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
   const [showFloatingImageCarousel, setShowFloatingImageCarousel] = useState(false);
   const [floatingCarouselWord, setFloatingCarouselWord] = useState('');
   const [floatingCarouselPosition, setFloatingCarouselPosition] = useState<DOMRect | null>(null);
@@ -458,6 +460,82 @@ const Index = () => {
     }
   }, [bentoGridRef, wordData, toast]);
 
+  const handleExportShareImage = useCallback(async () => {
+    const element = shareCardRef.current;
+    if (!element) {
+      console.error("Share card element not found for capture.");
+      toast({
+        title: "导出失败",
+        description: "无法找到要导出的内容。",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const htmlToImage = await import('html-to-image');
+
+    const TARGET_WIDTH = 1080;
+    const TARGET_HEIGHT = 1920;
+
+    // 1. 保存原始样式
+    const originalStyles = {
+      position: element.style.position,
+      left: element.style.left,
+      top: element.style.top,
+      width: element.style.width,
+      height: element.style.height,
+      overflow: element.style.overflow,
+      zIndex: element.style.zIndex,
+    };
+
+    // 2. 临时移动到可视区域
+    element.style.position = 'fixed';
+    element.style.left = '0';
+    element.style.top = '0';
+    element.style.width = `${TARGET_WIDTH}px`;
+    element.style.height = `${TARGET_HEIGHT}px`;
+    element.style.overflow = 'hidden';
+    element.style.zIndex = '9999';
+
+    try {
+      // 等待样式生效
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      const imageDataUrl = await htmlToImage.toPng(element, {
+        width: TARGET_WIDTH,
+        height: TARGET_HEIGHT,
+        pixelRatio: 1,
+        cacheBust: true,
+        backgroundColor: '#0f172a',
+        skipAutoScale: true,    // 避免自动缩放导致模糊        
+      });
+
+      const link = document.createElement('a');
+      link.href = imageDataUrl;
+      const filename = `share-card-${wordData?.word_text || 'export'}.png`;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "导出成功",
+        description: `已将分享卡片导出为图片 "${filename}"。`,
+        variant: "default",
+      });
+    } catch (error: any) {
+      console.error("Error capturing share card:", error);
+      toast({
+        title: "导出失败",
+        description: `导出图片时发生错误: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      // 3. 恢复原始样式（移回屏幕外）
+      Object.assign(element.style, originalStyles);
+    }
+  }, [shareCardRef, wordData, toast]);
+
   // --- New callback for highlighted word click ---
   const handleHighlightedWordClick = useCallback((word: string, rect: DOMRect) => {
     setFloatingCarouselWord(word);
@@ -575,7 +653,7 @@ const Index = () => {
 
         {viewMode === 'grid' && (
           <>
-            <div className="container mx-auto px-4 py-4 text-right">
+            <div className="container mx-auto px-4 py-4 text-right flex justify-end gap-2">
               <Button
                 onClick={handleExportImage}
                 variant="outline"
@@ -584,6 +662,15 @@ const Index = () => {
               >
                 <Download className="mr-2 h-4 w-4" />
                 导出学习卡片
+              </Button>
+              <Button
+                onClick={handleExportShareImage}
+                variant="outline"
+                size="sm"
+                disabled={isWordLoading || isAnalysisLoading}
+              >
+                <Share2 className="mr-2 h-4 w-4" />
+                导出分享卡片
               </Button>
             </div>
           </>
@@ -605,7 +692,13 @@ const Index = () => {
         title="欢迎使用 4s背单词"
         message="扫描二维码关注我们，获取更多学习资源。每天上线新单词、新音频，一起学习，一起进步！"
         qrCodeUrl={QR_CODE_URL}
-      />      
+      />
+      {/* Hidden ShareCard for export capture */}
+      {wordData && (
+        <div ref={shareCardRef} style={{ position: 'fixed', left: '-9999px', top: 0, width: 1080, height: 1920, overflow: 'hidden' }}>
+          <ShareCard wordData={wordData} />
+        </div>
+      )}
       {isGenerating && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
           <LoadingFallback message="正在生成中..." />

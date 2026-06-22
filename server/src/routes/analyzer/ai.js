@@ -85,11 +85,11 @@ URL如下：${analysisData.content}`;
 
       // If all checks pass, access and log the message content
       const messageContent = data.choices[0].message.content;
-      console.log("API call successful. Received message:");
-      console.log(`messageContent: ${messageContent}`);
+      console.log(`API call successful. Received message: ${messageContent}`);
 
       const jsonStr = cleanAiJsonResponse(messageContent)
 
+      console.log(`cleanAiJsonResponse: ${jsonStr}`);
       if (jsonStr) {
         const repairedStr = jsonrepair(jsonStr.toLowerCase())
         console.log(`repairedStr: ${repairedStr}`);

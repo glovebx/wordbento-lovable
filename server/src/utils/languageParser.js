@@ -203,8 +203,77 @@ export const cleanAiJsonResponse = (rawResponse) => {
     }
 
   } else {
+    // 后备方案：从字符串中寻找 {} 或 [] 包裹的内容
+    const extractedJson = extractJsonFromString(trimmedResponse);
+    
+    if (extractedJson) {
+      console.log("Extracted JSON structure directly:", extractedJson);
+      return extractedJson;
+    }
+    
     console.warn("No suitable markdown code block found in the response.");
-    // If no code block is found, return null
-    return null;
+    // If no code block is found, return
+    return trimmedResponse;
   }  
 };
+
+/**
+ * 从字符串中提取最外层的 JSON 结构（{} 或 [] 包裹的内容）
+ * @param {string} str - 输入字符串
+ * @returns {string|null} - 提取的 JSON 字符串或 null
+ */
+function extractJsonFromString(str) {
+  // 首先尝试提取 {} 包裹的内容
+  const objectMatch = extractBracketContent(str, '{', '}');
+  if (objectMatch && isLikelyJsonString(objectMatch)) {
+    return objectMatch;
+  }
+  
+  // 如果 {} 失败，尝试提取 [] 包裹的内容
+  const arrayMatch = extractBracketContent(str, '[', ']');
+  if (arrayMatch && isLikelyJsonString(arrayMatch)) {
+    return arrayMatch;
+  }
+  
+  return null;
+}
+
+/**
+ * 从字符串中提取指定括号包裹的最外层内容
+ * @param {string} str - 输入字符串
+ * @param {string} openBracket - 开括号
+ * @param {string} closeBracket - 闭括号
+ * @returns {string|null} - 提取的内容（包含括号）或 null
+ */
+function extractBracketContent(str, openBracket, closeBracket) {
+  let startIndex = -1;
+  let depth = 0;
+  
+  // 寻找第一个开括号的位置
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === openBracket) {
+      startIndex = i;
+      depth = 1;
+      break;
+    }
+  }
+  
+  if (startIndex === -1) {
+    return null; // 没有找到开括号
+  }
+  
+  // 从开括号后开始，寻找匹配的闭括号
+  for (let i = startIndex + 1; i < str.length; i++) {
+    if (str[i] === openBracket) {
+      depth++;
+    } else if (str[i] === closeBracket) {
+      depth--;
+      if (depth === 0) {
+        // 找到了匹配的闭括号
+        return str.substring(startIndex, i + 1);
+      }
+    }
+  }
+  
+  return null; // 没有找到匹配的闭括号
+}
