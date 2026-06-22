@@ -205,7 +205,8 @@ const ShareCard: React.FC<ShareCardProps> = ({ wordData }) => {
     <div
       style={{
         width: 1080,
-        height: 1920,
+        minHeight: 1920,
+        height: 'auto',
         position: 'relative',
         background: '#0f172a',
         color: '#f8fafc',
@@ -215,7 +216,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ wordData }) => {
         padding: '72px 52px',
         boxSizing: 'border-box',
         fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
       <StaticGlow />
@@ -226,8 +227,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ wordData }) => {
           position: 'relative',
           zIndex: 1,
           width: '100%',
-          maxWidth: 900,
-          height: '100%',
+          maxWidth: 1080,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -478,7 +478,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ wordData }) => {
         </div>
 
         {/* 底部品牌 */}
-        <div style={{ marginTop: 'auto', paddingTop: 48, width: '100%', textAlign: 'center' }}>
+        <div style={{ paddingTop: 48, width: '100%', textAlign: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
             <div style={{ width: 28, height: 1, background: 'linear-gradient(to right, transparent, #475569)' }} />
             <div

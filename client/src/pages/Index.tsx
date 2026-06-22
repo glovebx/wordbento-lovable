@@ -475,7 +475,6 @@ const Index = () => {
     const htmlToImage = await import('html-to-image');
 
     const TARGET_WIDTH = 1080;
-    const TARGET_HEIGHT = 1920;
 
     // 1. 保存原始样式
     const originalStyles = {
@@ -484,30 +483,35 @@ const Index = () => {
       top: element.style.top,
       width: element.style.width,
       height: element.style.height,
+      minHeight: element.style.minHeight,
       overflow: element.style.overflow,
       zIndex: element.style.zIndex,
     };
 
-    // 2. 临时移动到可视区域
+    // 2. 临时移动到可视区域（高度自适应）
     element.style.position = 'fixed';
     element.style.left = '0';
     element.style.top = '0';
     element.style.width = `${TARGET_WIDTH}px`;
-    element.style.height = `${TARGET_HEIGHT}px`;
-    element.style.overflow = 'hidden';
+    element.style.height = 'auto';
+    element.style.minHeight = '1920px';
+    element.style.overflow = 'visible';
     element.style.zIndex = '9999';
 
     try {
-      // 等待样式生效
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // 等待渲染完成
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // 计算实际高度，至少 1920
+      const actualHeight = Math.max(element.scrollHeight, 1920);
 
       const imageDataUrl = await htmlToImage.toPng(element, {
         width: TARGET_WIDTH,
-        height: TARGET_HEIGHT,
+        height: actualHeight,
         pixelRatio: 1,
         cacheBust: true,
         backgroundColor: '#0f172a',
-        skipAutoScale: true,    // 避免自动缩放导致模糊        
+        skipAutoScale: true,
       });
 
       const link = document.createElement('a');
@@ -695,7 +699,7 @@ const Index = () => {
       />
       {/* Hidden ShareCard for export capture */}
       {wordData && (
-        <div ref={shareCardRef} style={{ position: 'fixed', left: '-9999px', top: 0, width: 1080, height: 1920, overflow: 'hidden' }}>
+        <div ref={shareCardRef} style={{ position: 'fixed', left: '-9999px', top: 0, width: 1080, minHeight: 1920, height: 'auto', overflow: 'visible' }}>
           <ShareCard wordData={wordData} />
         </div>
       )}
