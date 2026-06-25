@@ -6,7 +6,7 @@ import { nanoid } from 'nanoid';
 import { isQuoted, removeQuotes } from '../../utils/languageParser';
 import LanguageUtils from '../../utils/languageUtils';
 import { toSqliteUtcString } from '../../utils/dateUtils';
-import { compressImageBuffer } from '../../utils/imageUtils'; // Import the new image utility
+import { compressImageBufferWithPronunciation } from '../../utils/imageUtils'; // Import the new image utility
 import { generateImageByAi, generatePushImageByAi } from './ai';
 import { checkAndConsumeFreeQuota } from '../../utils/security';
 import { NavigationMode } from '../../utils/constants';
@@ -349,7 +349,7 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
         const allImageResults = await readImageBinaryStreams(imageUrls);
         const savedImageUrls = await Promise.all(allImageResults.filter(img => img.data).map(async (imageBinaryData) => {
             const objectKey = `${nanoid(10)}.jpeg`;
-            const compressedData = await compressImageBuffer(imageBinaryData.data, WORD_IMAGE_SIZE);
+            const compressedData = await compressImageBufferWithPronunciation(imageBinaryData.data, existingWord[0].phonetic, WORD_IMAGE_SIZE);
             await c.env.WORDBENTO_R2.put(objectKey, compressedData, { contentType: 'image/jpeg' });
             await db.insert(schema.images).values({ word_id: existingWord[0].id, image_key: objectKey, prompt: example.trim() });
             return `${c.env.VITE_IMG_URL}/${objectKey}`;

@@ -454,11 +454,11 @@ export const generateCoverImageByAi = async (c, userId, title, language, hasFree
 };
 
 const generatePosterPromptWithExample = (word, language, pronunciation, exampleSentence, style) => {
-    return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Subtitle: "${pronunciation}" (smaller, elegant, below title). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate whole sentence as text on the image. Crucial: sentence must be highly legible. Style: ${style}.`;
+    return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate whole sentence as text on the image. Crucial: sentence must be highly legible. Style: ${style}.`;
 };
 
 const generatePosterPromptWithoutExample = (word, language, pronunciation, style) => {
-    return `Conceptual poster for ${language} word "${word}": visually define its essence. Title "${word}" large/bold as focal point; pronunciation "${pronunciation}" below elegantly. Imagery conveys concept intuitively to non-speakers via evocative metaphor. Style: ${style}.`;
+    return `Conceptual poster for ${language} word "${word}": visually define its essence. Title "${word}" large/bold as focal point. Imagery conveys concept intuitively to non-speakers via evocative metaphor. Style: ${style}.`;
 };
 
 const generatePushPosterPrompt = (words, language, style) => {
