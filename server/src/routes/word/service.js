@@ -134,9 +134,11 @@ async function getAdjacentWord(db, slug, mode, userId, mustHaveImage) {
     } else {
         let nextId;
         if (mode === NavigationMode.Next) {
-            // 从头开始
-            const minIdResult = await db.select({ value: dsql`min(${schema.words.id})` }).from(schema.words);
-            nextId = minIdResult[0].value;
+            // // 从头开始
+            // const minIdResult = await db.select({ value: dsql`min(${schema.words.id})` }).from(schema.words);
+            // nextId = minIdResult[0].value;
+            // 仍旧返回当前单词，告知用户已经到最后一个单词了
+            nextId = wordId
         } else {
             // 最后一个单词
             const maxIdResult = await db.select({ value: dsql`max(${schema.words.id})` }).from(schema.words);
