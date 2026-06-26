@@ -412,7 +412,7 @@ importers:
         version: 6.0.2
       wrangler:
         specifier: ^4.86.0
-        version: 4.86.0(@cloudflare/workers-types@4.20260412.1)
+        version: 4.86.0
 
 packages:
 
@@ -13020,6 +13020,22 @@ snapshots:
       '@cloudflare/workerd-linux-64': 1.20260426.1
       '@cloudflare/workerd-linux-arm64': 1.20260426.1
       '@cloudflare/workerd-windows-64': 1.20260426.1
+
+  wrangler@4.86.0:
+    dependencies:
+      '@cloudflare/kv-asset-handler': 0.4.2
+      '@cloudflare/unenv-preset': 2.16.1(unenv@2.0.0-rc.24)(workerd@1.20260426.1)
+      blake3-wasm: 2.1.5
+      esbuild: 0.27.3
+      miniflare: 4.20260426.0
+      path-to-regexp: 6.3.0
+      unenv: 2.0.0-rc.24
+      workerd: 1.20260426.1
+    optionalDependencies:
+      fsevents: 2.3.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   wrangler@4.86.0(@cloudflare/workers-types@4.20260412.1):
     dependencies:

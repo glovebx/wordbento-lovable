@@ -292,7 +292,7 @@ const getWordDetails = async (c, db, word) => {
     return formatDbResultToWordResponse(c, word, contentRecords, imageRecords);
 };
 
-const WORD_IMAGE_SIZE = 200 * 1024; // 200KB
+const WORD_IMAGE_SIZE = 100 * 1024; // 100KB
 
 export const generateWordImage = async (c, db, userId, slug, example, force) => {
     if (!slug) throw new Error('Slug is required.');
