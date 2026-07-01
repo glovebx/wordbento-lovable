@@ -156,7 +156,7 @@ def main():
     try:
         all_today_words_response = client.get_today_words(0)
         all_today_words = all_today_words_response.get('data', [])
-        today_words_summary = all_today_words[:5]
+        today_words_summary = all_today_words[-5:]
 
         if not today_words_summary or len(today_words_summary) < 5:
             print("获取今日5个单词失败")
