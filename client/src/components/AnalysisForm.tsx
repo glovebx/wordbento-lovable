@@ -23,13 +23,13 @@ import AuthModal from './AuthModal';
 
 const analysisFormSchema = z.object({
   sourceType: z.enum(['url', 'article'], {
-    error: "请选择资源类型。", // 当 sourceType 字段缺失时显示
+    message: "请选择资源类型。", // 当 sourceType 字段缺失时显示
   }),
   content: z.string().min(1, {
-    error: "内容不能为空。",
+    message: "内容不能为空。",
   }),
   examType: z.string().min(1, {
-    error: "请选择考试类型。",
+    message: "请选择考试类型。",
   })  
 });
 
@@ -105,7 +105,7 @@ const AnalysisForm: React.FC<AnalysisFormProps> = ({
   }, [loadMoreInView, hasMore, isLoadingHistory, loadMore]);
 
   const form = useForm<AnalysisData>({
-    resolver: zodResolver(analysisFormSchema),
+    resolver: zodResolver(analysisFormSchema as any),
     defaultValues: {
       sourceType: 'url',
       content: '',

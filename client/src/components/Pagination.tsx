@@ -17,6 +17,14 @@ export const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages,
     <div className="flex items-center justify-center space-x-4 py-4">
       <Button
         variant="outline"
+        size="sm"
+        onClick={() => onPageChange(1)}
+        disabled={currentPage <= 1}
+      >
+        首页
+      </Button>
+      <Button
+        variant="outline"
         size="icon"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage <= 1}
@@ -33,6 +41,14 @@ export const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages,
         disabled={currentPage >= totalPages}
       >
         <ChevronRight className="h-4 w-4" />
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => onPageChange(totalPages)}
+        disabled={currentPage >= totalPages}
+      >
+        末页
       </Button>
     </div>
   );

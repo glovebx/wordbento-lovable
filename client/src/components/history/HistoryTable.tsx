@@ -24,15 +24,7 @@ const formatDate = (dateString: string) => {
   if (!dateString) return '';
   return new Date(dateString).toLocaleDateString();
 };
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-  PaginationEllipsis,
-} from "@/components/ui/pagination";
+import { Pagination } from '@/components/Pagination';
 
 interface HistoryTableProps {
   resources: ResourceWithAttachments[];
@@ -60,112 +52,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const isMobile = useMediaQuery("(max-width: 640px)");
 
-  const getPaginationItems = () => {
-    const items = [];
-    if (totalPages <= 1) return [];
 
-    if (isMobile) {
-      // Mobile view: Previous 1 ... 4 ... 10 Next
-      if (totalPages <= 5) {
-        // If 5 or fewer pages, show all
-        for (let i = 1; i <= totalPages; i++) {
-          items.push(
-            <PaginationItem key={i}>
-              <PaginationLink isActive={i === currentPage} onClick={() => onPageChange(i)}>
-                {i}
-              </PaginationLink>
-            </PaginationItem>
-          );
-        }
-      } else {
-        // Always show first page
-        items.push(
-          <PaginationItem key={1}>
-            <PaginationLink isActive={1 === currentPage} onClick={() => onPageChange(1)}>
-              1
-            </PaginationLink>
-          </PaginationItem>
-        );
-
-        // Ellipsis after first page
-        if (currentPage > 3) {
-          items.push(<PaginationEllipsis key="ellipsis-start" />);
-        }
-
-        // Pages around current page
-        if (currentPage > 2 && currentPage < totalPages - 1) {
-            items.push(
-                <PaginationItem key={currentPage}>
-                    <PaginationLink isActive={true} onClick={() => onPageChange(currentPage)}>
-                        {currentPage}
-                    </PaginationLink>
-                </PaginationItem>
-            );
-        }
-
-        // Ellipsis before last page
-        if (currentPage < totalPages - 2) {
-          items.push(<PaginationEllipsis key="ellipsis-end" />);
-        }
-        
-        // Always show last page
-        items.push(
-          <PaginationItem key={totalPages}>
-            <PaginationLink isActive={totalPages === currentPage} onClick={() => onPageChange(totalPages)}>
-              {totalPages}
-            </PaginationLink>
-          </PaginationItem>
-        );
-      }
-    } else {
-      // Desktop view (existing logic)
-      const maxPagesToShow = 5;
-      if (totalPages <= maxPagesToShow) {
-        for (let i = 1; i <= totalPages; i++) {
-          items.push(
-            <PaginationItem key={i}>
-              <PaginationLink isActive={i === currentPage} onClick={() => onPageChange(i)}>
-                {i}
-              </PaginationLink>
-            </PaginationItem>
-          );
-        }
-      } else {
-        items.push(
-          <PaginationItem key={1}>
-            <PaginationLink isActive={1 === currentPage} onClick={() => onPageChange(1)}>
-              1
-            </PaginationLink>
-          </PaginationItem>
-        );
-        if (currentPage > 3) {
-          items.push(<PaginationEllipsis key="ellipsis-start" />);
-        }
-        let startPage = Math.max(2, currentPage - 1);
-        let endPage = Math.min(totalPages - 1, currentPage + 1);
-        for (let i = startPage; i <= endPage; i++) {
-          items.push(
-            <PaginationItem key={i}>
-              <PaginationLink isActive={i === currentPage} onClick={() => onPageChange(i)}>
-                {i}
-              </PaginationLink>
-            </PaginationItem>
-          );
-        }
-        if (currentPage < totalPages - 2) {
-          items.push(<PaginationEllipsis key="ellipsis-end" />);
-        }
-        items.push(
-          <PaginationItem key={totalPages}>
-            <PaginationLink isActive={totalPages === currentPage} onClick={() => onPageChange(totalPages)}>
-              {totalPages}
-            </PaginationLink>
-          </PaginationItem>
-        );
-      }
-    }
-    return items;
-  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -283,17 +170,11 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
         </TooltipProvider>
       )}
       {totalPages > 1 && (
-        <Pagination className="mt-4 flex flex-wrap justify-center sm:justify-end">
-          <PaginationContent className="flex flex-wrap gap-1">
-            <PaginationItem>
-              <PaginationPrevious onClick={() => onPageChange(Math.max(1, currentPage - 1))} />
-            </PaginationItem>
-            {getPaginationItems()}
-            <PaginationItem>
-              <PaginationNext onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+        />
       )}
     </div>
   );
