@@ -1,7 +1,7 @@
 /// <reference types="@types/dom-speech-recognition" />
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, /*Mic,*/ Info, Loader2, Send } from 'lucide-react'; // Import Info icon for details
+import { ArrowLeft, ArrowRight, /*Mic,*/ Info, Loader2, Send, Star } from 'lucide-react'; // Import Info icon for details
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { useToast } from '@/components/ui/use-toast';
 import { WordDataType } from '@/types/wordTypes';
 import useIsTouchDevice from '@/hooks/use-is-touch-device';
+import { axiosPrivate } from '@/lib/axios';
 import {
   Carousel,
   CarouselContent,
@@ -49,6 +50,36 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   // const [isMarkedForReview, setIsMarkedForReview] = useState(false);
   const { toast } = useToast();
+  const [isSettingCover, setIsSettingCover] = useState(false);
+
+  const handleSetCover = async () => {
+    const imageIndex = selectedImageIndex ?? 0;
+    const imageUrl = wordData.imageUrls?.[imageIndex];
+    if (!imageUrl || !wordData.id) return;
+
+    setIsSettingCover(true);
+    try {
+      // Extract image_key from URL (last path segment)
+      const imageKey = imageUrl.split('/').pop();
+      await axiosPrivate.post('/api/word/cover', {
+        word_id: wordData.id,
+        image_key: imageKey,
+      });
+      toast({
+        title: '已设为封面',
+        description: '该图片已设为封面图片',
+      });
+    } catch (error) {
+      console.error('Failed to set cover image:', error);
+      toast({
+        title: '设置失败',
+        description: '设置封面图片时发生错误',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSettingCover(false);
+    }
+  };
 
   const handlePushToEink = () => {
     const imageIndexToPush = selectedImageIndex ?? 0;
@@ -289,6 +320,10 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
   const imageAspectRatio = isTouchDevice ? (3 / 4) : (3 / 2);
 
+  // Derive current image key and check if it's the cover
+  const currentImageKey = wordData.imageUrls?.[selectedImageIndex ?? 0]?.split('/').pop();
+  const isCoverImage = !!(wordData.cover?.image_key && currentImageKey && wordData.cover.image_key === currentImageKey);
+
   return (
     <>
       <div className="container mx-auto px-4 py-2 max-w-6xl">
@@ -398,6 +433,21 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                   <Info className="h-4 w-4 mr-2" />
                   {showDetails ? '隐藏详细' : '显示详细'}
               </Button>
+              {wordData.imageUrls && wordData.imageUrls.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSetCover}
+                  disabled={isSettingCover || isCoverImage}
+                >
+                  {isSettingCover ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Star className={`mr-2 h-4 w-4 ${isCoverImage ? 'fill-yellow-400 text-yellow-400' : ''}`} />
+                  )}
+                  {isSettingCover ? '设置中...' : isCoverImage ? '封面图片' : '设为封面'}
+                </Button>
+              )}
               {isEinkConfigured && (
                 <Button
                   variant="outline"

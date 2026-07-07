@@ -23,6 +23,13 @@ export const formatDbResultToWordResponse = (c, word, contentRecords, imageRecor
     });
 
     const imageUrls = (imageRecords && imageRecords.length > 0) && imageRecords.map(img => img.image_key.startsWith('http') ? img.image_key : `${c.env.VITE_IMG_URL}/${img.image_key}`) || [];
+    const coverImage = imageRecords.find(img => img.is_cover) || {};
+    let cover = {}
+    if (coverImage.image_key) {
+        // cover 仅需要image_key 和 prompt 字段
+        cover['image_key'] = coverImage.image_key
+        cover['prompt'] = coverImage.prompt || '';
+    }
 
     return {
         id: word.id,
@@ -31,6 +38,7 @@ export const formatDbResultToWordResponse = (c, word, contentRecords, imageRecor
         meaning: word.meaning,
         created_at: word.created_at,
         content: content,
+        cover: cover,
         imageUrls: imageUrls,
     };
 };

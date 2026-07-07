@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS words (
     word_text TEXT UNIQUE NOT NULL, -- 单词文本本身，例如 "hurl"
     phonetic TEXT,                   -- 音标，可能为 null
     meaning TEXT,
-    
     -- -- 新增字段：表示单词是否已被用户记牢 (0=未记牢, 1=已记牢)
     -- is_mastered INTEGER NOT NULL DEFAULT 0,
 
@@ -102,6 +101,7 @@ CREATE TABLE IF NOT EXISTS images (
     word_id INTEGER NOT NULL,       -- 外键，关联到 words 表的 id
     prompt TEXT,
     image_key TEXT NOT NULL,        -- R2 中的图片的key
+    is_cover INTEGER NOT NULL DEFAULT 0, -- 是否为封面图片 (0=否, 1=是)
 
     FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE
 );

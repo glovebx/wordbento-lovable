@@ -253,10 +253,10 @@ export const posterStyle = [
     "style": "In the style of Alphonse Mucha, flowing hair, halo-like circular frames, pastel floral colors",
     "desc": "阿尔丰斯·穆夏风格，飘逸的长发，光环般的圆形边框，粉彩花卉色调 - 适合：四季、女性之美、装饰性优雅的单词"
   },
-  {
-    "style": "In the style of Zdzisław Beksiński, dystopian surrealism, skeletal forms, haunting textures",
-    "desc": "济斯瓦夫·贝克辛斯基风格，反乌托邦超现实主义，骨骼形态，令人不安的纹理 - 适合：死亡、末世、深层次恐惧的单词"
-  },
+  // {
+  //   "style": "In the style of Zdzisław Beksiński, dystopian surrealism, skeletal forms, haunting textures",
+  //   "desc": "济斯瓦夫·贝克辛斯基风格，反乌托邦超现实主义，骨骼形态，令人不安的纹理 - 适合：死亡、末世、深层次恐惧的单词"
+  // },
 
   // ===== 特定视觉 / 工艺风格 =====
   {

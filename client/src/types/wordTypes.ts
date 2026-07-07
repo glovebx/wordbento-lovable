@@ -41,6 +41,7 @@ export interface WordContentMap {
     content: WordContentMap;
 
     imageUrls: string[];
+    cover?: { image_key: string } | null;
   }
   
   // 可以选择导出 WordContentMap 类型如果需要在其他地方直接引用它

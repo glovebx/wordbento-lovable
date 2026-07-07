@@ -3,8 +3,6 @@ import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../../db/schema';
 import { and, eq, inArray, gt, lt, gte, lte, isNull, asc, desc } from 'drizzle-orm';
-import { sql } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
 import {
   searchWord, 
   generateWordImage, 
@@ -96,6 +94,41 @@ word.post('/imagize', async (c) => {
       throw error;
     }    
     return c.json({ message: 'An error occurred during image generation.' }, 500);
+  }
+});
+
+// Set/update cover image
+word.post('/cover', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  const { word_id, image_key } = await c.req.json();
+  if (!word_id || !image_key) {
+    return c.json({ message: 'word_id and image_key are required.' }, 400);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+
+  try {
+    // Step 1: Set is_cover = 0 for all images of this word
+    await db.update(schema.images)
+      .set({ is_cover: 0 })
+      .where(and(eq(schema.images.word_id, word_id), eq(schema.images.is_cover, 1)));
+
+    // Step 2: Set is_cover = 1 for the specific image
+    await db.update(schema.images)
+      .set({ is_cover: 1 })
+      .where(and(
+        eq(schema.images.word_id, word_id),
+        eq(schema.images.image_key, image_key),
+      ));
+
+    return c.json({ message: 'Cover image updated successfully.' }, 200);
+  } catch (error) {
+    console.error('Error updating cover image:', error);
+    return c.json({ message: 'An error occurred while updating cover image.' }, 500);
   }
 });
 

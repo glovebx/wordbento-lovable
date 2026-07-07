@@ -44,7 +44,8 @@ export const images = sqliteTable('images', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
   word_id: integer('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
   prompt: text('prompt'),
-  image_key: text('image_key').notNull()
+  image_key: text('image_key').notNull(),
+  is_cover: integer('is_cover').notNull().default(0), // 是否为封面图片 (0=否, 1=是)
 });
 
 export const audios = sqliteTable('audios', {
