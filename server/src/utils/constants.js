@@ -179,10 +179,10 @@ export const posterStyle = [
     "style": "Swiss international style, brutalist graphic design, Light gray background, High saturation colors: blue(#007AFF), green(#00994D), yellow(#FFF066), purple(#9966FF), pink(#FF3399), orange(#FF8800), Asymmetric composition",
     "desc": "专业设计、高端展示"
   },
-  {
-    "style": "Y2K pixel retro, 1990s aesthetic, Dark background with noise texture, Bright colors: yellow(#FFD700), orange(#FF8C00), green(#4A7C4E), Pixel art computer icons, CRT monitor graphics, Isometric tech illustrations, Vintage 1990s design",
-    "desc": "怀旧主题、创意内容"
-  },
+  // {
+  //   "style": "Y2K pixel retro, 1990s aesthetic, Dark background with noise texture, Bright colors: yellow(#FFD700), orange(#FF8C00), green(#4A7C4E), Pixel art computer icons, CRT monitor graphics, Isometric tech illustrations, Vintage 1990s design",
+  //   "desc": "怀旧主题、创意内容"
+  // },
 
   // ===== 大师风格 2026/06/28 追加 =====
   {

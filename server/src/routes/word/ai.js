@@ -316,7 +316,7 @@ export const generateImageByAi = async (c, userId, word, phonetic, example, lang
     for (const platform of platforms) {
         const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
         if (llm.endpoint) {
-          const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+          const style = choosePosterStyle();
           const prompt = example ? generatePosterPromptWithExample(word, language, phonetic, example, style) : generatePosterPromptWithoutExample(word, language, phonetic, style);
             switch (platform) {
                 case 'dreamina':
@@ -404,7 +404,8 @@ export const generatePushImageByAi = async (c, userId, words, language, hasFreeQ
     for (const platform of platforms) {
         const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
         if (llm.endpoint) {
-          const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+          // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+          const style = choosePosterStyle();
           const prompt = generatePushPosterPrompt(words, language, style);
             switch (platform) {
                 case 'dreamina':
@@ -432,7 +433,8 @@ export const generateCoverImageByAi = async (c, userId, title, language, hasFree
     for (const platform of platforms) {
         const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
         if (llm.endpoint) {
-          const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+          // const style = posterStyle[Math.floor(Math.random() * posterStyle.length)].style;
+          const style = choosePosterStyle();
           const prompt = generateCoverPosterPrompt(title, language, style);
             switch (platform) {
                 case 'dreamina':
@@ -452,6 +454,31 @@ export const generateCoverImageByAi = async (c, userId, title, language, hasFree
     }
     return null;
 };
+
+const existsPosterStyleIndices = new Set();
+const choosePosterStyle = () => {
+  // 如果所有样式都已被选过，重置集合，开始新一轮选择
+  if (existsPosterStyleIndices.size === posterStyle.length) {
+    existsPosterStyleIndices.clear();
+  }
+
+  // 收集所有未被选过的索引
+  const availableIndices = [];
+  for (let i = 0; i < posterStyle.length; i++) {
+    if (!existsPosterStyleIndices.has(i)) {
+      availableIndices.push(i);
+    }
+  }
+
+  // 从可用索引中随机选取一个
+  const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+
+  // 标记为已选
+  existsPosterStyleIndices.add(randomIndex);
+
+  // 返回对应的 style 属性
+  return posterStyle[randomIndex].style;
+}
 
 const generatePosterPromptWithExample = (word, language, pronunciation, exampleSentence, style) => {
     return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate whole sentence as text on the image. Crucial: sentence must be highly legible. Style: ${style}.`;
