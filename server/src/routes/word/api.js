@@ -157,6 +157,169 @@ word.get('/image/:key', async (c) => {
   }
 });
 
+// Save gallery entries to database
+word.post('/gallery/save', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  const { entries } = await c.req.json();
+  if (!entries || !Array.isArray(entries) || entries.length === 0) {
+    return c.json({ message: 'entries array is required.' }, 400);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+
+  try {
+    const results = [];
+    const errors = [];
+
+    for (const entry of entries) {
+      const { word_text, image_key, texture_src, background_color, accent_color,
+              blob1_color, blob2_color, fallback_color, position_x, position_y } = entry;
+
+      if (!word_text || !image_key) {
+        errors.push({ word_text, image_key, error: 'word_text and image_key are required' });
+        continue;
+      }
+
+      // Find word_id from words table by word_text
+      const [word] = await db.select({ id: schema.words.id })
+        .from(schema.words)
+        .where(eq(schema.words.word_text, word_text))
+        .limit(1);
+
+      if (!word) {
+        errors.push({ word_text, error: `Word not found in words table` });
+        continue;
+      }
+
+      // Find image_id from images table by word_id and image_key
+      const [image] = await db.select({ id: schema.images.id })
+        .from(schema.images)
+        .where(and(
+          eq(schema.images.word_id, word.id),
+          eq(schema.images.image_key, image_key)
+        ))
+        .limit(1);
+
+      if (!image) {
+        errors.push({ word_text, error: `Image "${image_key}" not found` });
+        continue;
+      }
+
+      // // Delete existing entry for this word_id + image_id (respects UNIQUE constraint)
+      // await db.delete(schema.gallery)
+      //   .where(and(
+      //     eq(schema.gallery.word_id, word.id),
+      //     eq(schema.gallery.image_id, image.id)
+      //   ));
+
+      // Insert new entry
+      await db.insert(schema.gallery).values({
+        word_id: word.id,
+        image_id: image.id,
+        background_color,
+        accent_color,
+        blob1_color,
+        blob2_color,
+        fallback_color,
+        texture_src: image_key,
+        position_x: position_x ?? 0,
+        position_y: position_y ?? 0,
+      });
+
+      results.push({ word_text, image_key, status: 'saved' });
+    }
+
+    return c.json({
+      message: 'Gallery saved successfully.',
+      saved: results.length,
+      errors: errors.length > 0 ? errors : undefined,
+    }, errors.length > 0 ? 207 : 200);
+
+  } catch (error) {
+    console.error('Error saving gallery:', error);
+    return c.json({ message: 'An error occurred while saving gallery.' }, 500);
+  }
+});
+
+// Get gallery entries (newest first), returns galleryPlaneData.json format
+word.get('/gallery/get/:limit', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  const limit = parseInt(c.req.param('limit'), 10);
+  const maxIdParam = c.req.query('maxId');
+  let maxId = maxIdParam ? parseInt(maxIdParam, 10) : undefined;
+
+  if (isNaN(limit) || limit <= 0) {
+    return c.json({ message: 'Invalid limit parameter.' }, 400);
+  }
+
+  // if (maxIdParam && (isNaN(maxId) || maxId <= 0)) {
+  //   return c.json({ message: 'Invalid maxId parameter.' }, 400);
+  // }
+
+  const db = drizzle(c.env.DB, { schema });
+
+  try {
+    let query = db.select({
+      word_id: schema.gallery.word_id,
+      background_color: schema.gallery.background_color,
+      accent_color: schema.gallery.accent_color,
+      blob1_color: schema.gallery.blob1_color,
+      blob2_color: schema.gallery.blob2_color,
+      fallback_color: schema.gallery.fallback_color,
+      texture_src: schema.gallery.texture_src,
+      position_x: schema.gallery.position_x,
+      position_y: schema.gallery.position_y,
+      word_text: schema.words.word_text,
+      phonetic: schema.words.phonetic,
+      meaning: schema.words.meaning,
+      id: schema.gallery.id, // Include id for next page pagination
+    })
+      .from(schema.gallery)
+      .leftJoin(schema.words, eq(schema.gallery.word_id, schema.words.id));
+
+    if (maxId) {
+      query = query.where(lt(schema.gallery.id, maxId));
+    }
+
+    const rows = await query.orderBy(desc(schema.gallery.id)).limit(limit);
+
+    // const origin = new URL(c.req.url).origin;
+    const result = rows.map(row => ({
+      word_id: row.word_id,
+      fallbackColor: row.fallback_color,
+      accentColor: row.accent_color,
+      textureSrc: `/img/${row.texture_src}`,
+      position: {
+        x: row.position_x,
+        y: row.position_y,
+      },
+      backgroundColor: row.background_color,
+      blob1Color: row.blob1_color,
+      blob2Color: row.blob2_color,
+      label: {
+        word: row.word_text || '',
+        phonetic: row.phonetic || '',
+        meaning: row.meaning || '',
+      },
+    }));
+
+    const nextMaxId = rows.length > 0 ? rows[rows.length - 1].id : null;
+
+    return c.json({ data: result, nextMaxId }, 200);
+  } catch (error) {
+    console.error('Error fetching gallery:', error);
+    return c.json({ message: 'An error occurred while fetching gallery.' }, 500);
+  }
+});
+
 word.put('/master/:id', async (c) => {
   const user = c.get('user');
   if (!user) {

@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { duration } from 'drizzle-orm/gel-core';
-import { sqliteTable, text, integer, unique, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, unique, index } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -152,4 +152,20 @@ export const dictionary = sqliteTable('dictionary', {
   created_at: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
     unique('unq_word_lang').on(table.word, table.lang),
+]);
+
+export const gallery = sqliteTable('gallery', {
+  id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
+  word_id: integer('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
+  image_id: integer('image_id').notNull().references(() => images.id, { onDelete: 'cascade' }),
+  background_color: text('background_color').notNull(),
+  accent_color: text('accent_color').notNull(),
+  blob1_color: text('blob1_color').notNull(),
+  blob2_color: text('blob2_color').notNull(),
+  fallback_color: text('fallback_color').notNull(),
+  texture_src: text('texture_src'),
+  position_x: real('position_x').notNull(),
+  position_y: real('position_y').notNull().default(0),
+}, (table) => [
+    index('idx_word_image').on(table.word_id, table.image_id),
 ]);

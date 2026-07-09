@@ -226,3 +226,37 @@ CREATE TABLE IF NOT EXISTS dictionary (
     
     UNIQUE (word, lang) -- 确保每个单词在每种语言只有一条记录
 );
+
+    -- "fallbackColor": "#502000",
+    -- "accentColor": "#502000",
+    -- "textureSrc": "http://localhost:8787/api/word/image/nY6KoNMA0Q.jpeg",
+    -- "position": {
+    --   "x": 0.8,
+    --   "y": 0
+    -- },
+    -- "backgroundColor": "#d0c0a0",
+    -- "blob1Color": "#502000",
+    -- "blob2Color": "#d09020",
+    -- "label": {
+    --   "word": "profane",
+    --   "phonetic": "/prəˈfeɪn/",
+    --   "meaning": "亵渎的；世俗的"
+    -- }
+-- gallery 表：three.js 特效背单词用
+CREATE TABLE IF NOT EXISTS gallery (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    word_id INTEGER NOT NULL,       -- 外键，关联到 words 表的 id
+    image_id INTEGER NOT NULL,       -- 外键，关联到 images 表的 id
+
+    background_color TEXT NOT NULL,
+    accent_color TEXT NOT NULL,
+    blob1_color TEXT NOT NULL,
+    blob2_color TEXT NOT NULL,
+    fallback_color TEXT NOT NULL,
+    texture_src TEXT NOT NULL,
+    position_x REAL NOT NULL,
+    position_y REAL NOT NULL DEFAULT 0,
+    
+    FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE,
+    FOREIGN KEY (image_id) REFERENCES images(id) ON DELETE CASCADE
+);

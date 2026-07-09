@@ -55,10 +55,10 @@ export const posterStyle = [
   //   "style": "Bauhaus design, geometric shapes, primary colors, clean typography",
   //   "desc": "包豪斯设计，几何图形，三原色，干净的版式 - 适合：与设计、结构、理性相关的单词"
   // },
-  {
-    "style": "Art Deco, geometric patterns, metallic accents, elegant and sleek",
-    "desc": "装饰风艺术，几何图案，金属质感，优雅流畅 - 适合：奢华、精致、充满“爵士时代”风情的单词"
-  },
+  // {
+  //   "style": "Art Deco, geometric patterns, metallic accents, elegant and sleek",
+  //   "desc": "装饰风艺术，几何图案，金属质感，优雅流畅 - 适合：奢华、精致、充满“爵士时代”风情的单词"
+  // },
   {
     "style": "Mid-century modern illustration, organic shapes, earthy tones",
     "desc": "中世纪现代风格插画，有机形态，大地色系 - 适合：家居、温馨、复古未来主义相关的单词"

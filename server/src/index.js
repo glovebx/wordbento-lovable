@@ -63,7 +63,7 @@ app.use('/api/*', async (c, next) => {
   const sessionId = getCookie(c, 'session_id')
 
   // console.log('Session ID from Cookie:', sessionId);
-  let accessToken = sessionId ? null : c.req.header('Authorization');
+  let accessToken = c.req.header('Authorization');
   if (accessToken) {
     accessToken = accessToken.split(' ')[1];
   }
@@ -76,7 +76,7 @@ app.use('/api/*', async (c, next) => {
     await next();
   } else {
     try {
-      const userData = await c.env.WORDBENTO_KV.get(sessionId || accessToken, { type: 'json' });
+      const userData = await c.env.WORDBENTO_KV.get(accessToken || sessionId, { type: 'json' });
       // console.log('User Data Retrieved from KV:', userData);
       if (!userData) {
         // console.warn('Invalid session ID.');
