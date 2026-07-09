@@ -36,7 +36,8 @@ const Index = () => {
     isGenerating,
     queuePosition,
     fetchWord,
-    updateWordImageUrls
+    updateWordImageUrls,
+    updateWordCover // 需要传递给 FlashcardMode
   } = useWordCache();
 
   // const [lastSearchedWord, setLastSearchedWord] = useState('');
@@ -630,6 +631,7 @@ const Index = () => {
             onNext={handleNext}
             onPrevious={handlePrevious}
             onShowImageDialogChange={handleImageDialogStateChange}
+            onUpdateWordCover={updateWordCover}
           />
         )}
 

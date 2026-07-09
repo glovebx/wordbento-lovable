@@ -43,29 +43,25 @@ const EnlargedImageCarouselDialog: React.FC<EnlargedImageCarouselDialogProps> = 
   const [api, setApi] = useState<CarouselApi | null>(null); // State to hold the carousel API instance
   const hasTriggeredWordSwitch = useRef(false);
   const prevImageUrlsRef = useRef<string[] | undefined>(undefined);
-  const prevOpenRef = useRef(open);
+  const hasInitializedRef = useRef(false);
 
   // Effect to scroll to the correct image and handle index changes
   useEffect(() => {
     if (!api) return;
 
-    const justOpened = !prevOpenRef.current && open;
-    // Check if the array reference has changed, which is a good proxy for content change
-    const imagesChanged = prevImageUrlsRef.current !== imageUrls;
-
-    if (justOpened) {
-      // Dialog was just opened, go to the clicked image without animation
+    if (!hasInitializedRef.current) {
+      // Dialog just opened (component mounted), go to the clicked image without animation
+      hasInitializedRef.current = true;
       if (initialIndex !== null) {
         setTimeout(() => api.scrollTo(initialIndex, true), 0);
       }
-    } else if (imagesChanged) {
+    } else if (prevImageUrlsRef.current !== imageUrls) {
       // Images changed (word switched), jump to the first image without animation
       setTimeout(() => api.scrollTo(0, true), 0);
     }
 
-    // Update refs for the next render
+    // Update ref for the next render
     prevImageUrlsRef.current = imageUrls;
-    prevOpenRef.current = open;
 
     // --- Handle index change reporting ---
     if (onIndexChange) {
@@ -84,7 +80,7 @@ const EnlargedImageCarouselDialog: React.FC<EnlargedImageCarouselDialogProps> = 
       };
     }
 
-  }, [api, open, imageUrls, initialIndex, onIndexChange]);
+  }, [api, imageUrls, initialIndex, onIndexChange]);
 
   // Effect to handle swiping past the edges to switch words
   useEffect(() => {

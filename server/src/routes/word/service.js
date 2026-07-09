@@ -425,7 +425,7 @@ export const getTodayWords = async (c, db, userId, maxViewsId) => {
         .from(schema.word_views)
         .where(and(eq(schema.word_views.user_id, userId), gt(schema.word_views.id, parseInt(maxViewsId)), gte(schema.word_views.created_at, startStr), lte(schema.word_views.created_at, endStr)))
         .orderBy(desc(schema.word_views.id))
-        .limit(50);
+        .limit(100);
 
     const wordIds = [...new Set(wordViews.map(v => v.word_id))];
     if (wordIds.length === 0) {

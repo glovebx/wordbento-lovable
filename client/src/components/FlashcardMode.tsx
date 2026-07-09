@@ -23,7 +23,6 @@ import EnlargedImageCarouselDialog from '@/components/EnlargedImageCarouselDialo
 import DraggableButton from './DraggableButton';
 
 import { useEinkStatus } from '@/hooks/use-llm';
-
 import { useEinkPusher } from '@/hooks/use-eink-pusher';
 
 interface FlashcardModeProps {
@@ -31,6 +30,7 @@ interface FlashcardModeProps {
   onNext: () => void;
   onPrevious: () => void;
   onShowImageDialogChange?: (isOpen: boolean) => void;
+  onUpdateWordCover: (wordText: string, cover: { image_key: string } | null) => void;
 }
 
 const FlashcardMode: React.FC<FlashcardModeProps> = ({
@@ -38,8 +38,8 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   onNext,
   onPrevious,
   onShowImageDialogChange,
+  onUpdateWordCover,
 }) => {
-
   const isTouchDevice = useIsTouchDevice();
   const { isEinkConfigured, einkEndpoint, einkToken, isLoadingEinkStatus } = useEinkStatus(true);
   const { isPushing, pushImage } = useEinkPusher({ einkEndpoint, einkToken });
@@ -69,6 +69,10 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
         title: '已设为封面',
         description: '该图片已设为封面图片',
       });
+      const cover = wordData.cover 
+        ? { ...wordData.cover, image_key: imageKey ?? '' }
+        : { image_key: imageKey ?? '' }
+      onUpdateWordCover(wordData.word_text, cover)
     } catch (error) {
       console.error('Failed to set cover image:', error);
       toast({

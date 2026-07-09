@@ -232,6 +232,22 @@ export const useWordCache = () => {
         }
     }, []);
 
+    // cover 是一个字典对象，包含 image_key 字段
+    // 例如: { image_key: 'cover.jpg' }
+    const updateWordCover = useCallback((wordText: string, cover: { image_key: string } | null) => {
+        if (wordCacheRef.current.has(wordText)) {
+            const cachedData = wordCacheRef.current.get(wordText)!;
+            // 创建新对象，确保引用变化触发副作用
+            const newCachedData = {
+                ...cachedData,
+                cover
+            };
+            
+            wordCacheRef.current.set(wordText, newCachedData);
+            setCurrentWord(newCachedData);
+        }
+    }, []);    
+
     // Effect to handle WebSocket results
     useEffect(() => {
         if (taskResult) {
@@ -296,6 +312,7 @@ export const useWordCache = () => {
         queuePosition: taskResult?.queuePosition,
         fetchWord,
         updateWordImageUrls,
-        getWordDetails
+        getWordDetails,
+        updateWordCover
     };
 };
