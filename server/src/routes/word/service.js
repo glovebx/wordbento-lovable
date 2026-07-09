@@ -413,13 +413,37 @@ export const getReviewWords4Push = async (c, db, userId, words) => {
 };
 
 export const getTodayWords = async (c, db, userId, maxViewsId) => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
+    // const start = new Date();
+    // 这种做法是错误的，start.setHours(0, 0, 0, 0) 和 end.setHours(23, 59, 59, 999) 操作的是本地时间（Worker 运行在 Cloudflare 的边缘节点上，时区不一定是 UTC）。
+    // start.setHours(0, 0, 0, 0);
+    // const end = new Date();
+    // end.setHours(23, 59, 59, 999);
 
-    const startStr = toSqliteUtcString(start);
-    const endStr = toSqliteUtcString(end);
+    // const startStr = toSqliteUtcString(start);
+    // const endStr = toSqliteUtcString(end);
+
+    // 第1种做法
+    // const now = new Date();
+    // const year = now.getFullYear();
+    // const month = now.getMonth();
+    // const date = now.getDate();
+    // const start = new Date(Date.UTC(year, month, date, 0, 0, 0));
+    // const end = new Date(Date.UTC(year, month, date, 23, 59, 59));
+
+    // // Date.UTC 创建的 Date，toISOString() 就是 UTC 时间
+    // const startStr = start.toISOString().slice(0, 19).replace('T', ' ');  // "2026-07-09 00:00:00"
+    // const endStr = end.toISOString().slice(0, 19).replace('T', ' ');      // "2026-07-09 23:59:59"    
+
+    // 第2种做法
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const date = String(now.getUTCDate()).padStart(2, '0');
+    const startStr = `${year}-${month}-${date} 00:00:00`;
+    const endStr = `${year}-${month}-${date} 23:59:59`;
+
+    console.log('startStr', startStr)
+    console.log('endStr', endStr)
 
     const wordViews = await db.select({ id: schema.word_views.id, word_id: schema.word_views.word_id })
         .from(schema.word_views)
