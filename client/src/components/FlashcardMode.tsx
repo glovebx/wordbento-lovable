@@ -1,7 +1,7 @@
 /// <reference types="@types/dom-speech-recognition" />
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, /*Mic,*/ Info, Loader2, Send, Star } from 'lucide-react'; // Import Info icon for details
+import { ArrowLeft, ArrowRight, /*Mic,*/ Info, Loader2, Send, Share2, Star } from 'lucide-react'; // Import Info icon for details
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { useToast } from '@/components/ui/use-toast';
 import { WordDataType } from '@/types/wordTypes';
 import useIsTouchDevice from '@/hooks/use-is-touch-device';
-import { axiosPrivate } from '@/lib/axios';
+import { axiosPrivate, baseURL } from '@/lib/axios';
 import {
   Carousel,
   CarouselContent,
@@ -24,6 +24,7 @@ import DraggableButton from './DraggableButton';
 
 import { useEinkStatus } from '@/hooks/use-llm';
 import { useEinkPusher } from '@/hooks/use-eink-pusher';
+import useAuth from '@/hooks/auth/use-auth';
 
 interface FlashcardModeProps {
   wordData: WordDataType;
@@ -43,6 +44,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const isTouchDevice = useIsTouchDevice();
   const { isEinkConfigured, einkEndpoint, einkToken, isLoadingEinkStatus } = useEinkStatus(true);
   const { isPushing, pushImage } = useEinkPusher({ einkEndpoint, einkToken });
+  const { user } = useAuth();
 
   const [userInput, setUserInput] = useState('');
   const lastUserInputRef = useRef<string>('');
@@ -84,6 +86,95 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
       setIsSettingCover(false);
     }
   };
+
+  const handleShare = async () => {
+    const imageIndex = selectedImageIndex ?? 0;
+    const imageUrl = wordData.imageUrls?.[imageIndex];
+    if (!imageUrl) return;
+
+    try {
+      // Load images
+      const imageKey = imageUrl.split('/').pop();
+      const [img, qrImg] = await Promise.all([
+        loadImage(`${baseURL}/api/word/image/${imageKey}`),
+        loadImage('/alex-qr.jpg'),
+      ]);
+
+      // Create canvas and compose
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+
+      // Draw original image
+      ctx.drawImage(img, 0, 0);
+
+      // Draw QR code on bottom-right with padding
+      const qrSize = Math.min(img.width, img.height) * 0.2;
+      const padding = Math.round(Math.min(img.width, img.height) * 0.02);
+      const qrX = img.width - qrSize - padding;
+      const qrY = img.height - qrSize - padding;
+      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+      // Convert to blob
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('Failed to create blob')), 'image/jpeg', 0.9);
+      });
+
+      const file = new File([blob], `${wordData.word_text}.jpg`, { type: 'image/jpeg' });
+
+      try {
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({
+            title: wordData.word_text,
+            text: wordData.meaning || wordData.word_text,
+            files: [file],
+          });
+          return;
+        } 
+      } catch (err) {
+        console.error('Share failed:', err);
+      }
+      // // System share
+      // if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      //   await navigator.share({
+      //     title: wordData.word_text,
+      //     text: wordData.meaning || wordData.word_text,
+      //     files: [file],
+      //   });
+      // } else {
+        // Fallback: download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${wordData.word_text}.jpg`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({
+          title: '已保存到本地',
+          description: '您的浏览器不支持系统分享功能，已保存到本地相册',
+        });
+      // }
+    } catch (error) {
+      console.error('Share failed:', error);
+      toast({
+        title: '分享失败',
+        description: '生成分享图片时发生错误',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // Helper to load image with CORS support
+  function loadImage(src: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+      img.src = src;
+    });
+  }
 
   const handlePushToEink = () => {
     const imageIndexToPush = selectedImageIndex ?? 0;
@@ -437,7 +528,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                   <Info className="h-4 w-4 mr-2" />
                   {showDetails ? '隐藏详细' : '显示详细'}
               </Button>
-              {wordData.imageUrls && wordData.imageUrls.length > 0 && (
+              {wordData.imageUrls && wordData.imageUrls.length > 0 && user?.role === 'admin' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -450,6 +541,16 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                     <Star className={`mr-2 h-4 w-4 ${isCoverImage ? 'fill-yellow-400 text-yellow-400' : ''}`} />
                   )}
                   {isSettingCover ? '设置中...' : isCoverImage ? '封面图片' : '设为封面'}
+                </Button>
+              )}
+              {isTouchDevice && wordData.imageUrls && wordData.imageUrls.length > 0 && user?.role === 'admin' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleShare}
+                >
+                  <Share2 className="mr-2 h-4 w-4" />
+                  分享
                 </Button>
               )}
               {isEinkConfigured && (

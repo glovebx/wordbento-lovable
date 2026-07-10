@@ -67,7 +67,7 @@ const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-10 bg-background border-b shadow-sm">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="text-xl font-bold">4s背单词</div>
+          <div className="text-xl font-bold">背单词 <span className="text-sm text-muted-foreground"><a href="https://galley.metaerp.ai/" target="_blank">画廊</a></span></div>
 
           <div className="flex items-center gap-2">
             {/* View Mode Toggle */}

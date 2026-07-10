@@ -98,22 +98,6 @@ const StaticGlow: React.FC = () => (
   </div>
 );
 
-// 渐变文字
-const GradientText: React.FC<{ children: React.ReactNode; style?: React.CSSProperties }> = ({ children, style }) => (
-  <span
-    style={{
-      background: 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%)',
-      WebkitBackgroundClip: 'text',
-      WebkitTextFillColor: 'transparent',
-      backgroundClip: 'text',
-      color: 'transparent',
-      ...style,
-    }}
-  >
-    {children}
-  </span>
-);
-
 // 卡片容器 - 使用半透明实色替代 backdrop-filter
 const ContentCard: React.FC<{
   children: React.ReactNode;
@@ -180,6 +164,8 @@ const Badge: React.FC<{ children: React.ReactNode; color: string }> = ({ childre
       fontWeight: 600,
       letterSpacing: 0.5,
       textTransform: 'uppercase',
+      whiteSpace: 'nowrap',  // 添加这行，防止文字换行
+      flexShrink: 0,  // 可选：防止在 flex 容器中被压缩      
     }}
   >
     <div style={{ width: 5, height: 5, borderRadius: '50%', background: color }} />
@@ -240,31 +226,47 @@ const ShareCard: React.FC<ShareCardProps> = ({ wordData }) => {
           <div style={{ width: 36, height: 1, background: 'linear-gradient(to left, transparent, #3b82f6)' }} />
         </div>
 
-        {/* 单词标题 */}
-        <div style={{ position: 'relative', marginBottom: 16, textAlign: 'center' }}>
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 500,
-              height: 180,
-              background: 'radial-gradient(ellipse, rgba(59, 130, 246, 0.18) 0%, transparent 70%)',
-              zIndex: -1,
-            }}
-          />
-          <h1
-            style={{
-              fontSize: wordFontSize,
-              fontWeight: 800,
-              margin: 0,
-              letterSpacing: 3,
-              lineHeight: 1.2,
-            }}
+        {/* 单词标题 - 使用 SVG 实现渐变文字，兼容 html-to-image */}
+        <div style={{ position: 'relative', marginBottom: 16, textAlign: 'center', width: '100%', maxWidth: 976 }}>
+          <svg
+            width="100%"
+            height={wordFontSize + 40}
+            viewBox={`0 0 976 ${wordFontSize + 40}`}
+            preserveAspectRatio="xMidYMid meet"
+            style={{ display: 'block' }}
           >
-            <GradientText>{word_text}</GradientText>
-          </h1>
+            <defs>
+              <linearGradient id="wordGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#60a5fa" />
+                <stop offset="50%" stopColor="#a78bfa" />
+                <stop offset="100%" stopColor="#f472b6" />
+              </linearGradient>
+              {/* 光晕滤镜 */}
+              <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+                <feFlood floodColor="rgba(59, 130, 246, 0.3)" result="color" />
+                <feComposite in="color" in2="blur" operator="in" result="glow" />
+                <feMerge>
+                  <feMergeNode in="glow" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <text
+              x="50%"
+              y="50%"
+              dominantBaseline="middle"
+              textAnchor="middle"
+              fill="url(#wordGradient)"
+              fontFamily='"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+              fontSize={wordFontSize}
+              fontWeight="800"
+              letterSpacing="3"
+              filter="url(#glowFilter)"
+            >
+              {word_text}
+            </text>
+          </svg>
         </div>
 
         {/* 音标 */}
@@ -310,7 +312,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ wordData }) => {
         )}
 
         {/* 定义 */}
-        {meaning && (
+        {(definition || definitionZh) && (
           <p
             style={{
               fontSize: 24,
@@ -324,7 +326,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ wordData }) => {
             }}
           >
             {definition}
-            <br></br>
+            {definition && definitionZh && <br />}
             {definitionZh}
           </p>
         )}
@@ -365,7 +367,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ wordData }) => {
                   <Badge color="#60a5fa">词源分析</Badge>
                   <p style={{ fontSize: 24, color: '#cbd5e1', lineHeight: 1.7, margin: '12px 0 0 0' }}>
                     {etymology}
-                    <br></br>
+                    {etymologyZh && <br />}
                     {etymologyZh}
                   </p>
                 </div>
@@ -405,7 +407,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ wordData }) => {
                   <Badge color="#a78bfa">词缀分析</Badge>
                   <p style={{ fontSize: 24, color: '#cbd5e1', lineHeight: 1.7, margin: '12px 0 0 0' }}>
                     {affixes}
-                    <br></br>
+                    {affixesZh && <br />}
                     {affixesZh}
                   </p>
                 </div>
@@ -466,7 +468,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ wordData }) => {
                           }}
                         />
                         {example}
-                        <br></br>
+                        {examplesZh && examplesZh[i] && <br />}
                         {examplesZh && examplesZh[i]}
                       </div>
                     ))}               

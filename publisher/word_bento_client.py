@@ -132,7 +132,7 @@ def get_file_extension(url):
         return '.jpg'
     
 class WordBentoClient:
-    def __init__(self, base_url: str, auth_key: str, state_file: str = "word_state.json"):
+    def __init__(self, base_url: str, auth_key: str, state_file: str = "word_state.json", last_view_id_field = "latestViewsId"):
         """
         初始化WordBento客户端
         
@@ -144,6 +144,7 @@ class WordBentoClient:
         self.base_url = base_url.rstrip('/')
         self.auth_key = auth_key
         self.state_file = state_file
+        self.last_view_id_field = last_view_id_field
         self.session = requests.Session()
         self.timeout = 360
         
@@ -187,7 +188,7 @@ class WordBentoClient:
         Returns:
             int: 上次的latestViewsId，如果不存在返回0
         """
-        return self.state.get('latestViewsId', 0)
+        return self.state.get(self.last_view_id_field, 0)
 
     def save_state(self, latest_views_id: int) -> None:
         """
@@ -196,9 +197,9 @@ class WordBentoClient:
         Args:
             latest_views_id: 最新的视图ID
         """
-        self.state['latestViewsId'] = latest_views_id
+        self.state[self.last_view_id_field] = latest_views_id
         self._save_state()
-        print(f"状态已保存: latestViewsId = {latest_views_id}")
+        print(f"状态已保存: {self.last_view_id_field} = {latest_views_id}")
 
     def generate_cover_images(self, words: List[str]) -> Optional[List[str]]:
         """
@@ -351,7 +352,7 @@ class WordBentoClient:
             return
             
         # 3. 保存最新的latestViewsId
-        latest_views_id = word_data.get('latestViewsId', max_id)
+        latest_views_id = word_data.get(self.last_view_id_field, max_id)
         self.save_state(latest_views_id)
         
         # 4. 处理每个单词
@@ -444,7 +445,7 @@ class WordBentoClient:
             return
             
         # 3. 保存最新的 latestWordId
-        latest_views_id = word_data.get('latestWordId', max_id)
+        latest_views_id = word_data.get(self.last_view_id_field, max_id)
         self.save_state(latest_views_id)
         
         # 4. 处理每个单词（注意，因为是发布，每次仅获取一个单词）
