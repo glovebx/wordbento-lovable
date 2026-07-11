@@ -56,9 +56,17 @@ async function findRandomAggregatedWord(db, userId, mustHaveImage) {
     // 如果userId有效，则从word_views中获得最后一个word_id
     let lastViewedWordId = null;
     if (userId) {
-        const lastViewedResult = await db.select({ word_id: schema.word_views.word_id })
+        const query = db.select({ word_id: schema.word_views.word_id })
             .from(schema.word_views)
             .where(eq(schema.word_views.user_id, userId))
+            // .orderBy(desc(schema.word_views.id))
+            // .limit(1)
+
+        if (mustHaveImage) {
+            query.innerJoin(schema.images, eq(schema.word_views.word_id, schema.images.word_id));
+        }
+                    
+        const lastViewedResult = await query
             .orderBy(desc(schema.word_views.id))
             .limit(1);
         lastViewedWordId = lastViewedResult[0]?.word_id;
@@ -91,6 +99,7 @@ async function findRandomAggregatedWord(db, userId, mustHaveImage) {
 
     const word = await query.orderBy(asc(schema.words.id)).limit(1);
 
+    // 在 mustHaveImage = true 时，这里可能找不到符合条件的单词（恰好该单词还未生成图片时）
     if (word.length > 0) {
         // 4. Once we have a valid ID, fetch the full aggregated data.
         return getAggregatedWord(db, eq(schema.words.id, word[0].id));

@@ -32,6 +32,7 @@ interface HistoryTableProps {
   onDeleteResource: (resourceId: number) => void;
   onEditPlaylist: (resourceId: number) => void; // New prop
   onUpdateResource: (id: number, values: Partial<ResourceWithAttachments>) => void;
+  onUploadToRemote?: (resourceId: number) => void;
   totalCount: number;
   currentPage: number;
   onPageChange: (page: number) => void;
@@ -44,6 +45,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
   onDeleteResource,
   onEditPlaylist, // New prop
   onUpdateResource,
+  onUploadToRemote,
   totalCount,
   currentPage,
   onPageChange,
@@ -98,6 +100,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
                         onDeleteResource={onDeleteResource}
                         onEditPlaylist={onEditPlaylist}
                         onUpdateResource={onUpdateResource}
+                        onUploadToRemote={onUploadToRemote}
                       />
                     </td>
                   </tr>
@@ -161,6 +164,7 @@ export const HistoryTable: React.FC<HistoryTableProps> = ({
                                 onDeleteResource={onDeleteResource}
                                 onEditPlaylist={onEditPlaylist}
                                 onUpdateResource={onUpdateResource}
+                                onUploadToRemote={onUploadToRemote}
                             />
                         </TableCell>
                     </TableRow>

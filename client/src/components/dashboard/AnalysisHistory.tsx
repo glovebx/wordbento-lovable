@@ -25,6 +25,7 @@ const AnalysisHistory = () => {
   const [selectedResourceForPlaylist, setSelectedResourceForPlaylist] = useState<ResourceWithAttachments | null>(null);
   const [isAddingNewResource, setIsAddingNewResource] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -147,6 +148,25 @@ const AnalysisHistory = () => {
     }
   }, [resources]);
 
+  const handleUploadToRemote = useCallback(async (resourceId: number) => {
+    setIsUploading(true);
+    try {
+      const response = await axiosPrivate.post(`/api/analyze/sync-to-remote/${resourceId}`);
+      if (response.status === 200) {
+        toast({ title: "上传成功", description: "资源及音频已同步到远程服务器。" });
+      }
+    } catch (error: any) {
+      console.error('Failed to upload resource to remote:', error);
+      toast({
+        title: "上传失败",
+        description: error.response?.data?.message || error.message || "上传到远程服务器时发生错误。",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  }, [toast]);
+
   // 移除所有侧边栏相关的 UI 代码，只保留 Card 内容
   return (
     <div className="p-6 relative">
@@ -163,10 +183,12 @@ const AnalysisHistory = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle>解析历史</CardTitle>
-            {/* <Button onClick={handleAddNewResource} size="sm" className="flex items-center gap-1">
-              <PlusCircle className="h-4 w-4" />
-              新增
-            </Button> */}
+            {isUploading && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                上传中...
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -185,6 +207,7 @@ const AnalysisHistory = () => {
                 onDeleteResource={handleDeleteResource}
                 onEditPlaylist={handleEditPlaylist} // Pass the new handler
                 onUpdateResource={handleUpdateResource}
+                onUploadToRemote={handleUploadToRemote}
                 totalCount={totalCount}
                 currentPage={currentPage}
                 onPageChange={handlePageChange}

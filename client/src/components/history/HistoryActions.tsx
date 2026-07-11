@@ -12,7 +12,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { Edit, Trash2, ListPlus, ImageIcon, Loader2 } from "lucide-react";
+import { Edit, Trash2, ListPlus, ImageIcon, Loader2, Upload } from "lucide-react";
 import { axiosPrivate } from "@/lib/axios";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
@@ -106,7 +106,10 @@ interface HistoryActionsProps {
   onDeleteResource: (resourceId: number) => void;
   onEditPlaylist: (resourceId: number) => void;
   onUpdateResource: (id: number, values: Partial<ResourceWithAttachments>) => void;
+  onUploadToRemote?: (resourceId: number) => void;
 }
+
+const isLocal = window.location.hostname === 'localhost';
 
 export const HistoryActions: React.FC<HistoryActionsProps> = ({
   resource,
@@ -114,6 +117,7 @@ export const HistoryActions: React.FC<HistoryActionsProps> = ({
   onDeleteResource,
   onEditPlaylist,
   onUpdateResource,
+  onUploadToRemote,
 }) => {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -167,6 +171,11 @@ export const HistoryActions: React.FC<HistoryActionsProps> = ({
 
   return (
     <div className="flex items-center justify-center space-x-2">
+      {isLocal && onUploadToRemote && (
+        <Button variant="ghost" size="icon" onClick={() => onUploadToRemote(resource.id)} title="上传到远程">
+          <Upload className="h-4 w-4" />
+        </Button>
+      )}
       <Button variant="ghost" size="icon" onClick={handlePlaylistClick} title="编辑播放列表">
         <ListPlus className="h-4 w-4" />
       </Button>

@@ -528,6 +528,232 @@ analyze.get('/detail/:id', async (c) => {
   }
 });
 
+// 将本地资源同步到远程 Cloudflare 的 DB + R2
+analyze.post('/sync-to-remote/:id', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+  const resourceId = parseInt(c.req.param('id'), 10);
+  const REMOTE_HOST = c.env.REMOTE_API_SERVER_ENDPOINT;
+  const REMOTE_TOKEN = c.env.REMOTE_API_SERVER_TOKEN;
+
+  try {
+    // 1. 从本地 DB 获取完整资源
+    const resourceRows = await db.select().from(schema.resources).where(eq(schema.resources.id, resourceId)).limit(1);
+    if (resourceRows.length === 0) {
+      return c.json({ message: 'Resource not found.' }, 404);
+    }
+    const resource = resourceRows[0];
+
+    // 2. 获取附件
+    const attachmentRows = await db.select().from(schema.attachments).where(eq(schema.attachments.resource_id, resourceId)).orderBy(desc(schema.attachments.id)).limit(1);
+    // const attachments = attachmentRows.map(att => ({
+    //   id: att.id,
+    //   title: att.title,
+    //   thumbnail: att.thumbnail,
+    //   duration: att.duration,
+    //   audioKey: att.audio_key,
+    //   videoKey: att.video_key,
+    //   captionTxt: att.caption_txt,
+    //   captionSrt: att.caption_srt,
+    // }));
+    if (attachmentRows.length === 0) {
+      return c.json({ message: 'Attachment not found.' }, 404);
+    }    
+    const attachment = attachmentRows[0];
+
+    // 3. 同步资源数据到远程 DB
+    const syncPayload = {
+      // resource: {
+      //   user_id: resource.user_id,
+      //   title: resource.title,
+      //   sourceType: resource.source_type,
+      //   examType: resource.exam_type,
+      //   content: resource.content,
+      //   content_md5: resource.content_md5,
+      //   status: resource.status,
+      //   words: resource.result,
+      //   error: resource.error,
+      //   fee: resource.fee,
+      //   uuid: resource.uuid,
+      //   related_uuids: resource.related_uuids,
+      //   created_at: resource.created_at,
+      //   updated_at: resource.updated_at,
+      // },
+      resource,
+      attachment,
+    };
+
+    const syncResponse = await fetch(`${REMOTE_HOST}/api/analyze/sync-resource`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Wordbento-Auth-Key ${REMOTE_TOKEN}`, 
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify(syncPayload),
+    });
+
+    if (!syncResponse.ok) {
+      console.log('Remote sync response:', syncResponse.statusText);
+      throw new Error(`Remote sync failed: ${syncResponse.status} ${syncResponse.statusText}`);
+    }
+
+    const syncResult = await syncResponse.json();
+    console.log('Remote sync response:', syncResult);
+
+    // 4. 同步 R2 文件（audio）
+    if (attachment.audio_key) {
+      try {
+        const object = await c.env.WORDBENTO_R2.get(attachment.audio_key);
+        if (object) {
+          const blob = await object.blob();
+          const arrayBuffer = await blob.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          let binary = '';
+          for (let i = 0; i < uint8Array.length; i++) {
+            binary += String.fromCharCode(uint8Array[i]);
+          }
+          const base64 = btoa(binary);
+          const contentType = blob.type || 'audio/mpeg';
+
+          const uploadResponse = await fetch(`${REMOTE_HOST}/api/analyze/upload-r2-file`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Wordbento-Auth-Key ${REMOTE_TOKEN}`, 
+              'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ key: attachment.audio_key, data: base64, contentType }),
+          });
+          const uploadResult = await uploadResponse.json();
+          console.log('R2 upload response:', uploadResult);
+        } else {
+          console.warn(`R2 object not found: ${attachment.audio_key}`);
+        }
+      } catch (r2Error) {
+        console.error(`Failed to sync R2 file ${attachment.audio_key}:`, r2Error);
+      }
+    }
+
+    return c.json({ message: 'Sync completed successfully.', uuid: resource.uuid }, 200);
+  } catch (error) {
+    console.error('Failed to sync resource to remote:', error);
+    return c.json({ message: 'Internal Server Error' }, 500);
+  }
+});
+
+// 从本地同步资源到远程（去重，根据 uuid 判断）
+// 该api仅在远程被调用
+analyze.post('/sync-resource', async (c) => {  
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+
+  let body;
+  try {
+    body = await c.req.json();
+  } catch (e) {
+    return c.json({ message: 'Invalid JSON body' }, 400);
+  }
+
+  const { resource, attachment } = body;
+  if (!resource || !resource.uuid) {
+    return c.json({ message: 'Missing resource or resource.uuid' }, 400);
+  }
+
+  try {
+    // 检查是否已存在（按 uuid）
+    const existing = await db.select({ id: schema.resources.id })
+      .from(schema.resources)
+      .where(eq(schema.resources.uuid, resource.uuid))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return c.json({ message: 'Resource already exists, skipped.', uuid: resource.uuid }, 200);
+    }
+
+    // 插入资源
+    const inserted = await db.insert(schema.resources).values({
+      user_id: resource.user_id ?? 0,
+      title: resource.title ?? '',
+      source_type: resource.source_type ?? 'url',
+      content: resource.content ?? '',
+      exam_type: resource.exam_type ?? '',
+      content_md5: resource.content_md5 ?? '',
+      status: resource.status ?? 'pending',
+      result: resource.result ?? null,
+      error: resource.error ?? null,
+      fee: resource.fee ?? 0,
+      uuid: resource.uuid,
+      related_uuids: resource.related_uuids ?? null,
+      created_at: resource.created_at ?? null,
+      updated_at: resource.updated_at ?? null,
+    }).returning().get();
+
+    if (!inserted) {
+      throw new Error('Failed to insert resource.');
+    }
+
+    // 插入附件
+    if (attachment) {
+      await db.insert(schema.attachments).values({
+        resource_id: inserted.id,
+        title: attachment.title ?? null,
+        thumbnail: attachment.thumbnail ?? null,
+        duration: attachment.duration ?? null,
+        audio_key: attachment.audio_key ?? null,
+        video_key: attachment.video_key ?? null,
+        caption_txt: attachment.caption_txt ?? null,
+        caption_srt: attachment.caption_srt ?? null,
+      });
+    }
+
+    console.log(`Resource synced successfully: ${resource.uuid}`);
+    return c.json({ message: 'Resource synced successfully.', uuid: resource.uuid }, 201);
+  } catch (error) {
+    console.error('Error syncing resource:', error);
+    return c.json({ message: 'Internal Server Error' }, 500);
+  }
+});
+
+// 接收本地上传的 R2 文件（audio/video），写入远程 R2
+// 该api仅在远程被调用
+analyze.post('/upload-r2-file', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  let key, dataBase64, contentType;
+  try {
+    const body = await c.req.json();
+    key = body.key;
+    dataBase64 = body.data;
+    contentType = body.contentType || 'application/octet-stream';
+    if (!key || !dataBase64) {
+      return c.json({ message: 'Missing key or data' }, 400);
+    }
+  } catch (e) {
+    return c.json({ message: 'Invalid JSON body' }, 400);
+  }
+
+  try {
+    const fileBuffer = Uint8Array.from(atob(dataBase64), c => c.charCodeAt(0));
+    await c.env.WORDBENTO_R2.put(key, fileBuffer, {
+      httpMetadata: { contentType },
+    });
+    console.log(`R2 file uploaded successfully: ${key}`);
+    return c.json({ message: 'File uploaded to R2 successfully.', key }, 201);
+  } catch (error) {
+    console.error('Error uploading file to R2:', error);
+    return c.json({ message: 'Internal Server Error' }, 500);
+  }
+});
 
 // Delete upload (admin only)
 analyze.delete('/detail/:id', async (c) => {
