@@ -106,7 +106,7 @@ interface HistoryActionsProps {
   onDeleteResource: (resourceId: number) => void;
   onEditPlaylist: (resourceId: number) => void;
   onUpdateResource: (id: number, values: Partial<ResourceWithAttachments>) => void;
-  onUploadToRemote?: (resourceId: number) => void;
+  onUploadToRemote?: (resourceId: number) => Promise<void>;
 }
 
 const isLocal = window.location.hostname === 'localhost';
@@ -121,10 +121,26 @@ export const HistoryActions: React.FC<HistoryActionsProps> = ({
 }) => {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = React.useState(false);
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [isUploadConfirmOpen, setIsUploadConfirmOpen] = React.useState(false);
   const [isCarouselOpen, setIsCarouselOpen] = React.useState(false);
   const [generatedImages, setGeneratedImages] = React.useState<string[]>([]);
   const [isTitleConfirmOpen, setIsTitleConfirmOpen] = React.useState(false);
   const [editableTitle, setEditableTitle] = React.useState("");
+  const handleConfirmUpload = async () => {
+    setIsUploadConfirmOpen(false);
+    setIsUploading(true);
+    try {
+      if (onUploadToRemote) {
+        await onUploadToRemote(resource.id);
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleEditClick = () => {
     onEditResource(resource.id);
   };
@@ -172,8 +188,8 @@ export const HistoryActions: React.FC<HistoryActionsProps> = ({
   return (
     <div className="flex items-center justify-center space-x-2">
       {isLocal && onUploadToRemote && (
-        <Button variant="ghost" size="icon" onClick={() => onUploadToRemote(resource.id)} title="上传到远程">
-          <Upload className="h-4 w-4" />
+        <Button variant="ghost" size="icon" onClick={() => setIsUploadConfirmOpen(true)} title="上传到远程" disabled={isUploading}>
+          {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
         </Button>
       )}
       <Button variant="ghost" size="icon" onClick={handlePlaylistClick} title="编辑播放列表">
@@ -207,6 +223,22 @@ export const HistoryActions: React.FC<HistoryActionsProps> = ({
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-500 hover:bg-red-600 text-white">
               删除
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isUploadConfirmOpen} onOpenChange={setIsUploadConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认上传到远程</AlertDialogTitle>
+            <AlertDialogDescription>
+              这将把此条解析记录及其音频文件同步到远程服务器 (worddev.metaerp.ai)。
+              如果远程已存在相同资源则自动跳过。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmUpload}>确认上传</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

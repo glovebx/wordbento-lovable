@@ -32,7 +32,7 @@ interface HistoryTableProps {
   onDeleteResource: (resourceId: number) => void;
   onEditPlaylist: (resourceId: number) => void; // New prop
   onUpdateResource: (id: number, values: Partial<ResourceWithAttachments>) => void;
-  onUploadToRemote?: (resourceId: number) => void;
+  onUploadToRemote?: (resourceId: number) => Promise<void>;
   totalCount: number;
   currentPage: number;
   onPageChange: (page: number) => void;
