@@ -5,7 +5,6 @@ import { sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { isQuoted, removeQuotes } from '../../utils/languageParser';
 import LanguageUtils from '../../utils/languageUtils';
-import { toSqliteUtcString } from '../../utils/dateUtils';
 import { compressImageBufferWithPronunciation } from '../../utils/imageUtils'; // Import the new image utility
 import { generateImageByAi, generatePushImageByAi } from './ai';
 import { checkAndConsumeFreeQuota } from '../../utils/security';
@@ -130,6 +129,8 @@ async function getAdjacentWord(db, slug, mode, userId, mustHaveImage) {
     if (mustHaveImage) {
         query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
     }
+
+    // 这里必须过滤已经掌握的单词
 
     // query = applyArchiveFilter(query, userId);
     query = query.orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id));
