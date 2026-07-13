@@ -245,10 +245,10 @@ export const posterStyle = [
     "style": "In the style of Jean-Michel Basquiat, graffiti-like marks, anatomical sketches, crown motifs",
     "desc": "让-米歇尔·巴斯奎特风格，涂鸦般的标记，解剖学草图，皇冠图案 - 适合：街头、权力、边缘声音的单词"
   },
-  {
-    "style": "In the style of Yayoi Kusama, infinite polka dots, mirrored repetitions, obsessive patterns",
-    "desc": "草间弥生风格，无限的波点，镜面般的重复，执着的图案 - 适合：消融、无限、自我疗愈的单词"
-  },
+  // {
+  //   "style": "In the style of Yayoi Kusama, infinite polka dots, mirrored repetitions, obsessive patterns",
+  //   "desc": "草间弥生风格，无限的波点，镜面般的重复，执着的图案 - 适合：消融、无限、自我疗愈的单词"
+  // },
   {
     "style": "In the style of Alphonse Mucha, flowing hair, halo-like circular frames, pastel floral colors",
     "desc": "阿尔丰斯·穆夏风格，飘逸的长发，光环般的圆形边框，粉彩花卉色调 - 适合：四季、女性之美、装饰性优雅的单词"

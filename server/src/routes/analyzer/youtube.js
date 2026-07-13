@@ -54,15 +54,17 @@ export const pollingStatusFromScraper = async (c, taskId) => {
   // Example using fetch:
 
   const YOUTUBE_SCRAPER_POLLING_ENDPOINT = c.env.YOUTUBE_SCRAPER_ENDPOINT + '/tasks/' + taskId;
-  console.log(`YOUTUBE_SCRAPER_POLLING_ENDPOINT: ${YOUTUBE_SCRAPER_POLLING_ENDPOINT}`);
+  // console.log(`YOUTUBE_SCRAPER_POLLING_ENDPOINT: ${YOUTUBE_SCRAPER_POLLING_ENDPOINT}`);
 
   try {
 
-      const response = await fetch(YOUTUBE_SCRAPER_POLLING_ENDPOINT, {
+    // 加上timeout 60s
+    const response = await fetch(YOUTUBE_SCRAPER_POLLING_ENDPOINT, {
           method: 'GET',
           headers: {
               'Content-Type': 'application/json',
-          }
+          },
+          timeout: 60000,
       });
 
       if (!response.ok) {

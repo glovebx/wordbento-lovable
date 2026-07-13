@@ -158,6 +158,7 @@ export const gallery = sqliteTable('gallery', {
   id: integer('id', { mode: 'number'}).primaryKey({ autoIncrement: true }),
   word_id: integer('word_id').notNull().references(() => words.id, { onDelete: 'cascade' }),
   image_id: integer('image_id').notNull().references(() => images.id, { onDelete: 'cascade' }),
+  user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   background_color: text('background_color').notNull(),
   accent_color: text('accent_color').notNull(),
   blob1_color: text('blob1_color').notNull(),
@@ -167,5 +168,5 @@ export const gallery = sqliteTable('gallery', {
   position_x: real('position_x').notNull(),
   position_y: real('position_y').notNull().default(0),
 }, (table) => [
-    index('idx_word_image').on(table.word_id, table.image_id),
+    index('idx_user_word_image').on(table.user_id, table.word_id, table.image_id),
 ]);

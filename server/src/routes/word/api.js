@@ -228,6 +228,7 @@ word.post('/gallery/save', async (c) => {
         texture_src: image_key,
         position_x: position_x ?? 0,
         position_y: position_y ?? 0,
+        user_id: user.id,
       });
 
       results.push({ word_text, image_key, status: 'saved' });
@@ -283,7 +284,8 @@ word.get('/gallery/get/:limit', async (c) => {
       id: schema.gallery.id, // Include id for next page pagination
     })
       .from(schema.gallery)
-      .leftJoin(schema.words, eq(schema.gallery.word_id, schema.words.id));
+      .leftJoin(schema.words, eq(schema.gallery.word_id, schema.words.id))
+      .where(eq(schema.gallery.user_id, user.id));
 
     if (maxId) {
       query = query.where(lt(schema.gallery.id, maxId));

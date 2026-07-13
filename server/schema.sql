@@ -247,6 +247,7 @@ CREATE TABLE IF NOT EXISTS gallery (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     word_id INTEGER NOT NULL,       -- 外键，关联到 words 表的 id
     image_id INTEGER NOT NULL,       -- 外键，关联到 images 表的 id
+    user_id INTEGER NOT NULL,       -- 外键，关联到 users 表的 id
 
     background_color TEXT NOT NULL,
     accent_color TEXT NOT NULL,
@@ -258,5 +259,6 @@ CREATE TABLE IF NOT EXISTS gallery (
     position_y REAL NOT NULL DEFAULT 0,
     
     FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE,
-    FOREIGN KEY (image_id) REFERENCES images(id) ON DELETE CASCADE
+    FOREIGN KEY (image_id) REFERENCES images(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
