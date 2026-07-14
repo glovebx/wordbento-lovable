@@ -8,9 +8,8 @@ import LoadingFallback from '@/components/LoadingFallback';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
-import { Home, Loader2, FileDown, Send } from 'lucide-react';
+import { Home, Loader2, Send } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { usePdfExporter } from '@/hooks/use-pdf-exporter';
 import { useEinkStatus } from '@/hooks/use-llm';
 import { useEinkPusher } from '@/hooks/use-eink-pusher';
 import { axiosPrivate } from '@/lib/axios';
@@ -22,7 +21,6 @@ const WordHistoryPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  const { isExporting, exportToPdf } = usePdfExporter();
   const { toast } = useToast();
 
   // Eink Pusher State and Hooks
@@ -75,17 +73,17 @@ const WordHistoryPage: React.FC = () => {
     fetchWordHistory(1, debouncedSearchTerm);
   }, [isAuthenticated, navigate, debouncedSearchTerm, fetchWordHistory]);
 
-  useEffect(() => {
-    // Preload the PDF generation libraries in the background
-    // after the main page content has likely loaded, to improve
-    // the perceived performance of the PDF export button.
-    const timer = setTimeout(() => {
-      import('@react-pdf/renderer');
-      import('@/components/pdf/PdfDocument');
-    }, 3000); // 3-second delay
+  // useEffect(() => {
+  //   // Preload the PDF generation libraries in the background
+  //   // after the main page content has likely loaded, to improve
+  //   // the perceived performance of the PDF export button.
+  //   const timer = setTimeout(() => {
+  //     import('@react-pdf/renderer');
+  //     import('@/components/pdf/PdfDocument');
+  //   }, 3000); // 3-second delay
 
-    return () => clearTimeout(timer);
-  }, []); // Run only once when the component mounts
+  //   return () => clearTimeout(timer);
+  // }, []); // Run only once when the component mounts
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= pagination.totalPages) {
@@ -93,10 +91,10 @@ const WordHistoryPage: React.FC = () => {
     }
   };
 
-  const handleExport = () => {
-    const wordsToExport = history.slice(0, 10);
-    exportToPdf(wordsToExport, 'word-history');
-  };
+  // const handleExport = () => {
+  //   const wordsToExport = history.slice(0, 10);
+  //   exportToPdf(wordsToExport, 'word-history');
+  // };
 
   if (!user && !isAuthenticated) {
     return <LoadingFallback message="Redirecting..." />;
@@ -125,14 +123,14 @@ const WordHistoryPage: React.FC = () => {
           <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <CardTitle>浏览历史</CardTitle>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-              <Button onClick={handleExport} disabled={isExporting || history.length === 0}>
+              {/* <Button onClick={handleExport} disabled={isExporting || history.length === 0}>
                 {isExporting ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <FileDown className="mr-2 h-4 w-4" />
                 )}
                 导出为PDF
-              </Button>
+              </Button> */}
               <Button onClick={handleFetchReviewImages} disabled={isFetchingReviewImages || !isEinkConfigured}>
                 {isFetchingReviewImages ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -45,7 +45,7 @@ export const generateWordCard = async (c, db, userId, slug) => {
 
         log2WordViews(db, userId, newWord.id);
         const newlyInsertedContent = await db.select().from(schema.word_content).where(eq(schema.word_content.word_id, newWord.id));
-        return formatDbResultToWordResponse(c, newWord, newlyInsertedContent, []);
+        return formatDbResultToWordResponse(c, userId, newWord, newlyInsertedContent, []);
     } catch (dbError) {
         if (newWord) {
             await db.delete(schema.words).where(eq(schema.words.id, newWord.id));
