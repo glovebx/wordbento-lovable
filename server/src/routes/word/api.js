@@ -490,6 +490,19 @@ word.post('/tts', async (c) => {
     return c.json({ message: 'Invalid JSON body' }, 400);
   }
 
+  // 如果example为空，则从images表中获取prompt字段
+  if (!example) {
+    // 用text需要关联words表，然后再关联images表
+    const { words } = schema;
+    const db = drizzle(c.env.DB, { schema });
+    const result = await db.select({ prompt: images.prompt })
+      .from(images)
+      .innerJoin(words, eq(images.word_id, words.id))
+      .where(eq(words.word_text, text))
+      .limit(1);
+    example = result[0]?.prompt || '';
+  }
+
   try {
     const fullText = `${text}, ${text}, ${example || text}`;
     const payload = {

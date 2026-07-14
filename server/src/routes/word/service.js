@@ -13,31 +13,6 @@ import { generateWordCard } from '../../utils/aiService';
 import { formatDbResultToWordResponse } from '../../utils/dbUtils';
 
 /**
- * 应用归档过滤（排除已归档的单词）
- */
-function applyArchiveFilter4Words(query, userId) {
-    if (userId) {
-        query.leftJoin(schema.archives, and(
-            eq(schema.words.id, schema.archives.word_id),
-            eq(schema.archives.user_id, userId)
-        ));
-        query.where(isNull(schema.archives.word_id));
-    }
-    return query;
-}
-
-function applyArchiveFilter4WordViews(query, userId) {
-    if (userId) {
-        query.leftJoin(schema.archives, and(
-            eq(schema.word_views.word_id, schema.archives.word_id),
-            eq(schema.archives.user_id, userId)
-        ));
-        query.where(isNull(schema.archives.word_id));
-    }
-    return query;
-}
-
-/**
  * 构建查询 words 表的基础条件（包含 mustHaveImage 和 userId 归档过滤）
  * @param db Drizzle 数据库实例
  * @param fields 要查询的字段
@@ -70,18 +45,19 @@ async function findRandomAggregatedWord(db, userId, mustHaveImage) {
     // 如果userId有效，则从word_views中获得最后一个word_id
     let lastViewedWordId = null;
     if (userId) {
-        const query = db.select({ word_id: schema.word_views.word_id })
-            .from(schema.word_views)
-            .where(eq(schema.word_views.user_id, userId))
-            // .orderBy(desc(schema.word_views.id))
-            // .limit(1)
+        let query = db.select({ word_id: schema.word_views.word_id })
+            .from(schema.word_views);
 
         if (mustHaveImage) {
-            query.innerJoin(schema.images, eq(schema.word_views.word_id, schema.images.word_id));
+            query = query.innerJoin(schema.images, eq(schema.word_views.word_id, schema.images.word_id));
         }
 
-        // query = applyArchiveFilter4WordViews(query, userId)
-                    
+        if (userId) {
+            query = query.where(and(eq(schema.word_views.user_id, userId), sql`NOT EXISTS (SELECT 1 FROM ${schema.archives} WHERE ${schema.archives.word_id} = ${schema.word_views.word_id} AND ${schema.archives.user_id} = ${userId})`));
+        } else {
+            query = query.where(eq(schema.word_views.user_id, userId));
+        }
+
         const lastViewedResult = await query
             .orderBy(desc(schema.word_views.id))
             .limit(1);
@@ -108,10 +84,6 @@ async function findRandomAggregatedWord(db, userId, mustHaveImage) {
     if (mustHaveImage) {
         query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
     }
-    // if (userId) {
-    //     const subquery = db.select({ word_id: schema.archives.word_id }).from(schema.archives).where(eq(schema.archives.user_id, userId));
-    //     query.where(notInArray(schema.words.id, subquery));
-    // }
 
     const word = await query.orderBy(asc(schema.words.id)).limit(1);
 
@@ -140,17 +112,23 @@ async function getAdjacentWord(db, slug, mode, userId, mustHaveImage) {
         : lt(schema.words.id, wordId);
 
     let query = db.select({ id: schema.words.id })
-        .from(schema.words)
-        .where(condition);
+        .from(schema.words);
 
     if (mustHaveImage) {
-        query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
+        query = query.innerJoin(schema.images, eq(schema.words.id, schema.images.word_id));
+    }
+    // 这里必须过滤已经掌握的单词
+    if (userId) {
+        query = query.where(and(condition, sql`NOT EXISTS (SELECT 1 FROM ${schema.archives} WHERE ${schema.archives.word_id} = ${schema.words.id} AND ${schema.archives.user_id} = ${userId})`));
+    } else {
+        query = query.where(condition);
     }
 
-    // 这里必须过滤已经掌握的单词
-    // query = applyArchiveFilter4Words(query, userId);
-    query = query.orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id));
+    query = query.orderBy(
+        mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id));
     query = query.limit(1);
+
+    // console.log('query ==>', query.toSQL());
 
     const nextIdResult = await query;
     if (nextIdResult.length > 0) {
@@ -209,7 +187,7 @@ export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
     if (searchSlug) {
         // console.log(`Searching for word: ${searchSlug} with mode: ${mode}`);
         if (mode !== NavigationMode.Search) {
-            // 翻页
+            // 翻页，带上是否已经掌握的标志
             wordDetails = await getAdjacentWord(db, searchSlug, mode, userId, mustHaveImage);
         } else {
             wordDetails = await getAggregatedWord(db, eq(schema.words.word_text, searchSlug));

@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS images (
     FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE
 );
 
--- videos 表：存储单词关联的AI视频
+-- videos 表：存储单词关联的AI音频
 CREATE TABLE IF NOT EXISTS audios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     word_id INTEGER NOT NULL,       -- 外键，关联到 words 表的 id
