@@ -8,7 +8,7 @@ const toSqliteUtcString = (date) => {
            `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`;
 };
 
-export const formatDbResultToWordResponse = (c, word, contentRecords, imageRecords) => {
+export const formatDbResultToWordResponse = (c, userId, word, contentRecords, imageRecords) => {
     const content = {};
     contentRecords.forEach(record => {
         if (!content[record.content_type]) {
@@ -22,13 +22,24 @@ export const formatDbResultToWordResponse = (c, word, contentRecords, imageRecor
         }
     });
 
-    const imageUrls = (imageRecords && imageRecords.length > 0) && imageRecords.map(img => img.image_key.startsWith('http') ? img.image_key : `${c.env.VITE_IMG_URL}/${img.image_key}`) || [];
-    const coverImage = imageRecords.find(img => img.is_cover) || {};
-    let cover = {}
-    if (coverImage.image_key) {
-        // cover 仅需要image_key 和 prompt 字段
-        cover['image_key'] = coverImage.image_key
-        cover['prompt'] = coverImage.prompt || '';
+    let imageUrls = (imageRecords && imageRecords.length > 0) && imageRecords.map(img => img.image_key.startsWith('http') ? img.image_key : `${c.env.VITE_IMG_URL}/${img.image_key}`) || [];
+    let cover = {}    
+    // 系统管理员才返回全部，其他免费用户仅返回第一张图片
+    if (userId === 1) {
+        const coverImage = imageRecords.find(img => img.is_cover) || {};
+        if (coverImage.image_key) {
+            // cover 仅需要image_key 和 prompt 字段
+            cover['image_key'] = coverImage.image_key
+            cover['prompt'] = coverImage.prompt || '';
+        }
+    } else if (imageUrls.length > 0) {
+        imageUrls = imageUrls.slice(0, 1);        
+        const coverImage = imageRecords.find(img => img.image_key === imageUrls[0]) || {};
+        if (coverImage.image_key) {
+            // cover 仅需要image_key 和 prompt 字段
+            cover['image_key'] = coverImage.image_key
+            cover['prompt'] = coverImage.prompt || '';
+        }
     }
 
     return {

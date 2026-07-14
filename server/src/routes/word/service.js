@@ -15,9 +15,24 @@ import { formatDbResultToWordResponse } from '../../utils/dbUtils';
 /**
  * 应用归档过滤（排除已归档的单词）
  */
-function applyArchiveFilter(query, userId) {
+function applyArchiveFilter4Words(query, userId) {
     if (userId) {
-        return query.where(isNull(schema.archives.word_id));
+        query.leftJoin(schema.archives, and(
+            eq(schema.words.id, schema.archives.word_id),
+            eq(schema.archives.user_id, userId)
+        ));
+        query.where(isNull(schema.archives.word_id));
+    }
+    return query;
+}
+
+function applyArchiveFilter4WordViews(query, userId) {
+    if (userId) {
+        query.leftJoin(schema.archives, and(
+            eq(schema.word_views.word_id, schema.archives.word_id),
+            eq(schema.archives.user_id, userId)
+        ));
+        query.where(isNull(schema.archives.word_id));
     }
     return query;
 }
@@ -64,6 +79,8 @@ async function findRandomAggregatedWord(db, userId, mustHaveImage) {
         if (mustHaveImage) {
             query.innerJoin(schema.images, eq(schema.word_views.word_id, schema.images.word_id));
         }
+
+        // query = applyArchiveFilter4WordViews(query, userId)
                     
         const lastViewedResult = await query
             .orderBy(desc(schema.word_views.id))
@@ -131,8 +148,7 @@ async function getAdjacentWord(db, slug, mode, userId, mustHaveImage) {
     }
 
     // 这里必须过滤已经掌握的单词
-
-    // query = applyArchiveFilter(query, userId);
+    // query = applyArchiveFilter4Words(query, userId);
     query = query.orderBy(mode === NavigationMode.Next ? asc(schema.words.id) : desc(schema.words.id));
     query = query.limit(1);
 
@@ -220,7 +236,7 @@ export const searchWord = async (c, db, userId, slug, mode, mustHaveImage) => {
     //   }
 
     if (wordDetails) {
-        const wordData = formatDbResultToWordResponse(c, wordDetails.word, wordDetails.contentRecords, wordDetails.imageRecords);
+        const wordData = formatDbResultToWordResponse(c, userId, wordDetails.word, wordDetails.contentRecords, wordDetails.imageRecords);
         return c.json(wordData, 200);
     }
 
@@ -296,12 +312,12 @@ function aggregateWordDetails(rows) {
 }
 
 
-const getWordDetails = async (c, db, word) => {
+const getWordDetails = async (c, userId, db, word) => {
     const [contentRecords, imageRecords] = await Promise.all([
         db.select().from(schema.word_content).where(eq(schema.word_content.word_id, word.id)),
         db.select().from(schema.images).where(eq(schema.images.word_id, word.id)),
     ]);
-    return formatDbResultToWordResponse(c, word, contentRecords, imageRecords);
+    return formatDbResultToWordResponse(c, userId, word, contentRecords, imageRecords);
 };
 
 const WORD_IMAGE_SIZE = 100 * 1024; // 100KB
@@ -468,7 +484,7 @@ export const getTodayWords = async (c, db, userId, maxViewsId) => {
 
     const words = await db.select().from(schema.words).where(inArray(schema.words.id, wordIds));
     const successfulWords = await Promise.all(words.map(async (word) => {
-        const details = await getWordDetails(c, db, word);
+        const details = await getWordDetails(c, userId, db, word);
         return { ...details, text: `${details.word_text}\n\n${details.phonetic}` };
     }));
 
@@ -479,14 +495,14 @@ export const getTodayWords = async (c, db, userId, maxViewsId) => {
     };
 };
 
-export const getSequenceWords = async (c, db, limit, maxWordsId) => {
+export const getSequenceWords = async (c, userId, db, limit, maxWordsId) => {
     const words = await db.select().from(schema.words).where(gt(schema.words.id, parseInt(maxWordsId))).limit(limit);
     if (words.length === 0) {
         return { data: [], totalCount: 0 };
     }
 
     const successfulWords = await Promise.all(words.map(async (word) => {
-        const details = await getWordDetails(c, db, word);
+        const details = await getWordDetails(c, userId, db, word);
         return { ...details, text: `${details.word_text} ${details.phonetic}` };
     }));
 

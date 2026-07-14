@@ -445,7 +445,7 @@ word.post('/sequence', async (c) => {
     const db = drizzle(c.env.DB, { schema });
 
     try {
-        const result = await getSequenceWords(c, db, limit, maxWordsId);
+        const result = await getSequenceWords(c, user.id, db, limit, maxWordsId);
         return c.json(result, 200);
     } catch (error) {
         console.error("Failed to get sequence words:", error);

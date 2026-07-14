@@ -481,15 +481,15 @@ const choosePosterStyle = () => {
 }
 
 const generatePosterPromptWithExample = (word, language, pronunciation, exampleSentence, style) => {
-    return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate whole sentence as text on the image. Crucial: sentence must be highly legible. Style: ${style}.`;
+    return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate whole sentence as text on the image. Crucial: The whole sentence must be sharply focused and easy to read, acting as a central design element impossible to ignore. Style: ${style}.`;
 };
 
 const generatePosterPromptWithoutExample = (word, language, pronunciation, style) => {
-    return `Conceptual poster for ${language} word "${word}": visually define its essence. Title "${word}" large/bold as focal point. Imagery conveys concept intuitively to non-speakers via evocative metaphor. Style: ${style}.`;
+    return `Conceptual poster for ${language} word "${word}": visually define its essence. Title "${word}" large/bold as focal point. Imagery conveys concept intuitively to non-speakers via evocative metaphor. Crucial: All texts must be sharply focused and easy to read, acting as a central design element impossible to ignore.Style: ${style}.`;
 };
 
 const generatePushPosterPrompt = (words, language, style) => {
-    return `A vertical poster in 9:16 aspect ratio. Must include exactly ${words.length} distinct ${language} words, each only once, no repetition: ${words.join(', ')}. All words must be clearly legible, placed only once in the composition. Arrange every words across the layout — some large and bold, others smaller — without repeating any word. No word appears twice. Sharp edges, high text contrast.No color codes, no hex codes, no stray text or symbols.
+    return `A vertical poster in 9:16 aspect ratio. Must include exactly ${words.length} distinct ${language} words, each only once, no repetition: ${words.join(', ')}. All words must be clearly legible, placed only once in the composition, acting as a central design element impossible to ignore. Arrange every words across the layout — some large and bold, others smaller — without repeating any word. No word appears twice. Sharp edges, high text contrast.No color codes, no hex codes, no stray text or symbols.
     
 [STYLE DESCRIPTION]
 ${style}
@@ -498,7 +498,7 @@ ${style}
 };
 
 const generateCoverPosterPrompt = (title, language, style) => {
-    return `A video cover in 16:9 aspect ratio. Background scene must VISUALLY DEPICT the situation, action, or context of the title: "${title}". the text "${title}" appears in fragmented, rotated, or layered letters, high contrast black and white or bold colors, sharp edges, no blending into background. No extra stray text, no symbols, no hex codes.
+    return `A video cover in 16:9 aspect ratio. Background scene must VISUALLY DEPICT the situation, action, or context of the title: "${title}". the text "${title}" appears in fragmented, rotated, or layered letters, high contrast black and white or bold colors, sharp edges, no blending into background. No extra stray text, no symbols, no hex codes, acting as a central design element impossible to ignore.
     
 [STYLE DESCRIPTION]
 ${style}
