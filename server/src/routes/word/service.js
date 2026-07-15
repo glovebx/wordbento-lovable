@@ -298,8 +298,6 @@ const getWordDetails = async (c, userId, db, word) => {
     return formatDbResultToWordResponse(c, userId, word, contentRecords, imageRecords);
 };
 
-const WORD_IMAGE_SIZE = 100 * 1024; // 100KB
-
 export const generateWordImage = async (c, db, userId, slug, example, force) => {
     if (!slug) throw new Error('Slug is required.');
 
@@ -355,7 +353,7 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
         const allImageResults = await readImageBinaryStreams(imageUrls);
         const savedImageUrls = await Promise.all(allImageResults.filter(img => img.data).map(async (imageBinaryData) => {
             const objectKey = `${nanoid(10)}.jpeg`;
-            const compressedData = await compressImageBufferWithPronunciation(imageBinaryData.data, existingWord[0].phonetic, WORD_IMAGE_SIZE);
+            const compressedData = await compressImageBufferWithPronunciation(imageBinaryData.data, existingWord[0].phonetic);
             await c.env.WORDBENTO_R2.put(objectKey, compressedData, { contentType: 'image/jpeg' });
             await db.insert(schema.images).values({ word_id: existingWord[0].id, image_key: objectKey, prompt: example.trim() });
             return `${c.env.VITE_IMG_URL}/${objectKey}`;

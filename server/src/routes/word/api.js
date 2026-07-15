@@ -13,6 +13,7 @@ import {
 } from './service';
 import { NavigationMode } from '../../utils/constants';
 import { HTTPException } from 'hono/http-exception';
+import { nanoid } from 'nanoid';
 
 const word = new Hono();
 
@@ -209,6 +210,16 @@ word.post('/gallery/save', async (c) => {
         continue;
       }
 
+      const [audio] = await db.select({ audio_key: schema.audios.audio_key })
+        .from(schema.audios)
+        .where(eq(schema.audios.word_id, word.id))
+        .orderBy(desc(schema.audios.id))
+        .limit(1);
+      let audio_key = null
+      if (audio) {
+        audio_key = audio.audio_key
+      }  
+
       // // Delete existing entry for this word_id + image_id (respects UNIQUE constraint)
       // await db.delete(schema.gallery)
       //   .where(and(
@@ -229,6 +240,7 @@ word.post('/gallery/save', async (c) => {
         position_x: position_x ?? 0,
         position_y: position_y ?? 0,
         user_id: user.id,
+        audio_key: audio_key
       });
 
       results.push({ word_text, image_key, status: 'saved' });
@@ -278,13 +290,17 @@ word.get('/gallery/get/:limit', async (c) => {
       texture_src: schema.gallery.texture_src,
       position_x: schema.gallery.position_x,
       position_y: schema.gallery.position_y,
+      audio_key: schema.gallery.audio_key,
       word_text: schema.words.word_text,
       phonetic: schema.words.phonetic,
       meaning: schema.words.meaning,
+      // audio_key: schema.audios.audio_key,
       id: schema.gallery.id, // Include id for next page pagination
     })
       .from(schema.gallery)
       .leftJoin(schema.words, eq(schema.gallery.word_id, schema.words.id))
+      // audios中可能会有重复数据？？暂时不用这种方式
+      // .leftJoin(schema.audios, eq(schema.gallery.word_id, schema.audios.word_id))
       .where(eq(schema.gallery.user_id, user.id));
 
     if (maxId) {
@@ -306,6 +322,7 @@ word.get('/gallery/get/:limit', async (c) => {
       backgroundColor: row.background_color,
       blob1Color: row.blob1_color,
       blob2Color: row.blob2_color,
+      audioUrl: row.audio_key && `/aud/${row.audio_key}` || '',
       label: {
         word: row.word_text || '',
         phonetic: row.phonetic || '',
@@ -490,20 +507,48 @@ word.post('/tts', async (c) => {
     return c.json({ message: 'Invalid JSON body' }, 400);
   }
 
-  // 如果example为空，则从images表中获取prompt字段
-  if (!example) {
-    // 用text需要关联words表，然后再关联images表
-    const { words } = schema;
-    const db = drizzle(c.env.DB, { schema });
-    const result = await db.select({ prompt: images.prompt })
-      .from(images)
-      .innerJoin(words, eq(images.word_id, words.id))
-      .where(eq(words.word_text, text))
-      .limit(1);
-    example = result[0]?.prompt || '';
-  }
+  const db = drizzle(c.env.DB, { schema });
 
   try {
+    // 查找对应的 word_id
+    const words = await db.select({ id: schema.words.id })
+      .from(schema.words)
+      .where(eq(schema.words.word_text, text))
+      .limit(1);
+
+    if (words.length === 0) {
+      return c.json({ message: 'Word not found' }, 404);
+    };
+
+    const word = words[0];
+
+    // 如果还是没有，从例句中选取第一个
+    // 先检查 audios 表中是否已有该单词的音频记录
+    const existingAudio = await db.select({ audio_key: schema.audios.audio_key })
+      .from(schema.audios)
+      .where(eq(schema.audios.word_id, word.id))
+      .limit(1);
+
+    if (existingAudio.length > 0) {
+      // 从 R2 中获取已保存的音频
+      const audioKey = existingAudio[0].audio_key;
+      const audioObject = await c.env.WORDBENTO_R2.get(audioKey);
+
+      if (audioObject) {
+        const audioBuffer = await audioObject.arrayBuffer();
+        const base64Audio = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+        return c.json({ base64Audio }, 200);
+      }
+    }
+
+    const results = await db.select({ prompt: schema.images.prompt })
+      .from(schema.images)
+      .where(eq(schema.images.word_id, word.id))
+      .limit(1);
+    if (results && results[0]?.prompt) {
+      example = results[0]?.prompt;
+    }    
+    // 没有缓存，请求第三方 TTS 服务
     const fullText = `${text}, ${text}, ${example || text}`;
     const payload = {
       text: fullText,
@@ -527,7 +572,35 @@ word.post('/tts', async (c) => {
     }
 
     const ttsResult = await ttsResponse.json();
-    return c.json(ttsResult, 200);
+
+    // 后台异步：将音频保存到 R2 并记录到 audios 表
+    if (ttsResult.base64Audio) {
+      c.executionCtx.waitUntil((async () => {
+        try {
+          // 解码 base64 音频
+          const audioBuffer = Uint8Array.from(atob(ttsResult.base64Audio), c => c.charCodeAt(0));
+          const audioKey = `${nanoid(10)}.mp3`;
+
+          // 上传到 R2
+          await c.env.WORDBENTO_R2.put(audioKey, audioBuffer, {
+            httpMetadata: { contentType: 'audio/mpeg' },
+          });
+
+          // 入库 audios 表
+          await db.insert(schema.audios).values({
+            word_id: word.id,
+            audio_key: audioKey,
+            prompt: example || text,
+          });
+        } catch (err) {
+          console.error(`Failed to save audio for text: "${text}"`, err);
+        }
+      })());
+    }
+
+    // ttsResult 中间还有许多其他数据，过滤
+    const base64Audio = ttsResult.base64Audio;
+    return c.json({ base64Audio }, 200);
 
   } catch (error) {
     console.error(`Failed to synthesize speech for text: "${text}"`, error);

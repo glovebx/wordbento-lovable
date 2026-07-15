@@ -167,6 +167,7 @@ export const gallery = sqliteTable('gallery', {
   texture_src: text('texture_src'),
   position_x: real('position_x').notNull(),
   position_y: real('position_y').notNull().default(0),
+  audio_key: text('audio_key'),
 }, (table) => [
     index('idx_user_word_image').on(table.user_id, table.word_id, table.image_id),
 ]);

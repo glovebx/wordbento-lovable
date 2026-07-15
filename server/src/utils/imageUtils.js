@@ -2,7 +2,7 @@ import { Jimp } from 'jimp';
 import { FONT_SIZE, FONT_DATA } from './font-data.js';
 import axios from 'axios';
 
-const MAX_IMAGE_SIZE = 100 * 1024; // 100KB
+const MAX_IMAGE_SIZE = 100 * 1024; // 80KB
 
 /**
  * Compresses an image buffer to be under a specific size.

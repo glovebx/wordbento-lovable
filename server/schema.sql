@@ -258,6 +258,8 @@ CREATE TABLE IF NOT EXISTS gallery (
     position_x REAL NOT NULL,
     position_y REAL NOT NULL DEFAULT 0,
     
+    audio_key TEXT,
+
     FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE,
     FOREIGN KEY (image_id) REFERENCES images(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
