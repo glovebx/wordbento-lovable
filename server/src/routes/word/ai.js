@@ -274,6 +274,7 @@ export const generateBentoByAi = async (c, userId, word, isJapanese, hasFreeQuot
   const platforms = ['openai', 'gemini', 'deepseek'];
   for (const platform of platforms) {
     const llm = await getLlmConfig(c, platform, userId, hasFreeQuota);
+    console.log('llm', JSON.stringify(llm))
     if (llm.endpoint) {
       aiResponse = await generateBentoByPlatformAi(c, llm, word, isJapanese);
       if (aiResponse && aiResponse[word]) {
@@ -292,6 +293,7 @@ const generateBentoByPlatformAi = async (c, llm, word, isJapanese) => {
       { role: 'system', content: 'You are a professional proficient in multiple languages, including Chinese, English, Japanese, and more.' },
       { role: 'user', content: prompt },
     ],
+    stream: false,
   };
 
   try {
@@ -300,7 +302,11 @@ const generateBentoByPlatformAi = async (c, llm, word, isJapanese) => {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${llm.apiKey}` },
       body: JSON.stringify(jsonData),
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('generateBentoByPlatformAi ERROR:', errorText);
+      return null;
+    }
     const data = await response.json();
     if (!data.choices || data.choices.length === 0 || !data.choices[0].message) return null;
     return repairAiResponseToJson(data.choices[0].message.content);

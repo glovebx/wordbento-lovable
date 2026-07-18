@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from '../../db/schema';
-import { and, eq, inArray, gt, lt, gte, lte, isNull, asc, desc } from 'drizzle-orm';
+import { and, eq, inArray, gt, lt, gte, lte, isNull, max, desc } from 'drizzle-orm';
 import {
   searchWord, 
   generateWordImage, 
@@ -176,6 +176,13 @@ word.post('/gallery/save', async (c) => {
     const results = [];
     const errors = [];
 
+    // 找到当前user下最大的page_no
+    const [maxPage] = await db.select({ maxPage: max(schema.gallery.page_no) })
+      .from(schema.gallery)
+      .where(eq(schema.gallery.user_id, user.id))
+      .limit(1);
+    const nextPageNo = (maxPage?.maxPage || 0) + 1;
+
     for (const entry of entries) {
       const { word_text, image_key, texture_src, background_color, accent_color,
               blob1_color, blob2_color, fallback_color, position_x, position_y } = entry;
@@ -240,7 +247,8 @@ word.post('/gallery/save', async (c) => {
         position_x: position_x ?? 0,
         position_y: position_y ?? 0,
         user_id: user.id,
-        audio_key: audio_key
+        audio_key: audio_key,
+        page_no: nextPageNo,
       });
 
       results.push({ word_text, image_key, status: 'saved' });
@@ -259,27 +267,36 @@ word.post('/gallery/save', async (c) => {
 });
 
 // Get gallery entries (newest first), returns galleryPlaneData.json format
-word.get('/gallery/get/:limit', async (c) => {
+word.get('/gallery/get/:page/:limit', async (c) => {
   const user = c.get('user');
   if (!user) {
     return c.json({ message: 'Forbidden' }, 403);
   }
 
+  let page = parseInt(c.req.param('page'), 10);
   const limit = parseInt(c.req.param('limit'), 10);
   const maxIdParam = c.req.query('maxId');
   let maxId = maxIdParam ? parseInt(maxIdParam, 10) : undefined;
 
+  if (isNaN(page) || page < 0) {
+    return c.json({ message: 'Invalid page parameter.' }, 400);
+  }
   if (isNaN(limit) || limit <= 0) {
     return c.json({ message: 'Invalid limit parameter.' }, 400);
   }
-
-  // if (maxIdParam && (isNaN(maxId) || maxId <= 0)) {
-  //   return c.json({ message: 'Invalid maxId parameter.' }, 400);
-  // }
-
+  
   const db = drizzle(c.env.DB, { schema });
 
   try {
+    if (page == 0) {
+      // 找到当前user下最大的page_no
+      const [maxPage] = await db.select({ maxPage: max(schema.gallery.page_no) })
+        .from(schema.gallery)
+        .where(eq(schema.gallery.user_id, user.id))
+        .limit(1);
+      page = maxPage?.maxPage || 1;
+    }
+
     let query = db.select({
       word_id: schema.gallery.word_id,
       background_color: schema.gallery.background_color,
@@ -301,10 +318,12 @@ word.get('/gallery/get/:limit', async (c) => {
       .leftJoin(schema.words, eq(schema.gallery.word_id, schema.words.id))
       // audios中可能会有重复数据？？暂时不用这种方式
       // .leftJoin(schema.audios, eq(schema.gallery.word_id, schema.audios.word_id))
-      .where(eq(schema.gallery.user_id, user.id));
+      // .where(and(eq(schema.gallery.user_id, user.id), eq(schema.gallery.page_no, page)));
 
     if (maxId) {
-      query = query.where(lt(schema.gallery.id, maxId));
+      query = query.where(and(eq(schema.gallery.user_id, user.id), eq(schema.gallery.page_no, page), lt(schema.gallery.id, maxId)));
+    } else {
+      query = query.where(and(eq(schema.gallery.user_id, user.id), eq(schema.gallery.page_no, page)));
     }
 
     const rows = await query.orderBy(desc(schema.gallery.id)).limit(limit);
@@ -336,6 +355,29 @@ word.get('/gallery/get/:limit', async (c) => {
   } catch (error) {
     console.error('Error fetching gallery:', error);
     return c.json({ message: 'An error occurred while fetching gallery.' }, 500);
+  }
+});
+
+word.get('/gallery/pages', async (c) => {
+  const user = c.get('user');
+  if (!user) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+  
+  const db = drizzle(c.env.DB, { schema });
+
+  try {
+    // 找到当前user下最大的page_no
+    const [maxPage] = await db.select({ maxPage: max(schema.gallery.page_no) })
+      .from(schema.gallery)
+      .where(eq(schema.gallery.user_id, user.id))
+      .limit(1);
+    const maxPageNo = maxPage?.maxPage || 1;
+
+    return c.json({ maxPageNo }, 200);
+  } catch (error) {
+    console.error('Error fetching gallery pages:', error);
+    return c.json({ message: 'An error occurred while fetching gallery pages.' }, 500);
   }
 });
 

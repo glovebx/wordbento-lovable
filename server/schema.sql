@@ -260,6 +260,11 @@ CREATE TABLE IF NOT EXISTS gallery (
     
     audio_key TEXT,
 
+    page_no INTEGER NOT NULL DEFAULT 0,
+
+    -- user_id 和 page_no 组成index，确保每个用户每个批次只能有一个图片
+    UNIQUE (user_id, page_no)
+
     FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE,
     FOREIGN KEY (image_id) REFERENCES images(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

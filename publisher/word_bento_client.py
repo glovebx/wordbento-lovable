@@ -260,6 +260,34 @@ class WordBentoClient:
             print(f"解析单词图片响应JSON失败: {e}")
             return None
 
+    def submit_new_words(self, word: str) -> dict:
+        """
+        提交新单词
+        
+        Args:
+            word: 新单词
+            
+        Returns:
+            Dict: 接口响应数据，失败返回None
+        """
+        url = f"{self.base_url}/api/word/search"
+        payload = {"slug": f"'{word}'", "mode": 0}
+        
+        try:
+            response = self.session.post(url, headers=self.headers, json=payload, timeout=self.timeout)
+            response.raise_for_status()  # 检查HTTP错误状态
+            
+            data = response.json()
+            print(f"成功提交新单词数据")
+            return data
+            
+        except requests.exceptions.RequestException as e:
+            print(f"提交新单词接口失败: {e}")
+            return None
+        except json.JSONDecodeError as e:
+            print(f"解析响应JSON失败: {e}")
+            return None
+
     def get_today_words(self, max_id: int) -> Optional[Dict]:
         """
         获取今日单词列表
