@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { axiosPrivate } from '@/lib/axios';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import LoadingFallback from '@/components/LoadingFallback';
 import { WordDataType } from '@/types/wordTypes';
@@ -59,33 +58,25 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText }) => {
   return (
     <>
       <div className="max-w-md mx-auto p-4">
-        <Carousel className="w-full">
-          <CarouselContent>
-            {imageUrls.map((url, index) => (
-              <CarouselItem key={index}>
-                <div 
-                  className="rounded-md overflow-hidden cursor-pointer transition-opacity hover:opacity-80"
-                  onClick={() => handleImageClick(index)}
-                >
-                  <AspectRatio ratio={16 / 9} className="bg-muted">
-                    <img
-                      src={url}
-                      alt={`Image for ${wordText} ${index + 1}`}
-                      className="object-cover w-full h-full"
-                      loading="lazy"
-                    />
-                  </AspectRatio>
-                </div>
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-          {imageUrls.length > 1 && (
-            <>
-              <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2" />
-              <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2" />
-            </>
-          )}
-        </Carousel>
+        <div className="flex flex-wrap gap-4">
+          {imageUrls.map((url, index) => (
+            <div key={index} className="w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-1.1rem)] flex-grow">
+              <div 
+                className="rounded-md overflow-hidden cursor-pointer transition-opacity hover:opacity-80"
+                onClick={() => handleImageClick(index)}
+              >
+                <AspectRatio ratio={16 / 9} className="bg-muted">
+                  <img
+                    src={url}
+                    alt={`Image for ${wordText} ${index + 1}`}
+                    className="object-cover w-full h-full"
+                    loading="lazy"
+                  />
+                </AspectRatio>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {showEnlargedImageDialog && (
