@@ -124,8 +124,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
       return;
     }
 
-    const examples = word?.content?.examples?.en;
-    if (examples && Array.isArray(examples) && examples.length > 0) {
+    if (englishExamples.length > 0) {
       if (selectedExampleIndex === null) {
         setSelectedExampleIndex(0); // Default to the first example
       }
@@ -136,7 +135,7 @@ const WordImageDisplay: React.FC<WordImageDisplayProps> = ({
         requestGenerateImages(word.word_text, '', true);
       }
     }
-  }, [isAuthenticated, requestGenerateImages, word, selectedExampleIndex]);
+  }, [isAuthenticated, requestGenerateImages, word, englishExamples, selectedExampleIndex]);
 
 
   // Handler when an example is selected in the dialog and confirmed

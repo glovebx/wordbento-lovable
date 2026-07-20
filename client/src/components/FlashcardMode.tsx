@@ -1,6 +1,15 @@
 /// <reference types="@types/dom-speech-recognition" />
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { ArrowLeft, ArrowRight, /*Mic,*/ Info, Loader2, Send, Share2, Star, ImagePlus } from 'lucide-react'; // Import Info icon for details
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +67,9 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const { isPushing, pushImage } = useEinkPusher({ einkEndpoint, einkToken });
   const { user } = useAuth();
 
+  // Get English examples for the dialog
+  const englishExamples = wordData?.content?.examples?.en || [];
+
   const [userInput, setUserInput] = useState('');
   const lastUserInputRef = useRef<string>('');
   const [attempts, setAttempts] = useState(0);
@@ -65,6 +77,10 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   // const [isMarkedForReview, setIsMarkedForReview] = useState(false);
   const { toast } = useToast();
   const [isSettingCover, setIsSettingCover] = useState(false);
+
+  // State for the new example selection dialog
+  const [showExampleDialog, setShowExampleDialog] = useState(false);
+  const [selectedExampleIndex, setSelectedExampleIndex] = useState<number | null>(null);
 
   const handleSetCover = async () => {
     const imageIndex = selectedImageIndex ?? 0;
@@ -99,12 +115,42 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     }
   };
 
- // Handler for the "Generate Images" button click
-  const handleGenerateImage = useCallback(async () => {
-    if (typeof requestGenerateImages === 'function') {
-      requestGenerateImages(wordData.word_text, '', true);
+  // Handler for the "Generate Images" button click
+  const handleGenerateButtonClick = useCallback(async () => {
+    // const examples = wordData?.content?.examples?.en || [];
+    if (englishExamples.length > 0) {
+      if (selectedExampleIndex === null) {
+        setSelectedExampleIndex(0); // Default to the first example
+      }
+      setShowExampleDialog(true);
+    } else {
+      // console.log("No examples found or examples not in expected array format, generating image with word only.");
+      if (typeof requestGenerateImages === 'function') {
+        requestGenerateImages(wordData.word_text, '', true);
+      }
     }
-  }, [requestGenerateImages]);
+  }, [requestGenerateImages, wordData.word_text, englishExamples, selectedExampleIndex]);
+
+  // Handler when an example is selected in the dialog and confirmed
+  const handleExampleSelected = useCallback(async () => {
+    if (selectedExampleIndex === null) {
+      console.warn("No example selected.");
+      return;
+    }
+    const example = englishExamples[selectedExampleIndex];
+    if (!example) {
+      console.error("Selected example index is out of bounds.");
+      return;
+    }
+
+    setShowExampleDialog(false); // Close the example selection dialog
+
+    if (typeof requestGenerateImages === 'function') {
+      requestGenerateImages(wordData.word_text, example, true);
+    }
+
+    setSelectedExampleIndex(null); // Reset selected example state after using it
+  }, [requestGenerateImages, wordData.word_text, selectedExampleIndex, englishExamples]); 
 
   const handleShare = async () => {
     const imageIndex = selectedImageIndex ?? 0;
@@ -566,7 +612,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleGenerateImage}
+                  onClick={handleGenerateButtonClick}
                   disabled={isImageGenerating}
                 >
                   <ImagePlus className="mr-2 h-4 w-4" />
@@ -687,6 +733,48 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
             )
           )} */}
         </div>
+
+      {/* Example Selection Dialog */}
+      <Dialog open={showExampleDialog} onOpenChange={setShowExampleDialog}>
+        <DialogContent aria-describedby={undefined} className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>选择一个例句生成图片</DialogTitle>
+          </DialogHeader>
+          {englishExamples && Array.isArray(englishExamples) && englishExamples.length > 0 ? (
+            <RadioGroup
+              onValueChange={(value) => setSelectedExampleIndex(Number(value))}
+              value={selectedExampleIndex !== null ? String(selectedExampleIndex) : undefined}
+              className="max-h-[300px] overflow-y-auto pr-4"
+            >
+              {englishExamples.map((example: string, index: number) => (
+                <div key={index} className="flex items-center space-x-2 p-2 border rounded-md hover:bg-gray-400 cursor-pointer">
+                  <RadioGroupItem value={String(index)} id={`example-${index}`} />
+                  <Label htmlFor={`example-${index}`} className="cursor-pointer text-base font-normal leading-relaxed">
+                    {example}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          ) : (
+            <p className="text-center text-gray-500">没有找到英文例句。</p>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={handleExampleSelected}
+              disabled={selectedExampleIndex === null || isImageGenerating}
+            >
+              {isImageGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  生成中...
+                </>
+              ) : (
+                "确定"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
         {/* Enlarged Image Dialog */}
         {showEnlargedImageDialog && (
