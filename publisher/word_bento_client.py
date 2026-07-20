@@ -109,6 +109,25 @@ def download_image(image_url, file_path):
         print(f"下载失败: {str(e)}")
         return False
 
+def load_remote_auth_key() -> str:
+    """Read VITE_WORDBENTO_AUTH_KEY from server/.env.development."""
+    env_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "..", "server", ".env.development",
+    )
+    if not os.path.exists(env_path):
+        print(f"  [WARN] .env file not found: {env_path}")
+        return ""
+    with open(env_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("VITE_WORDBENTO_AUTH_KEY="):
+                val = line[len("VITE_WORDBENTO_AUTH_KEY="):].strip().strip('"').strip("'")
+                return val
+    print("  [WARN] VITE_WORDBENTO_AUTH_KEY not found in .env file")
+    return ""
+
+
 def get_file_extension(url):
     """
     从URL中获取文件扩展名[7](@ref)

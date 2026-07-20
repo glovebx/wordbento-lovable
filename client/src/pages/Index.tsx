@@ -632,6 +632,9 @@ const Index = () => {
             onPrevious={handlePrevious}
             onShowImageDialogChange={handleImageDialogStateChange}
             onUpdateWordCover={updateWordCover}
+            requestGenerateImages={requestGenerateImages}
+            isImageGenerating={isGeneratingImages}
+            imageGenerationError={generationError}            
           />
         )}
 
@@ -659,7 +662,37 @@ const Index = () => {
 
         {viewMode === 'grid' && (
           <>
-            <div className="container mx-auto px-4 py-4 text-right flex justify-end gap-2">
+            <style>{`
+              @keyframes pdf-glow {
+                0%, 100% { box-shadow: 0 0 8px rgba(251, 146, 60, 0.4); transform: scale(1); }
+                50% { box-shadow: 0 0 24px rgba(251, 146, 60, 0.7); transform: scale(1.03); }
+              }
+              .btn-pdf-download {
+                animation: pdf-glow 2s ease-in-out infinite;
+              }
+              .btn-pdf-download:hover {
+                animation: none;
+              }
+            `}</style>
+            <div className="container mx-auto px-4 py-4 text-right flex flex-wrap justify-end gap-2">
+              <Button
+                onClick={() => window.open('https://pan.quark.cn/s/d1319d3e751e', '_blank')}
+                size="sm"
+                className="btn-pdf-download bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0 hover:from-amber-600 hover:to-orange-700 hover:shadow-lg hover:shadow-orange-500/30"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                下载「Alex@顾的SAT真题单词本」
+              </Button>
+
+              <Button
+                onClick={() => window.open('https://pan.quark.cn/s/0c856301ab5e', '_blank')}
+                size="sm"
+                className="btn-pdf-download bg-gradient-to-r from-amber-500 to-orange-600 text-white border-0 hover:from-amber-600 hover:to-orange-700 hover:shadow-lg hover:shadow-orange-500/30"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                下载「Alex@顾的TOFEL单词本」
+              </Button>
+
               <Button
                 onClick={handleExportImage}
                 variant="outline"
@@ -669,6 +702,7 @@ const Index = () => {
                 <Download className="mr-2 h-4 w-4" />
                 导出学习卡片
               </Button>
+              
               <Button
                 onClick={handleExportShareImage}
                 variant="outline"

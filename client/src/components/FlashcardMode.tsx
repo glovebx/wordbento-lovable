@@ -1,7 +1,7 @@
 /// <reference types="@types/dom-speech-recognition" />
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowLeft, ArrowRight, /*Mic,*/ Info, Loader2, Send, Share2, Star } from 'lucide-react'; // Import Info icon for details
+import { ArrowLeft, ArrowRight, /*Mic,*/ Info, Loader2, Send, Share2, Star, ImagePlus } from 'lucide-react'; // Import Info icon for details
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,6 +32,15 @@ interface FlashcardModeProps {
   onPrevious: () => void;
   onShowImageDialogChange?: (isOpen: boolean) => void;
   onUpdateWordCover: (wordText: string, cover: { image_key: string } | null) => void;
+  requestGenerateImages: (word: string, example: string, force: boolean) => void;
+  /**
+   * 上层容器是否正在生成图片（用于禁用按钮和显示 loading）
+   */
+  isImageGenerating?: boolean;
+  /**
+   * 上层容器的生成错误信息（可选）
+   */
+  imageGenerationError?: { message?: string } | null;  
 }
 
 const FlashcardMode: React.FC<FlashcardModeProps> = ({
@@ -40,6 +49,9 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   onPrevious,
   onShowImageDialogChange,
   onUpdateWordCover,
+  requestGenerateImages,
+  isImageGenerating,
+  imageGenerationError,  
 }) => {
   const isTouchDevice = useIsTouchDevice();
   const { isEinkConfigured, einkEndpoint, einkToken, isLoadingEinkStatus } = useEinkStatus(true);
@@ -86,6 +98,13 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
       setIsSettingCover(false);
     }
   };
+
+ // Handler for the "Generate Images" button click
+  const handleGenerateImage = useCallback(async () => {
+    if (typeof requestGenerateImages === 'function') {
+      requestGenerateImages(wordData.word_text, '', true);
+    }
+  }, [requestGenerateImages]);
 
   const handleShare = async () => {
     const imageIndex = selectedImageIndex ?? 0;
@@ -543,6 +562,17 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                   {isSettingCover ? '设置中...' : isCoverImage ? '封面图片' : '设为封面'}
                 </Button>
               )}
+              {user?.role === 'admin' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateImage}
+                  disabled={isImageGenerating}
+                >
+                  <ImagePlus className="mr-2 h-4 w-4" />
+                  重新生图
+                </Button>
+              )}              
               {isTouchDevice && wordData.imageUrls && wordData.imageUrls.length > 0 && user?.role === 'admin' && (
                 <Button
                   variant="outline"
@@ -569,6 +599,12 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                 </Button>
               )}
             </div>
+
+      {imageGenerationError && !isImageGenerating && (
+        <div className="text-center my-8 text-red-600">
+          <p>图片生成失败: {imageGenerationError.message}</p>
+        </div>
+      )}
 
               <div className="text-center p-3 bg-muted rounded-lg w-full max-w-sm animate-fade-in">
                   {wordData.phonetic && (

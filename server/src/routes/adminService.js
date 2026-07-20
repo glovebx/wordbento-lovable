@@ -1,4 +1,4 @@
-import { eq, desc, sql, like, and, isNull } from 'drizzle-orm';
+import { eq, desc, asc, sql, like, and, isNull } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 
 // Service to get all words with pagination and search

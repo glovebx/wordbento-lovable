@@ -1189,7 +1189,7 @@ constrained
 minutes
 garrulous
 eavesdrop
-offence锛offense锛
+offence
 scission
 resonant
 hull
@@ -2180,7 +2180,7 @@ galley
 bounteous
 ironclad
 coarsen
-ing茅nue
+ingenue
 declamation
 ambience
 harpsichord
@@ -3187,7 +3187,7 @@ trowel
 centrifugal
 drab
 empathy
-blas茅
+blase
 inappreciable
 goggle
 pharmacology
@@ -3493,7 +3493,7 @@ viscous
 balm
 grotto
 evildoer
-entr茅e
+entree
 Antarctic
 scotch
 fluorescent

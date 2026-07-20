@@ -2,6 +2,9 @@
 
 __pycache__/
 
+SAT_words_pdf_output/
+TOFEL_words_pdf_output/
+
 geckodriver
 geckodriver.log
 *.pyc
