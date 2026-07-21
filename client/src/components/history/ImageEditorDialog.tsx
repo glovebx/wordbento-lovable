@@ -11,6 +11,7 @@ import {
   Triangle,
   Trash2,
   Save,
+  Droplets,
   Pen,
   Loader2
 } from 'lucide-react';
@@ -130,6 +131,10 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const programmaticStyleRef = useRef(false);
   const selectedShapeTypeRef = useRef<ShapeData['type'] | null>(null);
+
+  // 新增：水印去除相关状态
+  const [isRemovingWatermark, setIsRemovingWatermark] = useState(false);
+  const [watermarkMask, setWatermarkMask] = useState<ShapeData | null>(null);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -516,6 +521,242 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     }
   };
 
+const removeWatermark = useCallback(async () => {
+    if (!stageRef.current || !image || !imageAttrs) return;
+    
+    const penShapes = shapes.filter(s => s.type === 'pen');
+    if (penShapes.length === 0) return;
+    
+    setIsRemovingWatermark(true);
+    
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      
+      await new Promise<void>((resolve) => {
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          
+          // 创建mask
+          const maskCanvas = document.createElement('canvas');
+          maskCanvas.width = img.width;
+          maskCanvas.height = img.height;
+          const maskCtx = maskCanvas.getContext('2d')!;
+          
+          const scaleX = img.width / imageAttrs.width;
+          const scaleY = img.height / imageAttrs.height;
+          
+          // 绘制粗线mask
+          maskCtx.fillStyle = 'white';
+          maskCtx.strokeStyle = 'white';
+          maskCtx.lineCap = 'round';
+          maskCtx.lineJoin = 'round';
+          
+          penShapes.forEach(shape => {
+            if (shape.points.length < 4) return;
+            
+            maskCtx.beginPath();
+            const points = shape.points;
+            for (let i = 0; i < points.length; i += 2) {
+              const x = (points[i] - imageAttrs.x) * scaleX;
+              const y = (points[i + 1] - imageAttrs.y) * scaleY;
+              
+              if (i === 0) {
+                maskCtx.moveTo(x, y);
+              } else {
+                maskCtx.lineTo(x, y);
+              }
+            }
+            // 加大线宽
+            maskCtx.lineWidth = shape.strokeWidth * Math.max(scaleX, scaleY) + 20;
+            maskCtx.stroke();
+          });
+          
+          // 获取mask数据
+          const maskData = maskCtx.getImageData(0, 0, canvas.width, canvas.height);
+          const binaryMask = new Uint8Array(canvas.width * canvas.height);
+          for (let i = 0; i < maskData.data.length; i += 4) {
+            binaryMask[i / 4] = maskData.data[i] > 128 ? 1 : 0;
+          }
+          
+          // 膨胀mask
+          const expandedMask = dilateMaskStrong(binaryMask, canvas.width, canvas.height, 15);
+          
+          // 执行强力填充
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const result = aggressiveInpainting(imageData, expandedMask);
+          
+          ctx.putImageData(result, 0, 0);
+          
+          const newImageUrl = canvas.toDataURL('image/png');
+          const newImg = new window.Image();
+          newImg.onload = () => {
+            setImage(newImg);
+            setShapes(prev => prev.filter(s => s.type !== 'pen'));
+            setSelectedShapeId(null);
+            selectedShapeTypeRef.current = null;
+            setIsRemovingWatermark(false);
+          };
+          newImg.src = newImageUrl;
+          
+          resolve();
+        };
+        img.src = imageUrl;
+      });
+    } catch (error) {
+      console.error('Watermark removal failed:', error);
+      setIsRemovingWatermark(false);
+    }
+  }, [image, imageUrl, imageAttrs, shapes]);
+
+  // 强力膨胀mask
+function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radius: number): Uint8Array {
+    const result = new Uint8Array(mask);
+    
+    for (let r = 0; r < radius; r++) {
+      const temp = new Uint8Array(result);
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          if (result[y * width + x] === 1) {
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                temp[(y + dy) * width + (x + dx)] = 1;
+              }
+            }
+          }
+        }
+      }
+      for (let i = 0; i < temp.length; i++) {
+        result[i] = temp[i];
+      }
+    }
+    
+    return result;
+  }
+
+  // 强力图像修复
+  function aggressiveInpainting(imageData: ImageData, mask: Uint8Array): ImageData {
+    const { width, height, data } = imageData;
+    const result = new ImageData(new Uint8ClampedArray(data), width, height);
+    
+    // 3轮迭代填充
+    for (let iteration = 0; iteration < 3; iteration++) {
+      const tempMask = new Uint8Array(mask);
+      
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = y * width + x;
+          if (tempMask[idx] === 1) {
+            fillPixelAggressive(x, y, result, tempMask, width, height);
+            tempMask[idx] = 0;
+          }
+        }
+      }
+    }
+    
+    // 最终平滑
+    applyAggressiveSmoothing(result, mask, width, height);
+    
+    return result;
+  }
+
+  // 强力像素填充 - 16方向采样
+  function fillPixelAggressive(
+    x: number, y: number,
+    imageData: ImageData,
+    mask: Uint8Array,
+    width: number, height: number
+  ): void {
+    const idx = (y * width + x) * 4;
+    
+    // 16个方向
+    const numDirections = 16;
+    const searchRadius = 50;
+    
+    let totalR = 0, totalG = 0, totalB = 0;
+    let totalWeight = 0;
+    
+    for (let i = 0; i < numDirections; i++) {
+      const angle = (i / numDirections) * Math.PI * 2;
+      const dx = Math.cos(angle);
+      const dy = Math.sin(angle);
+      
+      for (let r = 1; r <= searchRadius; r++) {
+        const nx = Math.round(x + dx * r);
+        const ny = Math.round(y + dy * r);
+        
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nIdx = (ny * width + nx) * 4;
+          if (mask[ny * width + nx] === 0) {
+            const dist = Math.sqrt((nx - x) ** 2 + (ny - y) ** 2);
+            const weight = 1 / (dist * dist);
+            
+            totalR += imageData.data[nIdx] * weight;
+            totalG += imageData.data[nIdx + 1] * weight;
+            totalB += imageData.data[nIdx + 2] * weight;
+            totalWeight += weight;
+            break;
+          }
+        }
+      }
+    }
+    
+    // 完全替换
+    if (totalWeight > 0) {
+      imageData.data[idx] = Math.round(totalR / totalWeight);
+      imageData.data[idx + 1] = Math.round(totalG / totalWeight);
+      imageData.data[idx + 2] = Math.round(totalB / totalWeight);
+    }
+  }
+
+  // 强力平滑
+  function applyAggressiveSmoothing(
+    imageData: ImageData,
+    mask: Uint8Array,
+    width: number, height: number
+  ): void {
+    const original = new Uint8ClampedArray(imageData.data);
+    const blurRadius = 5;
+    
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        
+        if (mask[y * width + x] === 1) {
+          const blurred = [0, 0, 0];
+          let totalWeight = 0;
+          
+          for (let dy = -blurRadius; dy <= blurRadius; dy++) {
+            for (let dx = -blurRadius; dx <= blurRadius; dx++) {
+              const nx = x + dx;
+              const ny = y + dy;
+              
+              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                const weight = Math.exp(-(dx * dx + dy * dy) / 6);
+                const nIdx = (ny * width + nx) * 4;
+                
+                for (let c = 0; c < 3; c++) {
+                  blurred[c] += original[nIdx + c] * weight;
+                }
+                totalWeight += weight;
+              }
+            }
+          }
+          
+          if (totalWeight > 0) {
+            for (let c = 0; c < 3; c++) {
+              imageData.data[idx + c] = Math.round(blurred[c] / totalWeight);
+            }
+          }
+        }
+      }
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -618,6 +859,30 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
               ))}
             </select>
           </div>
+
+          <div className="w-px h-6 bg-border mx-2" />
+
+          {/* 新增：去除水印按钮 */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1"
+            onClick={removeWatermark}
+            disabled={!shapes.some(s => s.type === 'pen') || isRemovingWatermark}
+            title="使用涂鸦区域作为蒙版去除水印"
+          >
+            {isRemovingWatermark ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span className="text-xs">处理中...</span>
+              </>
+            ) : (
+              <>
+                <Droplets className="h-3 w-3" />
+                <span className="text-xs">去除水印</span>
+              </>
+            )}
+          </Button>
 
           <div className="flex-1 min-w-2" />
 
