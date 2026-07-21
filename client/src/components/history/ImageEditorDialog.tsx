@@ -120,6 +120,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const programmaticStyleRef = useRef(false);
+  const selectedShapeTypeRef = useRef<ShapeData['type'] | null>(null);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -129,6 +130,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       setCurrentTool('select');
       setIsDrawing(false);
       setCurrentPenPoints([]);
+      selectedShapeTypeRef.current = null;
     }
   }, [open]);
 
@@ -183,13 +185,25 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
 
   // When selection changes, sync the toolbar to match the selected shape's style
   useEffect(() => {
-    if (!selectedShapeId) return;
+    if (!selectedShapeId) {
+      selectedShapeTypeRef.current = null;
+      return;
+    }
     const shape = shapes.find((s) => s.id === selectedShapeId);
     if (shape) {
       programmaticStyleRef.current = true;
-      setCurrentFill(shape.fill);
-      setCurrentStroke(shape.stroke);
-      setCurrentStrokeWidth(shape.strokeWidth);
+      selectedShapeTypeRef.current = shape.type;
+      
+      // 对于涂鸦和线条，只同步边框相关属性
+      if (shape.type === 'pen' || shape.type === 'line') {
+        setCurrentStroke(shape.stroke);
+        setCurrentStrokeWidth(shape.strokeWidth);
+        // 不改变填充颜色设置
+      } else {
+        setCurrentFill(shape.fill);
+        setCurrentStroke(shape.stroke);
+        setCurrentStrokeWidth(shape.strokeWidth);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedShapeId]);
@@ -201,12 +215,31 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       return;
     }
     if (!selectedShapeId) return;
+    
+    const shapeType = selectedShapeTypeRef.current;
+    
     setShapes((prev) =>
-      prev.map((s) =>
-        s.id === selectedShapeId
-          ? { ...s, fill: currentFill, stroke: currentStroke, strokeWidth: currentStrokeWidth }
-          : s
-      )
+      prev.map((s) => {
+        if (s.id !== selectedShapeId) return s;
+        
+        // 对于涂鸦和线条，只更新边框相关属性，保持填充为透明
+        if (shapeType === 'pen' || shapeType === 'line') {
+          return { 
+            ...s, 
+            stroke: currentStroke, 
+            strokeWidth: currentStrokeWidth,
+            fill: s.type === 'pen' ? 'transparent' : s.fill // 涂鸦强制透明，线条保持原有填充
+          };
+        }
+        
+        // 其他形状更新所有样式
+        return { 
+          ...s, 
+          fill: currentFill, 
+          stroke: currentStroke, 
+          strokeWidth: currentStrokeWidth 
+        };
+      })
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentFill, currentStroke, currentStrokeWidth, selectedShapeId]);
@@ -356,6 +389,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     if (!selectedShapeId) return;
     setShapes((prev) => prev.filter((s) => s.id !== selectedShapeId));
     setSelectedShapeId(null);
+    selectedShapeTypeRef.current = null;
   }, [selectedShapeId]);
 
   // Keyboard shortcuts
@@ -368,6 +402,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       if (e.key === 'Escape') {
         setCurrentTool('select');
         setSelectedShapeId(null);
+        selectedShapeTypeRef.current = null;
       }
     };
     window.addEventListener('keydown', onKey);
@@ -481,15 +516,16 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
 
           <div className="w-px h-6 bg-border mx-2" />
 
-          {/* Fill color */}
-          <div className="flex items-center gap-1">
+          {/* Fill color - 涂鸦和线条选中时禁用 */}
+          <div className={`flex items-center gap-1 ${selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line' ? 'opacity-50 pointer-events-none' : ''}`}>
             <span className="text-xs text-muted-foreground hidden sm:inline">填充</span>
             <input
               type="color"
               value={currentFill === 'transparent' ? '#ffffff' : currentFill}
               onChange={(e) => setCurrentFill(e.target.value)}
               className="w-7 h-7 p-0.5 rounded cursor-pointer border"
-              title="填充颜色"
+              title={selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line' ? "涂鸦和线条不支持填充" : "填充颜色"}
+              disabled={selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line'}
             />
             <Button
               variant="ghost"
@@ -497,6 +533,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
               className="h-7 w-7 text-xs"
               onClick={() => setCurrentFill('transparent')}
               title="透明填充"
+              disabled={selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line'}
             >
               <X className="h-3 w-3" />
             </Button>
@@ -523,7 +560,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
               value={currentStrokeWidth}
               onChange={(e) => setCurrentStrokeWidth(Number(e.target.value))}
               className="h-7 w-16 rounded border bg-background text-xs px-1"
-              title="边框粗细"
+              title={selectedShapeId ? "修改选中图形的边框粗细" : "设置新图形的边框粗细"}
             >
               {STROKE_WIDTHS.map((w) => (
                 <option key={w} value={w}>
