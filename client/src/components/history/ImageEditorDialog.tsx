@@ -71,13 +71,13 @@ function createDefaultShape(
 
   switch (type) {
     case 'line':
-      return { ...base, x: pointerX, y: pointerY, points: [-60, 0, 60, 0], width: 0, height: 0, radius: 0 };
+      return { ...base, x: pointerX, y: pointerY, points: [0, 0, 0, 0], width: 0, height: 0, radius: 0 };
     case 'circle':
-      return { ...base, x: pointerX, y: pointerY, radius: 50, width: 0, height: 0, points: [] };
+      return { ...base, x: pointerX, y: pointerY, radius: 1, width: 0, height: 0, points: [] };
     case 'rect':
-      return { ...base, x: pointerX, y: pointerY, width: 100, height: 80, radius: 0, points: [] };
+      return { ...base, x: pointerX, y: pointerY, width: 1, height: 1, radius: 0, points: [] };
     case 'triangle':
-      return { ...base, x: pointerX, y: pointerY, radius: 50, width: 0, height: 0, points: [] };
+      return { ...base, x: pointerX, y: pointerY, radius: 1, width: 0, height: 0, points: [] };
     case 'pen':
       return { ...base, x: 0, y: 0, points: [pointerX, pointerY], width: 0, height: 0, radius: 0, stroke: stroke, fill: 'transparent' };
   }
@@ -124,6 +124,11 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPenPoints, setCurrentPenPoints] = useState<number[]>([]);
 
+  // Shape drawing state
+  const [isDrawingShape, setIsDrawingShape] = useState(false);
+  const [drawingShape, setDrawingShape] = useState<ShapeData | null>(null);
+  const [drawStartPos, setDrawStartPos] = useState<{ x: number; y: number } | null>(null);
+
   const [replaceMode, setReplaceMode] = useState(false);
   const [phoneticMode, setPhoneticMode] = useState(false);
 
@@ -144,6 +149,9 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       setCurrentTool('select');
       setIsDrawing(false);
       setCurrentPenPoints([]);
+      setIsDrawingShape(false);
+      setDrawingShape(null);
+      setDrawStartPos(null);
       selectedShapeTypeRef.current = null;
     }
   }, [open]);
@@ -285,40 +293,164 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   }, []);
 
   const handleMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (currentTool !== 'pen') return;
+    if (currentTool === 'pen') {
+      const pos = e.target.getStage()?.getPointerPosition();
+      if (!pos) return;
+      
+      setIsDrawing(true);
+      setCurrentPenPoints([pos.x, pos.y]);
+      return;
+    }
     
-    const pos = e.target.getStage()?.getPointerPosition();
-    if (!pos) return;
-    
-    setIsDrawing(true);
-    setCurrentPenPoints([pos.x, pos.y]);
-  }, [currentTool]);
+    // 处理其他形状的拖拽绘制
+    if (currentTool !== 'select') {
+      const pos = e.target.getStage()?.getPointerPosition();
+      if (!pos) return;
+      
+      // 只在点击空白区域时开始绘制
+      const clickedOnStage = e.target === e.target.getStage();
+      if (!clickedOnStage) return;
+      
+      setIsDrawingShape(true);
+      setDrawStartPos({ x: pos.x, y: pos.y });
+      
+      // 创建初始形状
+      const shape = createDefaultShape(
+        currentTool,
+        pos.x,
+        pos.y,
+        currentFill,
+        currentStroke,
+        currentStrokeWidth
+      );
+      setDrawingShape(shape);
+    }
+  }, [currentTool, currentFill, currentStroke, currentStrokeWidth]);
 
   const handleMouseMove = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (!isDrawing || currentTool !== 'pen') return;
-    
     const pos = e.target.getStage()?.getPointerPosition();
     if (!pos) return;
     
-    setCurrentPenPoints(prev => [...prev, pos.x, pos.y]);
-  }, [isDrawing, currentTool]);
+    // 处理涂鸦
+    if (isDrawing && currentTool === 'pen') {
+      setCurrentPenPoints(prev => [...prev, pos.x, pos.y]);
+      return;
+    }
+    
+    // 处理形状拖拽绘制
+    if (isDrawingShape && drawStartPos && drawingShape) {
+      const dx = pos.x - drawStartPos.x;
+      const dy = pos.y - drawStartPos.y;
+      
+      setDrawingShape(prev => {
+        if (!prev) return prev;
+        
+        switch (prev.type) {
+          case 'line': {
+            const centerX = drawStartPos.x;
+            const centerY = drawStartPos.y;
+            return {
+              ...prev,
+              x: centerX,
+              y: centerY,
+              points: [0, 0, dx, dy]
+            };
+          }
+          
+          case 'rect': {
+            const width = Math.abs(dx);
+            const height = Math.abs(dy);
+            const x = dx > 0 ? drawStartPos.x : drawStartPos.x + dx;
+            const y = dy > 0 ? drawStartPos.y : drawStartPos.y + dy;
+            
+            return {
+              ...prev,
+              x,
+              y,
+              width: Math.max(1, width),
+              height: Math.max(1, height)
+            };
+          }
+          
+          case 'circle': {
+            const radius = Math.sqrt(dx * dx + dy * dy);
+            const centerX = drawStartPos.x;
+            const centerY = drawStartPos.y;
+            
+            return {
+              ...prev,
+              x: centerX,
+              y: centerY,
+              radius: Math.max(1, radius)
+            };
+          }
+          
+          case 'triangle': {
+            const radius = Math.sqrt(dx * dx + dy * dy);
+            const centerX = drawStartPos.x;
+            const centerY = drawStartPos.y;
+            
+            return {
+              ...prev,
+              x: centerX,
+              y: centerY,
+              radius: Math.max(1, radius),
+              rotation: Math.atan2(dy, dx) * (180 / Math.PI) + 90
+            };
+          }
+          
+          default:
+            return prev;
+        }
+      });
+    }
+  }, [isDrawing, currentTool, isDrawingShape, drawStartPos, drawingShape]);
 
-  const handleMouseUp = useCallback(() => {
-    if (!isDrawing || currentTool !== 'pen') return;
-    
-    setIsDrawing(false);
-    
-    if (currentPenPoints.length < 4) {
+  const handleMouseUp = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    // 处理涂鸦结束
+    if (isDrawing && currentTool === 'pen') {
+      setIsDrawing(false);
+      
+      if (currentPenPoints.length < 4) {
+        setCurrentPenPoints([]);
+        return;
+      }
+      
+      const shape = createDefaultShape('pen', 0, 0, 'transparent', currentStroke, currentStrokeWidth);
+      shape.points = currentPenPoints;
+      setShapes(prev => [...prev, shape]);
+      setSelectedShapeId(shape.id);
       setCurrentPenPoints([]);
       return;
     }
     
-    const shape = createDefaultShape('pen', 0, 0, 'transparent', currentStroke, currentStrokeWidth);
-    shape.points = currentPenPoints;
-    setShapes(prev => [...prev, shape]);
-    setSelectedShapeId(shape.id);
-    setCurrentPenPoints([]);
-  }, [isDrawing, currentTool, currentPenPoints, currentStroke, currentStrokeWidth]);
+    // 处理形状拖拽绘制结束
+    if (isDrawingShape && drawingShape) {
+      setIsDrawingShape(false);
+      
+      // 检查形状是否太小
+      const isTooSmall = 
+        (drawingShape.type === 'line' && drawingShape.points.length >= 4 && 
+         Math.abs(drawingShape.points[2] - drawingShape.points[0]) < 5 && 
+         Math.abs(drawingShape.points[3] - drawingShape.points[1]) < 5) ||
+        (drawingShape.type === 'rect' && drawingShape.width < 5 && drawingShape.height < 5) ||
+        (drawingShape.type === 'circle' && drawingShape.radius < 5) ||
+        (drawingShape.type === 'triangle' && drawingShape.radius < 5);
+      
+      if (isTooSmall) {
+        setDrawingShape(null);
+        setDrawStartPos(null);
+        return;
+      }
+      
+      setShapes(prev => [...prev, drawingShape]);
+      setSelectedShapeId(drawingShape.id);
+      selectedShapeTypeRef.current = drawingShape.type;
+      setDrawingShape(null);
+      setDrawStartPos(null);
+      setCurrentTool('select');
+    }
+  }, [isDrawing, currentTool, currentPenPoints, currentStroke, currentStrokeWidth, isDrawingShape, drawingShape]);
 
   const handleStageInteraction = useCallback(
     (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
@@ -326,28 +458,12 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       
       const clickedStage = e.target === e.target.getStage();
       
-      if (currentTool !== 'select' && clickedStage) {
-        const pos = e.target.getStage()?.getPointerPosition();
-        if (!pos) return;
-        const shape = createDefaultShape(
-          currentTool,
-          pos.x,
-          pos.y,
-          currentFill,
-          currentStroke,
-          currentStrokeWidth
-        );
-        setShapes((prev) => [...prev, shape]);
-        setSelectedShapeId(shape.id);
-        setCurrentTool('select');
-        return;
-      }
-      
       if (clickedStage) {
         setSelectedShapeId(null);
+        selectedShapeTypeRef.current = null;
       }
     },
-    [currentTool, currentFill, currentStroke, currentStrokeWidth]
+    [currentTool]
   );
 
   const handleDragEnd = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
@@ -423,16 +539,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [handleDelete, selectedShapeId]);
 
-  // Export the canvas as a PNG and submit to server
-  // const handleSave = useCallback(() => {
-  //   if (!stageRef.current) return;
-    
-  //   const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2, mimeType: 'image/png' });
-
-  //   onSave(dataUrl, imageUrl, phoneticMode, replaceMode);
-
-  // }, [wordText, imageUrl, onSave, replaceMode, phoneticMode]);
-// Export only the image area as a PNG with original image dimensions
+  // Export only the image area as a PNG with original image dimensions
   const handleSave = useCallback(() => {
     if (!stageRef.current || !image || !imageAttrs) return;
     
@@ -928,6 +1035,69 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
             </Layer>
             <Layer>
               {shapes.map(renderShape)}
+              
+              {/* 显示拖拽绘制中的形状 */}
+              {isDrawingShape && drawingShape && (
+                <>
+                  {drawingShape.type === 'line' && (
+                    <Line
+                      points={drawingShape.points}
+                      x={drawingShape.x}
+                      y={drawingShape.y}
+                      stroke={drawingShape.stroke}
+                      strokeWidth={drawingShape.strokeWidth}
+                      lineCap="round"
+                      lineJoin="round"
+                      tension={0}
+                      dash={[5, 5]}
+                      opacity={0.8}
+                    />
+                  )}
+                  
+                  {drawingShape.type === 'rect' && (
+                    <Rect
+                      x={drawingShape.x}
+                      y={drawingShape.y}
+                      width={drawingShape.width}
+                      height={drawingShape.height}
+                      fill={drawingShape.fill}
+                      stroke={drawingShape.stroke}
+                      strokeWidth={drawingShape.strokeWidth}
+                      dash={[5, 5]}
+                      opacity={0.8}
+                    />
+                  )}
+                  
+                  {drawingShape.type === 'circle' && (
+                    <KonvaCircle
+                      x={drawingShape.x}
+                      y={drawingShape.y}
+                      radius={drawingShape.radius}
+                      fill={drawingShape.fill}
+                      stroke={drawingShape.stroke}
+                      strokeWidth={drawingShape.strokeWidth}
+                      dash={[5, 5]}
+                      opacity={0.8}
+                    />
+                  )}
+                  
+                  {drawingShape.type === 'triangle' && (
+                    <RegularPolygon
+                      x={drawingShape.x}
+                      y={drawingShape.y}
+                      sides={3}
+                      radius={drawingShape.radius}
+                      fill={drawingShape.fill}
+                      stroke={drawingShape.stroke}
+                      strokeWidth={drawingShape.strokeWidth}
+                      rotation={drawingShape.rotation}
+                      dash={[5, 5]}
+                      opacity={0.8}
+                    />
+                  )}
+                </>
+              )}
+              
               {isDrawing && currentPenPoints.length > 0 && (
                 <Line
                   points={currentPenPoints}
