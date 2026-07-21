@@ -24,7 +24,7 @@ interface WordManagementTableProps {
 }
 
 export const WordManagementTable: React.FC<WordManagementTableProps> = ({ words, onDelete }) => {
-  const { generateImages, isGeneratingImages } = useGenerateImages();
+  const { generateImages, addOrReplaceImage, deleteImage, isGeneratingImages } = useGenerateImages();
   const wordCache = useWordCache();
 
   const [showExampleDialog, setShowExampleDialog] = useState(false);
@@ -156,7 +156,7 @@ export const WordManagementTable: React.FC<WordManagementTableProps> = ({ words,
                 {expandedWordId === word.id && (
                   <TableRow>
                     <TableCell colSpan={5}>
-                      <WordImages wordText={word.word_text} />
+                      <WordImages wordText={word.word_text} onEditImage={addOrReplaceImage} onDeleteImage={deleteImage} />
                     </TableCell>
                   </TableRow>
                 )}

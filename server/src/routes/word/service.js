@@ -363,6 +363,53 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
     return [];
 };
 
+// 替换或者追加客户端编辑后的图片，只有admin能操作
+export const addOrReplaceWordImage = async (c, db, userId, imageData, dataUrl, redact, replace = false) => {
+    let objectKey = imageData.image_key;
+    if (replace) {
+        // 删除R2中的实际文件
+        await c.env.WORDBENTO_R2.delete(imageData.image_key);
+        // // 删除DB中的记录
+        // await db.delete(schema.images).where(eq(schema.images.id, imageData.id));
+    } else {
+        objectKey = `${nanoid(10)}.jpeg`;
+    }
+
+    // 将 dataUrl 转换为buffer，供compressImageBufferWithPronunciation使用
+    const base64Data = dataUrl.split(',')[1];
+    const imageBinaryData = Buffer.from(base64Data, 'base64');
+
+    let phonetic = null;
+    if (redact) {
+        // 从word表中获取音标
+        const [wordData] = await db.select().from(schema.words).where(eq(schema.words.id, imageData.word_id)).limit(1);
+        if (wordData) {
+            phonetic = wordData.phonetic;
+        }
+    }
+
+    const compressedData = await compressImageBufferWithPronunciation(imageBinaryData, phonetic);
+    await c.env.WORDBENTO_R2.put(objectKey, compressedData, { contentType: 'image/jpeg' });
+    if (!replace) {
+        // 如果是替换就不要重复插入
+        await db.insert(schema.images).values({ word_id: imageData.word_id, image_key: objectKey, prompt: imageData.prompt });
+    }
+    // 获取所有图片URL
+    const allImageRecords = await db.select({ image_key: schema.images.image_key }).from(schema.images).where(eq(schema.images.word_id, imageData.word_id));
+    return allImageRecords.map(img => `${c.env.VITE_IMG_URL}/${img.image_key}`);
+};
+
+// 删除图片，只有admin能操作
+export const deleteWordImage = async (c, db, userId, imageData) => {
+    // 删除R2中的实际文件
+    await c.env.WORDBENTO_R2.delete(imageData.image_key);
+    // 删除image的数据
+    await db.delete(schema.images).where(eq(schema.images.id, imageData.id));
+    // 获取所有图片URL
+    const allImageRecords = await db.select({ image_key: schema.images.image_key }).from(schema.images).where(eq(schema.images.word_id, imageData.word_id));
+    return allImageRecords.map(img => `${c.env.VITE_IMG_URL}/${img.image_key}`);
+};
+
 export const markWordAsMastered = async (db, userId, wordId) => {
     const existingWord = await db.select().from(schema.words).where(eq(schema.words.id, wordId));
     if (existingWord.length === 0) {

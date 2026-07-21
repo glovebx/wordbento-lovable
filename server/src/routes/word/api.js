@@ -9,7 +9,9 @@ import {
   markWordAsMastered, 
   getTodayWords, 
   getSequenceWords,
-  getReviewWords4Push
+  getReviewWords4Push,
+  addOrReplaceWordImage,
+  deleteWordImage
 } from './service';
 import { NavigationMode } from '../../utils/constants';
 import { HTTPException } from 'hono/http-exception';
@@ -95,6 +97,140 @@ word.post('/imagize', async (c) => {
       throw error;
     }    
     return c.json({ message: 'An error occurred during image generation.' }, 500);
+  }
+});
+
+word.post('/reimagine', async (c) => {
+  if (!c.req.header('Content-Type')?.includes('application/json')) {
+    return c.json({ message: 'Invalid Content-Type, expected application/json' }, 415);
+  }
+
+  const user = c.get('user');
+
+  console.log('user ==>', user);
+
+  if (!user || user.id !== 1) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  const userId = user.id
+
+  let imageUrl;
+  let dataUrl;
+  let redact = false;
+  let replace = false;
+  try {
+    const body = await c.req.json();
+    imageUrl = body.imageUrl;    
+    dataUrl = body.dataUrl;
+    redact = body.redact;
+    replace = body.replace;
+  } catch (e) {
+    console.error("Failed to parse request body:", e);
+    return c.json({ message: 'Invalid JSON body' }, 400);
+  }
+
+  if (typeof imageUrl !== 'string' || typeof dataUrl !== 'string' 
+    || !imageUrl.startsWith('http') || !dataUrl.startsWith('data:')) {
+    console.warn(`Invalid imageUrl or dataUrl received`);
+    return c.json({ message: 'Invalid imageUrl or dataUrl provided.' }, 400);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+
+  try {
+    // extract image_key from imageUrl
+    const imageKey = imageUrl.split('/').pop();
+
+    // 根据imageKey找到对应的word记录
+    const [image] = await db.select()
+      .from(schema.images)
+      .where(eq(schema.images.image_key, imageKey))
+      .limit(1);
+
+    if (!image || !image.id) {
+      return c.json({ message: `Word for image "${imageKey}" not found.` }, 404);
+    }
+
+    const imageUrls = await addOrReplaceWordImage(c, db, userId, image, dataUrl, redact, replace);
+    if (!imageUrls) {
+      // 说明字典中单词不存在
+      return c.json({ message: `Word "${image.word_id}" not found in dictionary.` }, 404);
+    } else if (imageUrls.length > 0) {
+      return c.json({ imageUrls }, 200);
+    } else {
+      return c.json({ message: `Failed to re-generate image for "${image.word_id}".` }, 500);
+    }
+  } catch (error) {
+    console.error("Error in image generation:", error);
+    if (error instanceof HTTPException) {
+      throw error;
+    }    
+    return c.json({ message: 'An error occurred during image re-generation.' }, 500);
+  }
+});
+
+// 删除选中的图片
+word.post('/delimage', async (c) => {
+  if (!c.req.header('Content-Type')?.includes('application/json')) {
+    return c.json({ message: 'Invalid Content-Type, expected application/json' }, 415);
+  }
+
+  const user = c.get('user');
+
+  console.log('user ==>', user);
+
+  if (!user || user.id !== 1) {
+    return c.json({ message: 'Forbidden' }, 403);
+  }
+
+  const userId = user.id
+
+  let imageUrl;
+  try {
+    const body = await c.req.json();
+    imageUrl = body.imageUrl;    
+  } catch (e) {
+    console.error("Failed to parse request body:", e);
+    return c.json({ message: 'Invalid JSON body' }, 400);
+  }
+
+  if (typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
+    console.warn(`Invalid imageUrl received`);
+    return c.json({ message: 'Invalid imageUrl provided.' }, 400);
+  }
+
+  const db = drizzle(c.env.DB, { schema });
+
+  try {
+    // extract image_key from imageUrl
+    const imageKey = imageUrl.split('/').pop();
+
+    // 根据imageKey找到对应的word记录
+    const [image] = await db.select()
+      .from(schema.images)
+      .where(eq(schema.images.image_key, imageKey))
+      .limit(1);
+
+    if (!image || !image.id) {
+      return c.json({ message: `Word for image "${imageKey}" not found.` }, 404);
+    }
+
+    const imageUrls = await deleteWordImage(c, db, userId, image);
+    if (!imageUrls) {
+      // 说明字典中单词不存在
+      return c.json({ message: `Word "${image.word_id}" not found in dictionary.` }, 404);
+    } else if (imageUrls.length > 0) {
+      return c.json({ imageUrls }, 200);
+    } else {
+      return c.json({ message: `Failed to delete image for "${image.word_id}".` }, 500);
+    }
+  } catch (error) {
+    console.error("Error in image deleting:", error);
+    if (error instanceof HTTPException) {
+      throw error;
+    }    
+    return c.json({ message: 'An error occurred during image deleting.' }, 500);
   }
 });
 

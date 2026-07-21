@@ -5,19 +5,34 @@ import LoadingFallback from '@/components/LoadingFallback';
 import { WordDataType } from '@/types/wordTypes';
 import EnlargedImageCarouselDialog from '@/components/EnlargedImageCarouselDialog';
 import ImageEditorDialog from '@/components/history/ImageEditorDialog';
-import { Pencil } from 'lucide-react';
+import { Pencil, Loader2, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface WordImagesProps {
   wordText: string;
+  onEditImage?: ((dataUrl: string, url: string, redact: boolean, replace: boolean) => void) | null;
+  onDeleteImage?: ((url: string) => void) | null;
 }
 
-const WordImages: React.FC<WordImagesProps> = ({ wordText }) => {
+const WordImages: React.FC<WordImagesProps> = ({ wordText, onEditImage, onDeleteImage }) => {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const [showEnlargedImageDialog, setShowEnlargedImageDialog] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+
+  const [imageToDelete, setImageToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
 
@@ -52,6 +67,14 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText }) => {
     setEditImageUrl(url);
   }, []);
 
+  const handleConfirmDelete = async () => {
+    if (imageToDelete === null) return;
+
+    setIsDeleting(true);
+    onDeleteImage?.(imageToDelete);
+    setIsDeleting(false);
+  };
+
   if (isLoading) {
     return <LoadingFallback message="Loading images..." />;
   }
@@ -84,6 +107,7 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText }) => {
                 </AspectRatio>
 
                 {/* Edit icon overlay on hover */}
+                {onEditImage && (
                 <div
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                   onClick={(e) => handleEditClick(e, url)}
@@ -93,6 +117,20 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText }) => {
                     <Pencil className="h-4 w-4" />
                   </div>
                 </div>
+                )}
+
+                {/* Delete icon overlay on hover */}
+                {onDeleteImage && (
+                <div
+                  className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  onClick={(e) => { e.stopPropagation(); setImageToDelete(url); }}
+                  title="删除图片"
+                >
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white cursor-pointer">
+                    <Trash2 className="h-4 w-4" />
+                  </div>
+                </div>
+                )}
               </div>
             </div>
           ))}
@@ -115,8 +153,26 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText }) => {
           onOpenChange={(open) => { if (!open) setEditImageUrl(null); }}
           imageUrl={editImageUrl}
           wordText={wordText}
+          onSave={onEditImage!}
         />
       )}
+
+      <AlertDialog open={imageToDelete !== null} onOpenChange={(open) => !open && setImageToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the image from the servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} disabled={isDeleting}>
+              {isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...</> : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>      
     </>
   );
 };

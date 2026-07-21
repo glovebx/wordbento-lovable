@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import {
   X,
@@ -85,6 +86,7 @@ interface ImageEditorDialogProps {
   onOpenChange: (open: boolean) => void;
   imageUrl: string;
   wordText: string;
+  onSave: (dataUrl: string, url: string, redact: boolean, replace: boolean) => void;
 }
 
 const TOOLS: { key: ShapeType; icon: React.ReactNode; label: string }[] = [
@@ -96,13 +98,14 @@ const TOOLS: { key: ShapeType; icon: React.ReactNode; label: string }[] = [
   { key: 'triangle', icon: <Triangle className="h-4 w-4" />, label: '三角形' },
 ];
 
-const STROKE_WIDTHS = [0, 1, 2, 3, 4, 5, 6, 8, 10];
+const STROKE_WIDTHS = [0, 1, 2, 3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
 const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   open,
   onOpenChange,
   imageUrl,
   wordText,
+  onSave,
 }) => {
   const [shapes, setShapes] = useState<ShapeData[]>([]);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
@@ -116,6 +119,9 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   // Pen drawing state
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPenPoints, setCurrentPenPoints] = useState<number[]>([]);
+
+  const [replaceMode, setReplaceMode] = useState(false);
+  const [phoneticMode, setPhoneticMode] = useState(false);
 
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -412,14 +418,18 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   // Export the canvas as a PNG and download it
   const handleSave = useCallback(() => {
     if (!stageRef.current) return;
+    
     const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2, mimeType: 'image/png' });
-    const link = document.createElement('a');
-    link.download = `${wordText}-edited.png`;
-    link.href = dataUrl;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }, [wordText]);
+
+    onSave(dataUrl, imageUrl, phoneticMode, replaceMode);
+    // const link = document.createElement('a');
+    // link.download = `${wordText}-edited.png`;
+    // link.href = dataUrl;
+    // document.body.appendChild(link);
+    // link.click();
+    // document.body.removeChild(link);
+
+  }, [wordText, imageUrl, onSave, replaceMode, phoneticMode]);
 
   // Render a single shape
   const renderShape = (shape: ShapeData) => {
@@ -641,6 +651,20 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
           <span className="text-[11px] text-muted-foreground mr-auto">
             单击画布放置图形 · 拖动移动 · 拖动手柄调整大小/旋转 · 按住鼠标涂鸦
           </span>
+          <div className="flex items-center gap-1 mr-4">
+            <span className="text-xs text-muted-foreground hidden sm:inline">覆盖原图</span>
+            <Switch
+              checked={replaceMode}
+              onCheckedChange={setReplaceMode}
+            />
+          </div>
+          <div className="flex items-center gap-1 mr-4">
+            <span className="text-xs text-muted-foreground hidden sm:inline">重打音标</span>
+            <Switch
+              checked={phoneticMode}
+              onCheckedChange={setPhoneticMode}
+            />
+          </div>          
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             取消
           </Button>
