@@ -197,10 +197,10 @@ export const posterStyle = [
     "style": "In the style of Vincent van Gogh, impasto thick brushstrokes, swirling skies, intense colors",
     "desc": "文森特·梵高风格，厚重的厚涂笔触，旋转的星空，强烈的色彩 - 适合：激情、孤独、生命燃烧的单词"
   },
-  {
-    "style": "In the style of Hokusai, flat color areas, nature motifs, Asian ink wash aesthetic",
-    "desc": "葛饰北斋风格，平涂色块，自然主题，亚洲水墨美学 - 适合：巨浪、坚韧、自然力量的单词"
-  },
+  // {
+  //   "style": "In the style of Hokusai, flat color areas, nature motifs, Asian ink wash aesthetic",
+  //   "desc": "葛饰北斋风格，平涂色块，自然主题，亚洲水墨美学 - 适合：巨浪、坚韧、自然力量的单词"
+  // },
   {
     "style": "In the style of Egon Schiele, twisted body poses, raw emotionality, rough contour lines",
     "desc": "埃贡·席勒风格，扭曲的身体姿态，赤裸的情感，粗糙的轮廓线 - 适合：欲望、痛苦、存在焦虑的单词"
