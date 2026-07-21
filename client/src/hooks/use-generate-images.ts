@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { axiosPrivate } from '@/lib/axios'; // Adjust path as needed
-import { useToast } from '@/components/ui/use-toast'; // Adjust path as needed
 import { AxiosError } from 'axios'; // Import AxiosError for type checking
 
 /**
@@ -10,8 +9,6 @@ import { AxiosError } from 'axios'; // Import AxiosError for type checking
 export const useGenerateImages = () => {
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [generationError, setGenerationError] = useState<AxiosError | Error | null>(null);
-
-  const { toast } = useToast();
 
   /**
    * Triggers the backend API to generate images for a given word.

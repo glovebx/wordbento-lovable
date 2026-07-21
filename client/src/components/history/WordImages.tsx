@@ -21,9 +21,10 @@ interface WordImagesProps {
   wordText: string;
   onEditImage?: ((dataUrl: string, url: string, redact: boolean, replace: boolean) => void) | null;
   onDeleteImage?: ((url: string) => void) | null;
+  isGeneratingImage?: boolean;  
 }
 
-const WordImages: React.FC<WordImagesProps> = ({ wordText, onEditImage, onDeleteImage }) => {
+const WordImages: React.FC<WordImagesProps> = ({ wordText, onEditImage, onDeleteImage, isGeneratingImage = false }) => {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,6 +155,7 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText, onEditImage, onDelete
           imageUrl={editImageUrl}
           wordText={wordText}
           onSave={onEditImage!}
+          isSavingImage={isGeneratingImage}
         />
       )}
 

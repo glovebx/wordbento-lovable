@@ -12,6 +12,7 @@ import {
   Trash2,
   Save,
   Pen,
+  Loader2
 } from 'lucide-react';
 import {
   Stage,
@@ -87,6 +88,7 @@ interface ImageEditorDialogProps {
   imageUrl: string;
   wordText: string;
   onSave: (dataUrl: string, url: string, redact: boolean, replace: boolean) => void;
+  isSavingImage: boolean;
 }
 
 const TOOLS: { key: ShapeType; icon: React.ReactNode; label: string }[] = [
@@ -98,7 +100,7 @@ const TOOLS: { key: ShapeType; icon: React.ReactNode; label: string }[] = [
   { key: 'triangle', icon: <Triangle className="h-4 w-4" />, label: '三角形' },
 ];
 
-const STROKE_WIDTHS = [0, 1, 2, 3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+const STROKE_WIDTHS = [0, 1, 2, 3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
 
 const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   open,
@@ -106,6 +108,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   imageUrl,
   wordText,
   onSave,
+  isSavingImage
 }) => {
   const [shapes, setShapes] = useState<ShapeData[]>([]);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
@@ -415,27 +418,62 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [handleDelete, selectedShapeId]);
 
-  // Export the canvas as a PNG and download it
-  const handleSave = useCallback(() => {
-    if (!stageRef.current) return;
+  // Export the canvas as a PNG and submit to server
+  // const handleSave = useCallback(() => {
+  //   if (!stageRef.current) return;
     
-    const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2, mimeType: 'image/png' });
+  //   const dataUrl = stageRef.current.toDataURL({ pixelRatio: 2, mimeType: 'image/png' });
 
-    onSave(dataUrl, imageUrl, phoneticMode, replaceMode);
-    // const link = document.createElement('a');
-    // link.download = `${wordText}-edited.png`;
-    // link.href = dataUrl;
-    // document.body.appendChild(link);
-    // link.click();
-    // document.body.removeChild(link);
+  //   onSave(dataUrl, imageUrl, phoneticMode, replaceMode);
 
-  }, [wordText, imageUrl, onSave, replaceMode, phoneticMode]);
+  // }, [wordText, imageUrl, onSave, replaceMode, phoneticMode]);
+// Export only the image area as a PNG with original image dimensions
+  const handleSave = useCallback(() => {
+    if (!stageRef.current || !image || !imageAttrs) return;
+    
+    // Get the full stage as data URL
+    const fullDataUrl = stageRef.current.toDataURL({ pixelRatio: 2, mimeType: 'image/png' });
+    
+    // Create an image element to load the full stage screenshot
+    const fullImg = new window.Image();
+    fullImg.onload = () => {
+      // Create a canvas with the original image dimensions
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return;
+      
+      // Calculate the scale between the full stage screenshot and the stage size
+      const stageScaleX = fullImg.width / stageSize.width;
+      const stageScaleY = fullImg.height / stageSize.height;
+      
+      // Draw only the image area from the full stage screenshot
+      ctx.drawImage(
+        fullImg,
+        imageAttrs.x * stageScaleX,
+        imageAttrs.y * stageScaleY,
+        imageAttrs.width * stageScaleX,
+        imageAttrs.height * stageScaleY,
+        0,
+        0,
+        image.width,
+        image.height
+      );
+      
+      // Get the cropped data URL
+      const croppedDataUrl = canvas.toDataURL('image/png');
+      onSave(croppedDataUrl, imageUrl, phoneticMode, replaceMode);
+    };
+    
+    fullImg.src = fullDataUrl;
+  }, [image, imageAttrs, stageSize, imageUrl, onSave, replaceMode, phoneticMode]);  
 
   // Render a single shape
   const renderShape = (shape: ShapeData) => {
     const common = {
       id: shape.id,
-      key: shape.id,
       x: shape.x,
       y: shape.y,
       fill: shape.fill,
@@ -453,16 +491,17 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
 
     switch (shape.type) {
       case 'line':
-        return <Line {...common} points={shape.points} lineCap="round" lineJoin="round" tension={0} />;
+        return <Line key={shape.id} {...common} points={shape.points} lineCap="round" lineJoin="round" tension={0} />;
       case 'circle':
-        return <KonvaCircle {...common} radius={shape.radius} />;
+        return <KonvaCircle key={shape.id} {...common} radius={shape.radius} />;
       case 'rect':
-        return <Rect {...common} width={shape.width} height={shape.height} />;
+        return <Rect key={shape.id} {...common} width={shape.width} height={shape.height} />;
       case 'triangle':
-        return <RegularPolygon {...common} sides={3} radius={shape.radius} />;
+        return <RegularPolygon key={shape.id} {...common} sides={3} radius={shape.radius} />;
       case 'pen':
         return (
           <Line
+            key={shape.id}
             {...common}
             points={shape.points}
             lineCap="round"
@@ -664,12 +703,21 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
               checked={phoneticMode}
               onCheckedChange={setPhoneticMode}
             />
-          </div>          
+          </div>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             取消
           </Button>
           <Button size="sm" onClick={handleSave}>
-            <Save className="h-4 w-4 mr-1" /> 保存
+            {isSavingImage ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                保存中...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-1" /> 保存
+              </>
+            )}
           </Button>
         </div>
       </DialogContent>

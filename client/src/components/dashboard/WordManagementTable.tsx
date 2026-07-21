@@ -156,7 +156,11 @@ export const WordManagementTable: React.FC<WordManagementTableProps> = ({ words,
                 {expandedWordId === word.id && (
                   <TableRow>
                     <TableCell colSpan={5}>
-                      <WordImages wordText={word.word_text} onEditImage={addOrReplaceImage} onDeleteImage={deleteImage} />
+                      <WordImages wordText={word.word_text} 
+                        onEditImage={addOrReplaceImage} 
+                        onDeleteImage={deleteImage}
+                        isGeneratingImage={isGeneratingImages}                        
+                         />
                     </TableCell>
                   </TableRow>
                 )}
