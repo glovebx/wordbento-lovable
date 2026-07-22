@@ -72,12 +72,12 @@ async function getGlyph(char) {
     return glyph;
 }
 
-async function measureText(text) {
+async function measureText(glyphs) {
     let totalWidth = 0;
     let maxHeight = 0;
     
-    for (const char of text) {
-        const glyph = await getGlyph(char);
+    for (const glyph of glyphs) {
+        // const glyph = await getGlyph(char);
         if (glyph) {
             totalWidth += glyph.width + 2; // 字间距
             maxHeight = Math.max(maxHeight, glyph.height);
@@ -87,12 +87,22 @@ async function measureText(text) {
     return { width: totalWidth, height: maxHeight };
 }
 
-async function drawText(image, text, startX, startY) {
+async function drawText(image, glyphs, startX, startY) {
+    // // 先预加载所有 glyph，验证是否都能获取到
+    // const glyphs = [];
+    // for (const char of text) {
+    //     const glyph = await getGlyph(char);
+    //     if (!glyph) {
+    //         // 如果任何一个字符获取失败，取消所有绘制
+    //         console.warn(`无法获取字符 "${char}" 的字形，取消绘制`);
+    //         return 0;
+    //     }
+    //     glyphs.push(glyph);
+    // }
+
     let currentX = startX;
     
-    for (const char of text) {
-        const glyph = await getGlyph(char);
-        if (!glyph) continue;
+    for (const glyph of glyphs) {
         
         if (glyph.image) {
             // 计算垂直居中偏移
@@ -129,8 +139,20 @@ export async function compressImageBufferWithPronunciation(buffer, pronunciation
         const width = image.bitmap.width;
         const height = image.bitmap.height;
         
+        // 先预加载所有 glyph，验证是否都能获取到
+        const glyphs = [];
+        for (const char of pronunciation) {
+            const glyph = await getGlyph(char);
+            if (!glyph || !glyph.image) {
+                // 如果任何一个字符获取失败，取消所有绘制
+                console.warn(`无法获取字符 "${char}" 的字形，取消绘制`);
+                return compressImageBuffer(buffer, maxImageSize);
+            }
+            glyphs.push(glyph);
+        }
+
         // 测量文字尺寸
-        const { width: textWidth, height: textHeight } = await measureText(pronunciation);
+        const { width: textWidth, height: textHeight } = await measureText(glyphs);
         
         const paddingX = 14;
         const paddingY = 10;
@@ -159,7 +181,7 @@ export async function compressImageBufferWithPronunciation(buffer, pronunciation
         // 绘制白色音标文字
         const textX = randomX + paddingX;
         const textY = randomY + paddingY;
-        await drawText(image, pronunciation, textX, textY);
+        await drawText(image, glyphs, textX, textY);
         
 
         // // --- Compression logic ---

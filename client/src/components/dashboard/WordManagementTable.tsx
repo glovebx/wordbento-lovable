@@ -116,8 +116,8 @@ export const WordManagementTable: React.FC<WordManagementTableProps> = ({ words,
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead>Word</TableHead>
-              <TableHead>Meaning</TableHead>
               <TableHead>Phonetic</TableHead>
+              <TableHead>Meaning</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -130,8 +130,8 @@ export const WordManagementTable: React.FC<WordManagementTableProps> = ({ words,
                 >
                   <TableCell>{word.id}</TableCell>
                   <TableCell className="font-medium">{word.word_text}</TableCell>
+                  <TableCell>{word.phonetic}</TableCell>                  
                   <TableCell>{word.meaning}</TableCell>
-                  <TableCell>{word.phonetic}</TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button 
                       variant="ghost" 

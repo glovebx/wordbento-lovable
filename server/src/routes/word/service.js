@@ -394,6 +394,26 @@ export const addOrReplaceWordImage = async (c, db, userId, imageData, dataUrl, r
         // 如果是替换就不要重复插入
         await db.insert(schema.images).values({ word_id: imageData.word_id, image_key: objectKey, prompt: imageData.prompt });
     }
+
+    try {
+        // Step 1: Set is_cover = 0 for all images of this word
+        await db.update(schema.images)
+        .set({ is_cover: 0 })
+        .where(and(eq(schema.images.word_id, imageData.word_id), eq(schema.images.is_cover, 1)));
+
+        // Step 2: Set is_cover = 1 for the specific image
+        await db.update(schema.images)
+        .set({ is_cover: 1 })
+        .where(and(
+            eq(schema.images.word_id, imageData.word_id),
+            eq(schema.images.image_key, objectKey),
+        ));
+
+        return c.json({ message: 'Cover image updated successfully.' }, 200);
+    } catch (error) {
+        console.error('Error updating cover image:', error);
+    }
+
     // 获取所有图片URL
     const allImageRecords = await db.select({ image_key: schema.images.image_key }).from(schema.images).where(eq(schema.images.word_id, imageData.word_id));
     return allImageRecords.map(img => `${c.env.VITE_IMG_URL}/${img.image_key}`);

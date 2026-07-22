@@ -116,7 +116,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   const [currentTool, setCurrentTool] = useState<ShapeType>('select');
   const [currentFill, setCurrentFill] = useState('transparent');
   const [currentStroke, setCurrentStroke] = useState('#ff6b6b');
-  const [currentStrokeWidth, setCurrentStrokeWidth] = useState(2);
+  const [currentStrokeWidth, setCurrentStrokeWidth] = useState(8);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
   
@@ -129,8 +129,8 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   const [drawingShape, setDrawingShape] = useState<ShapeData | null>(null);
   const [drawStartPos, setDrawStartPos] = useState<{ x: number; y: number } | null>(null);
 
-  const [replaceMode, setReplaceMode] = useState(false);
-  const [phoneticMode, setPhoneticMode] = useState(false);
+  const [replaceMode, setReplaceMode] = useState(true);
+  const [phoneticMode, setPhoneticMode] = useState(true);
 
   const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -139,7 +139,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
 
   // 新增：水印去除相关状态
   const [isRemovingWatermark, setIsRemovingWatermark] = useState(false);
-  const [watermarkMask, setWatermarkMask] = useState<ShapeData | null>(null);
+  // const [watermarkMask, setWatermarkMask] = useState<ShapeData | null>(null);
 
   // Reset state when dialog opens
   useEffect(() => {

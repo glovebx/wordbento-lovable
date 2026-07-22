@@ -69,7 +69,7 @@ export const useGenerateImages = () => {
     }
   }, [axiosPrivate]); // Dependencies: toast and axiosPrivate
 
-   const addOrReplaceImage = useCallback(async (dataUrl: string, imageUrl: string, redact: boolean, replace: boolean): Promise<string[] | null> => {
+  const addOrReplaceImage = useCallback(async (dataUrl: string, imageUrl: string, redact: boolean, replace: boolean): Promise<string[] | null> => {
     setIsGeneratingImages(true);
     setGenerationError(null); // Clear previous errors
     // console.log(`Hook: Attempting to replace image for word: ${wordText}`);
