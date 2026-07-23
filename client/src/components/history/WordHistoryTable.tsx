@@ -68,7 +68,7 @@ export const WordHistoryTable: React.FC<WordHistoryTableProps> = ({ history }) =
               <CollapsibleContent asChild>
                 <TableRow>
                   <TableCell colSpan={isTouch ? 2 : 3}>
-                    <WordImages wordText={record.word_text} />
+                    <WordImages word={record} />
                   </TableCell>
                 </TableRow>
               </CollapsibleContent>

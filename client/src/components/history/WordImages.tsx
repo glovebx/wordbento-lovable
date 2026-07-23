@@ -18,13 +18,13 @@ import {
 } from "@/components/ui/alert-dialog";
 
 interface WordImagesProps {
-  wordText: string;
+  word: WordDataType;
   onEditImage?: ((dataUrl: string, url: string, redact: boolean, replace: boolean) => void) | null;
   onDeleteImage?: ((url: string) => void) | null;
   isGeneratingImage?: boolean;  
 }
 
-const WordImages: React.FC<WordImagesProps> = ({ wordText, onEditImage, onDeleteImage, isGeneratingImage = false }) => {
+const WordImages: React.FC<WordImagesProps> = ({ word, onEditImage, onDeleteImage, isGeneratingImage = false }) => {
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,12 +52,12 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText, onEditImage, onDelete
 
   useEffect(() => {
     const fetchImages = async () => {
-      if (!wordText) return;
+      if (!word) return;
 
       setIsLoading(true);
       setError(null);
       try {
-        const response = await axiosPrivate.post<WordDataType>('/api/word/search', { slug: wordText });
+        const response = await axiosPrivate.post<WordDataType>('/api/word/search', { slug: word.word_text });
         const images = response.data.imageUrls || [];
         setImageUrls(images);
       } catch (err) {
@@ -69,7 +69,7 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText, onEditImage, onDelete
     };
 
     fetchImages();
-  }, [wordText]);
+  }, [word]);
 
   const handleImageClick = useCallback((index: number) => {
     setSelectedImageIndex(index);
@@ -114,7 +114,7 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText, onEditImage, onDelete
                 <AspectRatio ratio={16 / 9} className="bg-muted">
                   <img
                     src={url}
-                    alt={`Image for ${wordText} ${index + 1}`}
+                    alt={`Image for ${word.word_text} ${index + 1}`}
                     className="object-cover w-full h-full"
                     loading="lazy"
                   />
@@ -156,7 +156,7 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText, onEditImage, onDelete
           open={showEnlargedImageDialog}
           onOpenChange={setShowEnlargedImageDialog}
           imageUrls={imageUrls}
-          wordText={wordText}
+          wordText={word.word_text}
           initialIndex={selectedImageIndex}
         />
       )}
@@ -165,8 +165,9 @@ const WordImages: React.FC<WordImagesProps> = ({ wordText, onEditImage, onDelete
         <ImageEditorDialog
           open={!!editImageUrl}
           onOpenChange={(open) => { if (!open) setEditImageUrl(null); }}
+          word={word}
           imageUrl={editImageUrl}
-          wordText={wordText}
+          imageUrls={imageUrls}
           onSave={onEditImage!}
           isSavingImage={isGeneratingImage}
         />

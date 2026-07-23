@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { WordDataType } from '@/types/wordTypes';
+import { baseURL } from '@/lib/axios';
 import {
   X,
   MousePointer2,
@@ -86,8 +88,9 @@ function createDefaultShape(
 interface ImageEditorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  word: WordDataType;
   imageUrl: string;
-  wordText: string;
+  imageUrls: string[];
   onSave: (dataUrl: string, url: string, redact: boolean, replace: boolean) => void;
   isSavingImage: boolean;
 }
@@ -106,8 +109,9 @@ const STROKE_WIDTHS = [0, 1, 2, 3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15, 16, 17, 1
 const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   open,
   onOpenChange,
+  word,
   imageUrl,
-  wordText,
+  imageUrls,
   onSave,
   isSavingImage
 }) => {
@@ -118,8 +122,13 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   const [currentStroke, setCurrentStroke] = useState('#ff6b6b');
   const [currentStrokeWidth, setCurrentStrokeWidth] = useState(8);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [currentImageUrl, setCurrentImageUrl] = useState(imageUrl);
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
   
+  // 新增：所有图片数据
+  const [allImages, setAllImages] = useState<{ url: string; element: HTMLImageElement }[]>([]);
+  const [thumbnailImages, setThumbnailImages] = useState<{ url: string; element: HTMLImageElement }[]>([]);
+
   // Pen drawing state
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPenPoints, setCurrentPenPoints] = useState<number[]>([]);
@@ -141,6 +150,88 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   const [isRemovingWatermark, setIsRemovingWatermark] = useState(false);
   // const [watermarkMask, setWatermarkMask] = useState<ShapeData | null>(null);
 
+  // 加载所有图片
+  useEffect(() => {
+    if (!open) return;
+    
+    const loadedImages: { url: string; element: HTMLImageElement }[] = [];
+    let loadedCount = 0;
+    
+    imageUrls.forEach((url) => {
+      const imageKey = url.split("/").pop();
+      const src = `${baseURL}/api/word/image/${imageKey}`
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.src = src;
+      img.onload = () => {
+        loadedImages.push({ url, element: img });
+        loadedCount++;
+        
+        if (loadedCount === imageUrls.length) {
+          setAllImages(loadedImages);
+        }
+      };
+      img.onerror = () => {
+        loadedCount++;
+        if (loadedCount === imageUrls.length) {
+          setAllImages(loadedImages);
+        }
+      };
+    });
+    
+    // 如果只有当前图片，直接设置
+    if (imageUrls.length === 1) {
+      setAllImages([]);
+    }
+  }, [open, imageUrls]);
+
+  // 加载缩略图
+  useEffect(() => {
+    if (!open || allImages.length === 0) return;
+    
+    const thumbnails: { url: string; element: HTMLImageElement }[] = [];
+    let loadedCount = 0;
+    
+    allImages.forEach(({ url }) => {
+      const imageKey = url.split("/").pop();
+      const src = `${baseURL}/api/word/image/${imageKey}`      
+      const thumbImg = new window.Image();
+      thumbImg.crossOrigin = 'anonymous';
+      thumbImg.src = src;
+      thumbImg.onload = () => {
+        thumbnails.push({ url, element: thumbImg });
+        loadedCount++;
+        
+        if (loadedCount === allImages.length) {
+          setThumbnailImages(thumbnails);
+        }
+      };
+      thumbImg.onerror = () => {
+        loadedCount++;
+        if (loadedCount === allImages.length) {
+          setThumbnailImages(thumbnails);
+        }
+      };
+    });
+  }, [open, allImages]);
+
+  // 切换图片
+  const handleImageSwitch = useCallback((url: string) => {
+    // 切换到新图片
+    setCurrentImageUrl(url);
+    
+    // 清空当前图片的编辑状态
+    setShapes([]);
+    setSelectedShapeId(null);
+    selectedShapeTypeRef.current = null;
+    
+    // 更新当前显示的图片
+    const imageData = allImages.find(img => img.url === url);
+    if (imageData) {
+      setImage(imageData.element);
+    }
+  }, [currentImageUrl, shapes, allImages]);
+
   // Reset state when dialog opens
   useEffect(() => {
     if (open) {
@@ -159,9 +250,13 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   // Load the image
   useEffect(() => {
     if (!imageUrl) return;
+
+    const imageKey = imageUrl.split("/").pop();
+    const src = `${baseURL}/api/word/image/${imageKey}`
+
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
-    img.src = imageUrl;
+    img.src = src;
     img.onload = () => setImage(img);
     return () => {
       img.onload = null;
@@ -406,7 +501,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     }
   }, [isDrawing, currentTool, isDrawingShape, drawStartPos, drawingShape]);
 
-  const handleMouseUp = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+  const handleMouseUp = useCallback(() => {
     // 处理涂鸦结束
     if (isDrawing && currentTool === 'pen') {
       setIsDrawing(false);
@@ -576,11 +671,11 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       
       // Get the cropped data URL
       const croppedDataUrl = canvas.toDataURL('image/png');
-      onSave(croppedDataUrl, imageUrl, phoneticMode, replaceMode);
+      onSave(croppedDataUrl, currentImageUrl, phoneticMode, replaceMode);
     };
     
     fullImg.src = fullDataUrl;
-  }, [image, imageAttrs, stageSize, imageUrl, onSave, replaceMode, phoneticMode]);  
+  }, [image, imageAttrs, stageSize, currentImageUrl, onSave, replaceMode, phoneticMode]);  
 
   // Render a single shape
   const renderShape = (shape: ShapeData) => {
@@ -641,6 +736,9 @@ const removeWatermark = useCallback(async () => {
       const ctx = canvas.getContext('2d')!;
       
       await new Promise<void>((resolve) => {
+        const imageKey = currentImageUrl.split("/").pop();
+        const src = `${baseURL}/api/word/image/${imageKey}`
+
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
@@ -699,7 +797,7 @@ const removeWatermark = useCallback(async () => {
           
           ctx.putImageData(result, 0, 0);
           
-          const newImageUrl = canvas.toDataURL('image/png');
+          const newDataUrl = canvas.toDataURL('image/png');
           const newImg = new window.Image();
           newImg.onload = () => {
             setImage(newImg);
@@ -708,17 +806,18 @@ const removeWatermark = useCallback(async () => {
             selectedShapeTypeRef.current = null;
             setIsRemovingWatermark(false);
           };
-          newImg.src = newImageUrl;
+          newImg.src = newDataUrl;
           
           resolve();
         };
-        img.src = imageUrl;
+
+        img.src = src;
       });
     } catch (error) {
       console.error('Watermark removal failed:', error);
       setIsRemovingWatermark(false);
     }
-  }, [image, imageUrl, imageAttrs, shapes]);
+  }, [image, currentImageUrl, imageAttrs, shapes]);
 
   // 强力膨胀mask
 function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radius: number): Uint8Array {
@@ -869,22 +968,22 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
       <DialogContent
         className="
           fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-          w-[calc(100vw-1rem)] max-w-5xl
-          h-[calc(100vh-2rem)] max-h-[96vh]
+          w-[calc(100vw-4rem)] max-w-5xl
+          h-[calc(100vh-8rem)] max-h-[96vh]
           flex flex-col p-0 gap-0
           bg-background rounded-lg shadow-lg z-101
           overflow-hidden
         "
         aria-describedby={undefined}
       >
-        <DialogTitle className="sr-only">编辑图片 - {wordText}</DialogTitle>
+        <DialogTitle className="sr-only">编辑图片 - {word.word_text} {word.phonetic}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
-          <h3 className="text-sm font-medium">编辑图片 — {wordText}</h3>
+          <h3 className="text-sm font-medium">编辑图片 — {word.word_text} {word.phonetic}</h3>
           <DialogClose asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7">
-              <X className="h-4 w-4" />
+              {/* <X className="h-4 w-4" /> */}
             </Button>
           </DialogClose>
         </div>
@@ -1007,7 +1106,7 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
         </div>
 
         {/* ── Canvas ── */}
-        <div ref={containerRef} className="flex-1 bg-black/5 relative overflow-hidden">
+        <div ref={containerRef} className="flex-1 bg-black/5 relative overflow-hidden p-4">
           <Stage
             ref={stageRef}
             width={stageSize.width}
@@ -1118,7 +1217,37 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
               />
             </Layer>
           </Stage>
+
+          {/* ── 新增：缩略图列表 ── */}
+          {allImages.length > 1 && thumbnailImages.length > 0 && (
+            <div className="absolute bottom-3 left-3 flex gap-2 bg-background/80 backdrop-blur-sm rounded-lg p-2 shadow-lg border z-10">
+              {thumbnailImages.map(({ url }) => (
+                <div
+                  key={url}
+                  className={`
+                    relative w-16 h-16 rounded-md overflow-hidden cursor-pointer border-2 transition-all
+                    hover:scale-105 hover:shadow-md
+                    ${currentImageUrl === url ? 'border-primary shadow-md scale-105' : 'border-transparent opacity-70 hover:opacity-100'}
+                  `}
+                  onClick={() => handleImageSwitch(url)}
+                  title={currentImageUrl === url ? '当前图片' : '点击切换'}
+                >
+                  <img
+                    src={url}
+                    alt="缩略图"
+                    className="w-full h-full object-cover"
+                  />
+                  {currentImageUrl === url && (
+                    <div className="absolute top-0 right-0 w-4 h-4 bg-primary rounded-bl-md flex items-center justify-center">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}          
         </div>
+
 
         {/* ── Footer ── */}
         <div className="flex items-center justify-end gap-2 px-4 py-2 border-t shrink-0">
