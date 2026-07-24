@@ -91,18 +91,25 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     try {
       // Extract image_key from URL (last path segment)
       const imageKey = imageUrl.split('/').pop();
-      await axiosPrivate.post('/api/word/cover', {
+      const result = await axiosPrivate.post('/api/word/cover', {
         word_id: wordData.id,
         image_key: imageKey,
       });
-      toast({
-        title: '已设为封面',
-        description: '该图片已设为封面图片',
-      });
-      const cover = wordData.cover 
-        ? { ...wordData.cover, image_key: imageKey ?? '' }
-        : { image_key: imageKey ?? '' }
-      onUpdateWordCover(wordData.word_text, cover)
+      const cover = result.data.cover;
+      if (cover.image_key) {
+        toast({
+          title: '已设为封面',
+          description: '该图片已设为封面图片',
+        });
+
+        onUpdateWordCover(wordData.word_text, cover)
+      } else {
+        toast({
+          title: '设置失败',
+          description: '设置封面图片时发生错误',
+          variant: 'destructive',
+        });        
+      }
     } catch (error) {
       console.error('Failed to set cover image:', error);
       toast({
@@ -652,7 +659,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
         </div>
       )}
 
-              <div className="text-center p-3 bg-muted rounded-lg w-full max-w-sm animate-fade-in">
+              <div className="text-center p-3 bg-muted rounded-lg w-full max-w-md animate-fade-in">
                   {wordData.phonetic && (
                       <p className="text-lg font-semibold text-foreground mb-1">
                           /{wordData.phonetic}/
@@ -665,6 +672,11 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                                 {wordData.meaning}
                             </p>
                         )}
+                        {wordData.cover?.prompt && (
+                            <p className="text-base text-muted-foreground pt-4">
+                                {wordData.cover?.prompt}
+                            </p>
+                        )}                        
                         {(!wordData.meaning) && (
                             <p className="text-sm text-muted-foreground">
                                 暂无详细信息

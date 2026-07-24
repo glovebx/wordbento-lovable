@@ -262,7 +262,20 @@ word.post('/cover', async (c) => {
         eq(schema.images.image_key, image_key),
       ));
 
-    return c.json({ message: 'Cover image updated successfully.' }, 200);
+    // compose cover object from database
+    const [coverImage] = await db.select()
+      .from(schema.images)
+      .where(and(
+        eq(schema.images.word_id, word_id),
+        eq(schema.images.is_cover, 1),
+      ));
+
+    const cover = coverImage ? {
+      image_key: coverImage.image_key,
+      prompt: coverImage.prompt,
+    } : {};
+
+    return c.json({ cover }, 200);
   } catch (error) {
     console.error('Error updating cover image:', error);
     return c.json({ message: 'An error occurred while updating cover image.' }, 500);

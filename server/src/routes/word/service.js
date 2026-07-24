@@ -365,14 +365,12 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
 
 // 替换或者追加客户端编辑后的图片，只有admin能操作
 export const addOrReplaceWordImage = async (c, db, userId, imageData, dataUrl, redact, replace = false) => {
-    let objectKey = imageData.image_key;
+    const objectKey = `${nanoid(10)}.jpeg`;
     if (replace) {
         // 删除R2中的实际文件
         await c.env.WORDBENTO_R2.delete(imageData.image_key);
-        // // 删除DB中的记录
-        // await db.delete(schema.images).where(eq(schema.images.id, imageData.id));
-    } else {
-        objectKey = `${nanoid(10)}.jpeg`;
+        // // 删除DB中的记录，如果只是替换原文件，cloudflare R2有缓存，会导致后续请求返回旧文件
+        await db.delete(schema.images).where(eq(schema.images.id, imageData.id));
     }
 
     // 将 dataUrl 转换为buffer，供compressImageBufferWithPronunciation使用
@@ -388,30 +386,18 @@ export const addOrReplaceWordImage = async (c, db, userId, imageData, dataUrl, r
         }
     }
 
-    const compressedData = await compressImageBufferWithPronunciation(imageBinaryData, phonetic);
-    await c.env.WORDBENTO_R2.put(objectKey, compressedData, { contentType: 'image/jpeg' });
-    if (!replace) {
-        // 如果是替换就不要重复插入
-        await db.insert(schema.images).values({ word_id: imageData.word_id, image_key: objectKey, prompt: imageData.prompt });
-    }
-
     try {
         // Step 1: Set is_cover = 0 for all images of this word
         await db.update(schema.images)
         .set({ is_cover: 0 })
         .where(and(eq(schema.images.word_id, imageData.word_id), eq(schema.images.is_cover, 1)));
 
-        // Step 2: Set is_cover = 1 for the specific image
-        await db.update(schema.images)
-        .set({ is_cover: 1 })
-        .where(and(
-            eq(schema.images.word_id, imageData.word_id),
-            eq(schema.images.image_key, objectKey),
-        ));
+        const compressedData = await compressImageBufferWithPronunciation(imageBinaryData, phonetic);
+        await c.env.WORDBENTO_R2.put(objectKey, compressedData, { contentType: 'image/jpeg' });
+        await db.insert(schema.images).values({ word_id: imageData.word_id, image_key: objectKey, prompt: imageData.prompt, is_cover: 1 });
 
-        return c.json({ message: 'Cover image updated successfully.' }, 200);
     } catch (error) {
-        console.error('Error updating cover image:', error);
+        console.error('Error updating image:', error);
     }
 
     // 获取所有图片URL

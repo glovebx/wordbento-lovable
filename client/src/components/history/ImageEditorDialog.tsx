@@ -1106,7 +1106,7 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
         </div>
 
         {/* ── Canvas ── */}
-        <div ref={containerRef} className="flex-1 bg-black/5 relative overflow-hidden p-4">
+        <div ref={containerRef} className="flex-1 bg-black/5 relative overflow-hidden p-4 flex items-center justify-center">
           <Stage
             ref={stageRef}
             width={stageSize.width}
