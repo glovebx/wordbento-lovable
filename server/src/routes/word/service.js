@@ -364,6 +364,7 @@ export const generateWordImage = async (c, db, userId, slug, example, force) => 
 };
 
 // 替换或者追加客户端编辑后的图片，只有admin能操作
+// cloudflare上会造成Worker exceeded CPU time limit.错误，需要优化！
 export const addOrReplaceWordImage = async (c, db, userId, imageData, dataUrl, redact, replace = false) => {
     const objectKey = `${nanoid(10)}.jpeg`;
     if (replace) {
@@ -392,6 +393,7 @@ export const addOrReplaceWordImage = async (c, db, userId, imageData, dataUrl, r
         .set({ is_cover: 0 })
         .where(and(eq(schema.images.word_id, imageData.word_id), eq(schema.images.is_cover, 1)));
 
+        // 太耗时，会被cloudflare直接终止，需要优化！
         const compressedData = await compressImageBufferWithPronunciation(imageBinaryData, phonetic);
         await c.env.WORDBENTO_R2.put(objectKey, compressedData, { contentType: 'image/jpeg' });
         await db.insert(schema.images).values({ word_id: imageData.word_id, image_key: objectKey, prompt: imageData.prompt, is_cover: 1 });

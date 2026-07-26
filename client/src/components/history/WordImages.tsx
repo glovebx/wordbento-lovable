@@ -37,18 +37,18 @@ const WordImages: React.FC<WordImagesProps> = ({ word, onEditImage, onDeleteImag
 
   const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
 
-  // 使用 ref 来追踪上一次的 isGeneratingImage 值
-  const prevIsGeneratingImage = useRef(isGeneratingImage);
+  // // 使用 ref 来追踪上一次的 isGeneratingImage 值
+  // const prevIsGeneratingImage = useRef(isGeneratingImage);
 
-  // 监听 isGeneratingImage 从 true 变为 false
-  useEffect(() => {
-    if (prevIsGeneratingImage.current === true && isGeneratingImage === false) {
-      // 保存结束，关闭编辑器
-      setEditImageUrl(null);
-    }
-    // 更新 ref
-    prevIsGeneratingImage.current = isGeneratingImage;
-  }, [isGeneratingImage]);
+  // // 监听 isGeneratingImage 从 true 变为 false
+  // useEffect(() => {
+  //   if (prevIsGeneratingImage.current === true && isGeneratingImage === false) {
+  //     // 保存结束，关闭编辑器
+  //     setEditImageUrl(null);
+  //   }
+  //   // 更新 ref
+  //   prevIsGeneratingImage.current = isGeneratingImage;
+  // }, [isGeneratingImage]);
 
   useEffect(() => {
     const fetchImages = async () => {

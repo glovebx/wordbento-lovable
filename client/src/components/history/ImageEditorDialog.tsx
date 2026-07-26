@@ -120,7 +120,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   const [currentTool, setCurrentTool] = useState<ShapeType>('select');
   const [currentFill, setCurrentFill] = useState('transparent');
   const [currentStroke, setCurrentStroke] = useState('#ff6b6b');
-  const [currentStrokeWidth, setCurrentStrokeWidth] = useState(8);
+  const [currentStrokeWidth, setCurrentStrokeWidth] = useState(4);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState(imageUrl);
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
@@ -726,9 +726,15 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
 const removeWatermark = useCallback(async () => {
     if (!stageRef.current || !image || !imageAttrs) return;
     
-    const penShapes = shapes.filter(s => s.type === 'pen');
-    if (penShapes.length === 0) return;
-    
+    // const penShapes = shapes.filter(s => s.type === 'pen');
+    // if (penShapes.length === 0) return;
+
+    // 获取所有可用于遮罩的形状（排除涂鸦，因为涂鸦单独处理）
+    const maskShapes = shapes.filter(s => 
+      s.type === 'pen' || s.type === 'line' || s.type === 'circle' || s.type === 'rect' || s.type === 'triangle'
+    );
+    if (maskShapes.length === 0) return;
+
     setIsRemovingWatermark(true);
     
     try {
@@ -761,25 +767,129 @@ const removeWatermark = useCallback(async () => {
           maskCtx.lineCap = 'round';
           maskCtx.lineJoin = 'round';
           
-          penShapes.forEach(shape => {
-            if (shape.points.length < 4) return;
+          // penShapes.forEach(shape => {
+          //   if (shape.points.length < 4) return;
             
-            maskCtx.beginPath();
-            const points = shape.points;
-            for (let i = 0; i < points.length; i += 2) {
-              const x = (points[i] - imageAttrs.x) * scaleX;
-              const y = (points[i + 1] - imageAttrs.y) * scaleY;
+          //   maskCtx.beginPath();
+          //   const points = shape.points;
+          //   for (let i = 0; i < points.length; i += 2) {
+          //     const x = (points[i] - imageAttrs.x) * scaleX;
+          //     const y = (points[i + 1] - imageAttrs.y) * scaleY;
               
-              if (i === 0) {
-                maskCtx.moveTo(x, y);
-              } else {
-                maskCtx.lineTo(x, y);
+          //     if (i === 0) {
+          //       maskCtx.moveTo(x, y);
+          //     } else {
+          //       maskCtx.lineTo(x, y);
+          //     }
+          //   }
+          //   // 加大线宽
+          //   maskCtx.lineWidth = shape.strokeWidth * Math.max(scaleX, scaleY) + 20;
+          //   maskCtx.stroke();
+          // });
+          maskShapes.forEach(shape => {
+            maskCtx.save();
+            
+            // 计算在原始图片上的位置和尺寸
+            const x = (shape.x - imageAttrs.x) * scaleX;
+            const y = (shape.y - imageAttrs.y) * scaleY;
+                      
+            // 根据形状类型绘制mask
+            switch (shape.type) {
+              case 'pen': {
+                if (shape.points.length < 4) break;
+                
+                maskCtx.beginPath();
+                const points = shape.points;
+                for (let i = 0; i < points.length; i += 2) {
+                  const px = (points[i] - imageAttrs.x) * scaleX;
+                  const py = (points[i + 1] - imageAttrs.y) * scaleY;
+                  
+                  if (i === 0) {
+                    maskCtx.moveTo(px, py);
+                  } else {
+                    maskCtx.lineTo(px, py);
+                  }
+                }
+                maskCtx.lineWidth = shape.strokeWidth * Math.max(scaleX, scaleY) + 20;
+                maskCtx.stroke();
+                break;
+              }
+              
+              case 'line': {
+                if (shape.points.length < 4) break;
+                
+                const points = shape.points;
+                const x1 = (shape.x + points[0] - imageAttrs.x) * scaleX;
+                const y1 = (shape.y + points[1] - imageAttrs.y) * scaleY;
+                const x2 = (shape.x + points[2] - imageAttrs.x) * scaleX;
+                const y2 = (shape.y + points[3] - imageAttrs.y) * scaleY;
+                
+                maskCtx.beginPath();
+                maskCtx.moveTo(x1, y1);
+                maskCtx.lineTo(x2, y2);
+                maskCtx.lineWidth = shape.strokeWidth * Math.max(scaleX, scaleY) + 20;
+                maskCtx.stroke();
+                break;
+              }
+              
+              case 'rect': {
+                const width = shape.width * shape.scaleX * scaleX;
+                const height = shape.height * shape.scaleY * scaleY;
+                
+                // 处理旋转
+                if (shape.rotation !== 0) {
+                  maskCtx.translate(x, y);
+                  maskCtx.rotate(shape.rotation * Math.PI / 180);
+                  maskCtx.fillRect(
+                    -width / 2, 
+                    -height / 2, 
+                    width + 20,  // 额外扩展以确保完全覆盖
+                    height + 20
+                  );
+                } else {
+                  maskCtx.fillRect(
+                    x - 10, 
+                    y - 10, 
+                    width + 20, 
+                    height + 20
+                  );
+                }
+                break;
+              }
+              
+              case 'circle': {
+                const radius = shape.radius * Math.max(shape.scaleX, shape.scaleY) * Math.max(scaleX, scaleY);
+                
+                maskCtx.beginPath();
+                maskCtx.arc(x, y, radius + 10, 0, Math.PI * 2);
+                maskCtx.fill();
+                break;
+              }
+              
+              case 'triangle': {
+                const radius = shape.radius * Math.max(shape.scaleX, shape.scaleY) * Math.max(scaleX, scaleY);
+                const rotation = shape.rotation * Math.PI / 180;
+                
+                maskCtx.beginPath();
+                for (let i = 0; i < 3; i++) {
+                  const angle = rotation + (i * 2 * Math.PI) / 3 - Math.PI / 2;
+                  const px = x + (radius + 10) * Math.cos(angle);
+                  const py = y + (radius + 10) * Math.sin(angle);
+                  
+                  if (i === 0) {
+                    maskCtx.moveTo(px, py);
+                  } else {
+                    maskCtx.lineTo(px, py);
+                  }
+                }
+                maskCtx.closePath();
+                maskCtx.fill();
+                break;
               }
             }
-            // 加大线宽
-            maskCtx.lineWidth = shape.strokeWidth * Math.max(scaleX, scaleY) + 20;
-            maskCtx.stroke();
-          });
+            
+            maskCtx.restore();
+          });          
           
           // 获取mask数据
           const maskData = maskCtx.getImageData(0, 0, canvas.width, canvas.height);
@@ -789,7 +899,7 @@ const removeWatermark = useCallback(async () => {
           }
           
           // 膨胀mask
-          const expandedMask = dilateMaskStrong(binaryMask, canvas.width, canvas.height, 15);
+          const expandedMask = dilateMaskStrong(binaryMask, canvas.width, canvas.height, 10);
           
           // 执行强力填充
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -801,7 +911,13 @@ const removeWatermark = useCallback(async () => {
           const newImg = new window.Image();
           newImg.onload = () => {
             setImage(newImg);
-            setShapes(prev => prev.filter(s => s.type !== 'pen'));
+            
+            // setShapes(prev => prev.filter(s => s.type !== 'pen'));
+            // 移除所有用于遮罩的形状
+            setShapes(prev => prev.filter(s => 
+              !maskShapes.some(maskShape => maskShape.id === s.id)
+            ));
+
             setSelectedShapeId(null);
             selectedShapeTypeRef.current = null;
             setIsRemovingWatermark(false);
@@ -1074,7 +1190,7 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
             size="sm"
             className="h-8 gap-1"
             onClick={removeWatermark}
-            disabled={!shapes.some(s => s.type === 'pen') || isRemovingWatermark}
+            disabled={!shapes.some(s => s.type === 'pen' || s.type === 'line' || s.type === 'circle' || s.type === 'rect' || s.type === 'triangle') || isRemovingWatermark}
             title="使用涂鸦区域作为蒙版去除水印"
           >
             {isRemovingWatermark ? (

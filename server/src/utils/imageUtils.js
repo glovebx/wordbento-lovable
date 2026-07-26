@@ -88,22 +88,9 @@ async function measureText(glyphs) {
 }
 
 async function drawText(image, glyphs, startX, startY) {
-    // // 先预加载所有 glyph，验证是否都能获取到
-    // const glyphs = [];
-    // for (const char of text) {
-    //     const glyph = await getGlyph(char);
-    //     if (!glyph) {
-    //         // 如果任何一个字符获取失败，取消所有绘制
-    //         console.warn(`无法获取字符 "${char}" 的字形，取消绘制`);
-    //         return 0;
-    //     }
-    //     glyphs.push(glyph);
-    // }
-
     let currentX = startX;
     
     for (const glyph of glyphs) {
-        
         if (glyph.image) {
             // 计算垂直居中偏移
             const yOffset = Math.floor((FONT_SIZE - glyph.height) / 2);
@@ -113,11 +100,71 @@ async function drawText(image, glyphs, startX, startY) {
                 opacityDest: 1
             });
         }
-        
         currentX += glyph.width + 2;
     }
     
     return currentX - startX;
+}
+
+// 并行加载所有字形
+async function loadAllGlyphs(pronunciation) {
+    try {
+        const charArray = [...pronunciation];
+        const glyphPromises = charArray.map(char => getGlyph(char));
+        const glyphs = await Promise.all(glyphPromises);
+        
+        // 验证所有字形都有效
+        if (glyphs.some(glyph => !glyph || !glyph.image)) {
+            const invalidChar = charArray[glyphs.findIndex(g => !g || !g.image)];
+            console.warn(`无法获取字符 "${invalidChar}" 的字形，取消绘制`);
+            return null;
+        }
+        
+        return glyphs;
+    } catch (error) {
+        console.error('批量加载字形失败:', error);
+        return null;
+    }
+}
+
+// 二分查找最优压缩质量
+async function findOptimalQuality(image, maxSize) {
+    let low = 10;
+    let high = 95;
+    let bestBuffer = null;
+    let bestQuality = 10;
+    
+    // 先尝试高质量，很可能直接满足
+    const highQualityBuffer = await image.getBuffer("image/jpeg", { quality: high });
+    if (highQualityBuffer.length <= maxSize) {
+        return highQualityBuffer;
+    }
+    
+    // 二分查找
+    while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const buffer = await image.getBuffer("image/jpeg", { quality: mid });
+        const size = buffer.length;
+        
+        console.log(`  - Quality ${mid}, size: ${(size / 1024).toFixed(2)} KB`);
+        
+        if (size <= maxSize) {
+            bestBuffer = buffer;
+            bestQuality = mid;
+            low = mid + 1; // 尝试更高质量
+        } else {
+            high = mid - 1; // 需要更低质量
+        }
+    }
+    
+    // 如果二分查找没找到合适的，使用最低质量
+    if (!bestBuffer) {
+        console.log('  - 无法压缩到目标大小，使用最低质量');
+        bestBuffer = await image.getBuffer("image/jpeg", { quality: 10 });
+    }
+    
+    console.log(`  - 最优质量: ${bestQuality}`);
+    return bestBuffer;
 }
 
 /**
@@ -135,24 +182,34 @@ export async function compressImageBufferWithPronunciation(buffer, pronunciation
 
     try {
         console.log(`Adding pronunciation "${pronunciation}" to image...`);
-        const image = await Jimp.read(buffer);
+        
+        // 优化1: 并行加载图片和字形
+        const [image, glyphs] = await Promise.all([
+            Jimp.read(buffer),
+            loadAllGlyphs(pronunciation)
+        ]);
+        
+        // 如果任何字形加载失败，直接返回压缩图片
+        if (!glyphs) {
+            console.warn('字形加载失败，取消绘制');
+            return compressImageBuffer(buffer, maxImageSize);
+        }
+        
         const width = image.bitmap.width;
         const height = image.bitmap.height;
         
-        // 先预加载所有 glyph，验证是否都能获取到
-        const glyphs = [];
-        for (const char of pronunciation) {
-            const glyph = await getGlyph(char);
-            if (!glyph || !glyph.image) {
-                // 如果任何一个字符获取失败，取消所有绘制
-                console.warn(`无法获取字符 "${char}" 的字形，取消绘制`);
-                return compressImageBuffer(buffer, maxImageSize);
-            }
-            glyphs.push(glyph);
-        }
-
         // 测量文字尺寸
-        const { width: textWidth, height: textHeight } = await measureText(glyphs);
+        // const { width: textWidth, height: textHeight } = await measureText(glyphs);
+        let textWidth = 0;
+        let textHeight = 0;
+        
+        for (const glyph of glyphs) {
+            // const glyph = await getGlyph(char);
+            if (glyph) {
+                textWidth += glyph.width + 2; // 字间距
+                textHeight = Math.max(textHeight, glyph.height);
+            }
+        }
         
         const paddingX = 14;
         const paddingY = 10;
@@ -170,7 +227,7 @@ export async function compressImageBufferWithPronunciation(buffer, pronunciation
             width: bgWidth, 
             height: bgHeight, 
             color: 0x000000B3  // ARGB: 70% 透明度黑色
-        });
+        });        
         
         image.composite(bgImage, randomX, randomY, {
             mode: 'srcOver',
@@ -183,34 +240,106 @@ export async function compressImageBufferWithPronunciation(buffer, pronunciation
         const textY = randomY + paddingY;
         await drawText(image, glyphs, textX, textY);
         
-
-        // // --- Compression logic ---
-        // if (buffer.byteLength <= maxImageSize) {
-        //     return await image.getBuffer("image/jpeg", { quality: 90 });
-        // }
-
-        console.log(`Image size (${(buffer.byteLength / 1024).toFixed(2)} KB) exceeds limit, attempting to compress...`);
-        let quality = 80;
-
-        for (let q = quality; q >= 10; q -= 10) {
-            const compressedBuffer = await image.getBuffer("image/jpeg", { quality: q });
-            console.log(`  - Trying quality ${q}, size: ${(compressedBuffer.length / 1024).toFixed(2)} KB`);
-
-            if (compressedBuffer.length <= maxImageSize) {
-                console.log(`  - Compression successful.`);
-                return compressedBuffer;
-            }
-            if (q === 10) {
-                console.log(`  - [Warning] Could not compress below target size. Using last compressed result.`);
-                return compressedBuffer;
-            }
+        // 优化5: 更智能的压缩策略
+        const currentSize = buffer.byteLength;
+        
+        // 如果当前大小已经很小，使用高质量直接返回
+        if (currentSize <= maxImageSize * 0.5) {
+            return await image.getBuffer("image/jpeg", { quality: 95 });
         }
+        
+        // 二分查找最优质量，而不是线性递减
+        return await findOptimalQuality(image, maxImageSize);
+        
     } catch (error) {
         console.error("Image processing with pronunciation failed:", error);
+        return buffer;
     }
-
-    return buffer;
 }
+
+// export async function compressImageBufferWithPronunciation(buffer, pronunciation, maxImageSize = MAX_IMAGE_SIZE) {
+//     if (!pronunciation) {
+//         return compressImageBuffer(buffer, maxImageSize);
+//     }
+
+//     try {
+//         console.log(`Adding pronunciation "${pronunciation}" to image...`);
+//         const image = await Jimp.read(buffer);
+//         const width = image.bitmap.width;
+//         const height = image.bitmap.height;
+        
+//         // 先预加载所有 glyph，验证是否都能获取到
+//         const glyphs = [];
+//         for (const char of pronunciation) {
+//             const glyph = await getGlyph(char);
+//             if (!glyph || !glyph.image) {
+//                 // 如果任何一个字符获取失败，取消所有绘制
+//                 console.warn(`无法获取字符 "${char}" 的字形，取消绘制`);
+//                 return compressImageBuffer(buffer, maxImageSize);
+//             }
+//             glyphs.push(glyph);
+//         }
+
+//         // 测量文字尺寸
+//         const { width: textWidth, height: textHeight } = await measureText(glyphs);
+        
+//         const paddingX = 14;
+//         const paddingY = 10;
+//         const bgWidth = textWidth + paddingX * 2;
+//         const bgHeight = Math.max(textHeight + paddingY * 2, FONT_SIZE + paddingY * 2);
+        
+//         // 随机位置（确保不超出边界）
+//         const maxX = Math.max(0, width - bgWidth);
+//         const maxY = Math.max(0, height - bgHeight);
+//         const randomX = Math.floor(Math.random() * maxX);
+//         const randomY = Math.floor(Math.random() * maxY);
+        
+//         // 绘制半透明黑色背景
+//         const bgImage = new Jimp({ 
+//             width: bgWidth, 
+//             height: bgHeight, 
+//             color: 0x000000B3  // ARGB: 70% 透明度黑色
+//         });
+        
+//         image.composite(bgImage, randomX, randomY, {
+//             mode: 'srcOver',
+//             opacitySource: 0.7,
+//             opacityDest: 1
+//         });
+        
+//         // 绘制白色音标文字
+//         const textX = randomX + paddingX;
+//         const textY = randomY + paddingY;
+//         await drawText(image, glyphs, textX, textY);
+        
+
+//         // // --- Compression logic ---
+//         // if (buffer.byteLength <= maxImageSize) {
+//         //     return await image.getBuffer("image/jpeg", { quality: 90 });
+//         // }
+
+//         console.log(`Image size (${(buffer.byteLength / 1024).toFixed(2)} KB) exceeds limit, attempting to compress...`);
+//         let quality = 80;
+
+//         for (let q = quality; q >= 10; q -= 10) {
+//             const compressedBuffer = await image.getBuffer("image/jpeg", { quality: q });
+//             console.log(`  - Trying quality ${q}, size: ${(compressedBuffer.length / 1024).toFixed(2)} KB`);
+
+//             if (compressedBuffer.length <= maxImageSize) {
+//                 console.log(`  - Compression successful.`);
+//                 return compressedBuffer;
+//             }
+//             if (q === 10) {
+//                 console.log(`  - [Warning] Could not compress below target size. Using last compressed result.`);
+//                 return compressedBuffer;
+//             }
+//         }
+//     } catch (error) {
+//         console.error("Image processing with pronunciation failed:", error);
+//     }
+
+//     return buffer;
+// }
 
 /**
  * Downloads an image from a URL, compresses it, and converts it to a Base64 string.
