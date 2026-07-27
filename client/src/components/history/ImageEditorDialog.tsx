@@ -4,6 +4,8 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { WordDataType } from '@/types/wordTypes';
 import { baseURL } from '@/lib/axios';
+import { getImageKey } from '@/utils/urlUtils';
+
 import {
   X,
   MousePointer2,
@@ -158,7 +160,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     let loadedCount = 0;
     
     imageUrls.forEach((url) => {
-      const imageKey = url.split("/").pop();
+      const imageKey = getImageKey(url);
       const src = `${baseURL}/api/word/image/${imageKey}`
       const img = new window.Image();
       img.crossOrigin = 'anonymous';
@@ -193,7 +195,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     let loadedCount = 0;
     
     allImages.forEach(({ url }) => {
-      const imageKey = url.split("/").pop();
+      const imageKey = getImageKey(url);
       const src = `${baseURL}/api/word/image/${imageKey}`      
       const thumbImg = new window.Image();
       thumbImg.crossOrigin = 'anonymous';
@@ -237,7 +239,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     if (open) {
       setShapes([]);
       setSelectedShapeId(null);
-      setCurrentTool('select');
+      setCurrentTool('rect');
       setIsDrawing(false);
       setCurrentPenPoints([]);
       setIsDrawingShape(false);
@@ -251,7 +253,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   useEffect(() => {
     if (!imageUrl) return;
 
-    const imageKey = imageUrl.split("/").pop();
+    const imageKey = getImageKey(imageUrl);
     const src = `${baseURL}/api/word/image/${imageKey}`
 
     const img = new window.Image();
@@ -543,7 +545,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       selectedShapeTypeRef.current = drawingShape.type;
       setDrawingShape(null);
       setDrawStartPos(null);
-      setCurrentTool('select');
+      // setCurrentTool('select');
     }
   }, [isDrawing, currentTool, currentPenPoints, currentStroke, currentStrokeWidth, isDrawingShape, drawingShape]);
 
@@ -742,7 +744,7 @@ const removeWatermark = useCallback(async () => {
       const ctx = canvas.getContext('2d')!;
       
       await new Promise<void>((resolve) => {
-        const imageKey = currentImageUrl.split("/").pop();
+        const imageKey = getImageKey(currentImageUrl);
         const src = `${baseURL}/api/word/image/${imageKey}`
 
         const img = new window.Image();
@@ -1092,11 +1094,11 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
         "
         aria-describedby={undefined}
       >
-        <DialogTitle className="sr-only">编辑图片 - {word.word_text} {word.phonetic}</DialogTitle>
+        <DialogTitle className="sr-only">编辑 - {word.word_text} {word.phonetic}</DialogTitle>
 
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
-          <h3 className="text-sm font-medium">编辑图片 — {word.word_text} {word.phonetic}</h3>
+          <h3 className="text-sm font-medium">编辑 — {word.word_text} {word.phonetic}</h3>
           <DialogClose asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7">
               {/* <X className="h-4 w-4" /> */}

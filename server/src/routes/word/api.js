@@ -14,6 +14,7 @@ import {
   deleteWordImage
 } from './service';
 import { NavigationMode } from '../../utils/constants';
+import { getImageKey } from '../../utils/urlUtils';
 import { HTTPException } from 'hono/http-exception';
 import { nanoid } from 'nanoid';
 
@@ -140,7 +141,7 @@ word.post('/reimagine', async (c) => {
 
   try {
     // extract image_key from imageUrl
-    const imageKey = imageUrl.split('/').pop();
+    const imageKey = getImageKey(imageUrl);
 
     // 根据imageKey找到对应的word记录
     const [image] = await db.select()
@@ -204,7 +205,7 @@ word.post('/delimage', async (c) => {
 
   try {
     // extract image_key from imageUrl
-    const imageKey = imageUrl.split('/').pop();
+    const imageKey = getImageKey(imageUrl);
 
     // 根据imageKey找到对应的word记录
     const [image] = await db.select()

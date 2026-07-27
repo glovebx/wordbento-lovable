@@ -34,6 +34,7 @@ import DraggableButton from './DraggableButton';
 import { useEinkStatus } from '@/hooks/use-llm';
 import { useEinkPusher } from '@/hooks/use-eink-pusher';
 import useAuth from '@/hooks/auth/use-auth';
+import { getImageKey } from '@/utils/urlUtils';
 
 interface FlashcardModeProps {
   wordData: WordDataType;
@@ -90,7 +91,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
     setIsSettingCover(true);
     try {
       // Extract image_key from URL (last path segment)
-      const imageKey = imageUrl.split('/').pop();
+      const imageKey = getImageKey(imageUrl);
       const result = await axiosPrivate.post('/api/word/cover', {
         word_id: wordData.id,
         image_key: imageKey,
@@ -166,7 +167,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
     try {
       // Load images
-      const imageKey = imageUrl.split('/').pop();
+      const imageKey = getImageKey(imageUrl);
       const [img, qrImg] = await Promise.all([
         loadImage(`${baseURL}/api/word/image/${imageKey}`),
         loadImage('/alex-qr.jpg'),
@@ -488,7 +489,8 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   const imageAspectRatio = isTouchDevice ? (3 / 4) : (3 / 2);
 
   // Derive current image key and check if it's the cover
-  const currentImageKey = wordData.imageUrls?.[selectedImageIndex ?? 0]?.split('/').pop();
+  const currentImageUrl = wordData.imageUrls?.[selectedImageIndex ?? 0] ?? '';
+  const currentImageKey = currentImageUrl ? getImageKey(currentImageUrl) : '';
   const isCoverImage = !!(wordData.cover?.image_key && currentImageKey && wordData.cover.image_key === currentImageKey);
 
   return (

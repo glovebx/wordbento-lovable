@@ -72,20 +72,20 @@ async function getGlyph(char) {
     return glyph;
 }
 
-async function measureText(glyphs) {
-    let totalWidth = 0;
-    let maxHeight = 0;
+// async function measureText(glyphs) {
+//     let totalWidth = 0;
+//     let maxHeight = 0;
     
-    for (const glyph of glyphs) {
-        // const glyph = await getGlyph(char);
-        if (glyph) {
-            totalWidth += glyph.width + 2; // 字间距
-            maxHeight = Math.max(maxHeight, glyph.height);
-        }
-    }
+//     for (const glyph of glyphs) {
+//         // const glyph = await getGlyph(char);
+//         if (glyph) {
+//             totalWidth += glyph.width + 2; // 字间距
+//             maxHeight = Math.max(maxHeight, glyph.height);
+//         }
+//     }
     
-    return { width: totalWidth, height: maxHeight };
-}
+//     return { width: totalWidth, height: maxHeight };
+// }
 
 async function drawText(image, glyphs, startX, startY) {
     let currentX = startX;
