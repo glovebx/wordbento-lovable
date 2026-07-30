@@ -901,7 +901,7 @@ const removeWatermark = useCallback(async () => {
           }
           
           // 膨胀mask
-          const expandedMask = dilateMaskStrong(binaryMask, canvas.width, canvas.height, 10);
+          const expandedMask = dilateMaskStrong(binaryMask, canvas.width, canvas.height, 1);
           
           // 执行强力填充
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);

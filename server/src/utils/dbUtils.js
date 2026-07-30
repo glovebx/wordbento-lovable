@@ -33,7 +33,7 @@ export const formatDbResultToWordResponse = (c, userId, word, contentRecords, im
             cover['prompt'] = coverImage.prompt || '';
         }
     } else if (imageUrls.length > 0) {
-        imageUrls = imageUrls.slice(0, 1);        
+        imageUrls = imageUrls.slice(0, 2);
         const coverImage = imageRecords.find(img => img.image_key === imageUrls[0]) || {};
         if (coverImage.image_key) {
             // cover 仅需要image_key 和 prompt 字段

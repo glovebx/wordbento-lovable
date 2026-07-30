@@ -7,7 +7,7 @@ import { jsonrepair } from 'jsonrepair';
 const enPrompt = `给你一个英文单词，返回下列json格式的数据:
 {
   "英文单词": {
-    "phonetic": "美式音标标注",
+    "phonetic": "美式音标",
     "meaning": "简洁的中文含义，作为副标题",
     "definition": {
       "icon": "BookOpen",
@@ -487,11 +487,12 @@ const choosePosterStyle = () => {
 }
 
 const generatePosterPromptWithExample = (word, language, pronunciation, exampleSentence, style) => {
-    return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate whole sentence as text on the image. Crucial: The whole sentence must be sharply focused and easy to read, acting as a central design element impossible to ignore. Style: ${style}.`;
+    // return `Conceptual poster for ${language} word "${word}". Main title: "${word}" (large, bold, artistic, top). Background scene must VISUALLY DEPICT the situation, action, or context of the sentence: "${exampleSentence}". Integrate whole sentence as text on the image. Crucial: The whole sentence must be sharply focused and easy to read, acting as a central design element impossible to ignore. Style: ${style}.`;
+    return `Conceptual poster for "${word}".Main title: "${word}" (very large, bold, artistic, top).Background: visually depict the scene and context of this sentence: "${exampleSentence}". The sentence itself must appear as an organic, stylish design element woven into the composition. Rendering rules: bold, high-contrast text. Text must be large enough that every word is clearly legible at a glance, even from a distance. Smaller than title. Sharply focused. 100% letter-perfect: zero typos, zero missing words, zero altered words.Style: ${style}.`
 };
 
 const generatePosterPromptWithoutExample = (word, language, pronunciation, style) => {
-    return `Conceptual poster for ${language} word "${word}": visually define its essence. Title "${word}" large/bold as focal point. Imagery conveys concept intuitively to non-speakers via evocative metaphor. Crucial: All texts must be sharply focused and easy to read, acting as a central design element impossible to ignore.Style: ${style}.`;
+    return `Conceptual poster for "${word}": visually define its essence. Title "${word}" large/bold as focal point. Imagery conveys concept intuitively to non-speakers via evocative metaphor. Crucial: All texts must be sharply focused and easy to read, acting as a central design element impossible to ignore.Style: ${style}.`;
 };
 
 const generatePushPosterPrompt = (words, language, style) => {

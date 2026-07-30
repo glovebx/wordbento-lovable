@@ -108,6 +108,9 @@ export const useWordCache = () => {
           // console.log(`Cache hit for ${slug_to_search} in prefetch cache`); // Optional logging
           // 如果缓存命中，更新其在顺序数组中的位置到末尾 (LRU)
           const prefetchRef = cachePrefetchRef.current;
+
+          console.log(prefetchRef)
+          
           const index = prefetchRef.indexOf(slug_to_search);
           let hasNext = true;
           if (index > -1) {
