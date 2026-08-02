@@ -280,6 +280,7 @@ export const useWordCache = () => {
 
     // Effect for prefetching neighbor words
     useEffect(() => {
+        // 往前翻页的时候不处理
         if (currentWord && !taskId) {
             const prefetchNeighbors = async () => {
                 // Prefetch next word

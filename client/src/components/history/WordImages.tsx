@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { axiosPrivate } from '@/lib/axios';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import LoadingFallback from '@/components/LoadingFallback';

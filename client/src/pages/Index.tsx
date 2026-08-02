@@ -40,10 +40,16 @@ const Index = () => {
     updateWordCover // 需要传递给 FlashcardMode
   } = useWordCache();
 
+  const [pageMode, setPageMode] = useState<NavigationMode>(NavigationMode.Search);
+
   // const [lastSearchedWord, setLastSearchedWord] = useState('');
 
   // Effect for initial word fetch
   useEffect(() => {
+    if (pageMode !== NavigationMode.Search) {
+      setPageMode(NavigationMode.Search)
+      return;
+    }
     fetchWord(wordSlug || '', NavigationMode.Search, viewMode === 'flashcard');
   }, [wordSlug, fetchWord, viewMode]);
 
@@ -68,6 +74,7 @@ const Index = () => {
 
   const handleNext = useCallback(() => {
     if (wordData) {
+      setPageMode(NavigationMode.Next)
       fetchWord(wordData.word_text, NavigationMode.Next, viewMode === 'flashcard').then(nextWord => {
         if (nextWord) navigate(`/word/${nextWord.word_text}`, { replace: true });
       });
@@ -76,6 +83,7 @@ const Index = () => {
 
   const handlePrevious = useCallback(() => {
     if (wordData) {
+      setPageMode(NavigationMode.Previous)
       fetchWord(wordData.word_text, NavigationMode.Previous, viewMode === 'flashcard').then(prevWord => {
         if (prevWord) navigate(`/word/${prevWord.word_text}`, { replace: true });
       });
@@ -101,7 +109,7 @@ const Index = () => {
   const [isImageDialogShowing, setIsImageDialogShowing] = useState(false);
   const [isExampleDialogShowing, setIsExampleDialogShowing] = useState(false);
   // Image generation state managed here and passed down to WordImageDisplay
-  const { generateImages, isGeneratingImages, generationError } = useGenerateImages();
+  const { generateImages, addOrReplaceImage, isGeneratingImages, generationError } = useGenerateImages();
 
   const handleImageDialogStateChange = useCallback((isOpen: boolean) => {
     setIsImageDialogShowing(isOpen);
@@ -633,8 +641,9 @@ const Index = () => {
             onShowImageDialogChange={handleImageDialogStateChange}
             onUpdateWordCover={updateWordCover}
             requestGenerateImages={requestGenerateImages}
-            isImageGenerating={isGeneratingImages}
-            imageGenerationError={generationError}            
+            isGeneratingImage={isGeneratingImages}
+            imageGenerationError={generationError}
+            onEditImage={ addOrReplaceImage }       
           />
         )}
 

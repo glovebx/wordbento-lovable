@@ -30,6 +30,7 @@ import type { CarouselApi } from '@/components/ui/carousel'; // 类型导入
 
 import EnlargedImageCarouselDialog from '@/components/EnlargedImageCarouselDialog';
 import DraggableButton from './DraggableButton';
+import ImageEditorDialog from '@/components/history/ImageEditorDialog';
 
 import { useEinkStatus } from '@/hooks/use-llm';
 import { useEinkPusher } from '@/hooks/use-eink-pusher';
@@ -46,11 +47,13 @@ interface FlashcardModeProps {
   /**
    * 上层容器是否正在生成图片（用于禁用按钮和显示 loading）
    */
-  isImageGenerating?: boolean;
+  isGeneratingImage?: boolean;
   /**
    * 上层容器的生成错误信息（可选）
    */
   imageGenerationError?: { message?: string } | null;  
+
+  onEditImage?: ((dataUrl: string, url: string, redact: boolean, replace: boolean) => void) | null;
 }
 
 const FlashcardMode: React.FC<FlashcardModeProps> = ({
@@ -60,8 +63,9 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   onShowImageDialogChange,
   onUpdateWordCover,
   requestGenerateImages,
-  isImageGenerating,
+  isGeneratingImage,
   imageGenerationError,  
+  onEditImage
 }) => {
   const isTouchDevice = useIsTouchDevice();
   const { isEinkConfigured, einkEndpoint, einkToken, isLoadingEinkStatus } = useEinkStatus(true);
@@ -82,6 +86,8 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
   // State for the new example selection dialog
   const [showExampleDialog, setShowExampleDialog] = useState(false);
   const [selectedExampleIndex, setSelectedExampleIndex] = useState<number | null>(null);
+
+  const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
 
   const handleSetCover = async () => {
     const imageIndex = selectedImageIndex ?? 0;
@@ -125,19 +131,23 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
 
   // Handler for the "Generate Images" button click
   const handleGenerateButtonClick = useCallback(async () => {
-    // const examples = wordData?.content?.examples?.en || [];
-    if (englishExamples.length > 0) {
-      if (selectedExampleIndex === null) {
-        setSelectedExampleIndex(0); // Default to the first example
-      }
-      setShowExampleDialog(true);
-    } else {
-      // console.log("No examples found or examples not in expected array format, generating image with word only.");
-      if (typeof requestGenerateImages === 'function') {
-        requestGenerateImages(wordData.word_text, '', true);
-      }
-    }
-  }, [requestGenerateImages, wordData.word_text, englishExamples, selectedExampleIndex]);
+    // // const examples = wordData?.content?.examples?.en || [];
+    // if (englishExamples.length > 0) {
+    //   if (selectedExampleIndex === null) {
+    //     setSelectedExampleIndex(0); // Default to the first example
+    //   }
+    //   setShowExampleDialog(true);
+    // } else {
+    //   // console.log("No examples found or examples not in expected array format, generating image with word only.");
+    //   if (typeof requestGenerateImages === 'function') {
+    //     requestGenerateImages(wordData.word_text, '', true);
+    //   }
+    // }
+    const imageIndex = selectedImageIndex ?? 0;
+    const imageUrl = wordData.imageUrls?.[imageIndex];
+
+    setEditImageUrl(imageUrl);    
+  }, [wordData, selectedExampleIndex]);
 
   // Handler when an example is selected in the dialog and confirmed
   const handleExampleSelected = useCallback(async () => {
@@ -622,10 +632,10 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
                   variant="outline"
                   size="sm"
                   onClick={handleGenerateButtonClick}
-                  disabled={isImageGenerating}
+                  disabled={isGeneratingImage}
                 >
                   <ImagePlus className="mr-2 h-4 w-4" />
-                  重新生图
+                  编辑图片
                 </Button>
               )}              
               {isTouchDevice && wordData.imageUrls && wordData.imageUrls.length > 0 && user?.role === 'admin' && (
@@ -655,7 +665,7 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
               )}
             </div>
 
-      {imageGenerationError && !isImageGenerating && (
+      {imageGenerationError && !isGeneratingImage && (
         <div className="text-center my-8 text-red-600">
           <p>图片生成失败: {imageGenerationError.message}</p>
         </div>
@@ -775,9 +785,9 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
           <DialogFooter>
             <Button
               onClick={handleExampleSelected}
-              disabled={selectedExampleIndex === null || isImageGenerating}
+              disabled={selectedExampleIndex === null || isGeneratingImage}
             >
-              {isImageGenerating ? (
+              {isGeneratingImage ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   生成中...
@@ -802,6 +812,18 @@ const FlashcardMode: React.FC<FlashcardModeProps> = ({
             onPreviousWord={onPrevious}/>
           )}
       </div>
+
+      {editImageUrl && (
+        <ImageEditorDialog
+          open={!!editImageUrl}
+          onOpenChange={(open) => { if (!open) setEditImageUrl(null); }}
+          word={wordData}
+          imageUrl={editImageUrl}
+          imageUrls={wordData.imageUrls || []}
+          onSave={onEditImage!}
+          isSavingImage={isGeneratingImage ?? false}
+        />
+      )}      
 
       {/* Draggable Buttons for Mobile */}
       {isTouchDevice && (
