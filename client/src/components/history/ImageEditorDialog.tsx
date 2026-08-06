@@ -129,6 +129,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   
   // 新增：所有图片数据
   const [allImages, setAllImages] = useState<{ url: string; element: HTMLImageElement }[]>([]);
+  const [imagePrompts, setImagePrompts] = useState<string[]>([]);
   const [thumbnailImages, setThumbnailImages] = useState<{ url: string; element: HTMLImageElement }[]>([]);
 
   // Pen drawing state
@@ -159,31 +160,38 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     const loadedImages: { url: string; element: HTMLImageElement }[] = [];
     let loadedCount = 0;
     
-    imageUrls.forEach((url) => {
-      const imageKey = getImageKey(url);
-      const src = `${baseURL}/api/word/image/${imageKey}`
-      const img = new window.Image();
-      img.crossOrigin = 'anonymous';
-      img.src = src;
-      img.onload = () => {
-        loadedImages.push({ url, element: img });
-        loadedCount++;
-        
-        if (loadedCount === imageUrls.length) {
-          setAllImages(loadedImages);
-        }
-      };
-      img.onerror = () => {
-        loadedCount++;
-        if (loadedCount === imageUrls.length) {
-          setAllImages(loadedImages);
-        }
-      };
-    });
-    
+    if (word.cover?.prompt) {
+      setImagePrompts([word.cover?.prompt ?? ''])
+    } else if (word.content && word.content.examples && Array.isArray(word.content.examples.en)) {
+      const examplePrompts = word.content.examples.en.map((example, i) => `${i + 1}. ${example}`)
+      setImagePrompts(examplePrompts)
+    }
+
     // 如果只有当前图片，直接设置
     if (imageUrls.length === 1) {
       setAllImages([]);
+    } else {
+      imageUrls.forEach((url) => {
+        const imageKey = getImageKey(url);
+        const src = `${baseURL}/api/word/image/${imageKey}`
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.src = src;
+        img.onload = () => {
+          loadedImages.push({ url, element: img });
+          loadedCount++;
+          
+          if (loadedCount === imageUrls.length) {
+            setAllImages(loadedImages);
+          }
+        };
+        img.onerror = () => {
+          loadedCount++;
+          if (loadedCount === imageUrls.length) {
+            setAllImages(loadedImages);
+          }
+        };
+      });
     }
   }, [open, imageUrls]);
 
@@ -372,7 +380,8 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       1 // Don't upscale small images
     );
     return {
-      x: (stageSize.width - image.width * scale) / 2,
+      // x: (stageSize.width - image.width * scale) / 2,
+      x: stageSize.width - image.width * scale - 120, // 靠右，留40px间距
       y: (stageSize.height - image.height * scale) / 2,
       width: image.width * scale,
       height: image.height * scale,
@@ -640,43 +649,63 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   const handleSave = useCallback(() => {
     if (!stageRef.current || !image || !imageAttrs) return;
     
+    // // 隐藏 transformer（选择框/拖拉句柄）
+    // const transformer = stageRef.current.findOne('#transformer') as Konva.Transformer;
+    // if (transformer) {
+    //   transformer.visible(false);
+    //   transformer.getLayer()?.batchDraw();
+    // }
+    // 保存前取消选中，隐藏 transformer
+    setSelectedShapeId(null);
+
     // Get the full stage as data URL
-    const fullDataUrl = stageRef.current.toDataURL({ pixelRatio: 2, mimeType: 'image/png' });
+    // const fullDataUrl = stageRef.current.toDataURL({ pixelRatio: 2, mimeType: 'image/png' });
+    // 获取图片前稍作延迟，确保重绘完成
+    setTimeout(() => {
+      // Get the full stage as data URL
+      const fullDataUrl = stageRef.current!.toDataURL({ pixelRatio: 2, mimeType: 'image/png' });    
     
-    // Create an image element to load the full stage screenshot
-    const fullImg = new window.Image();
-    fullImg.onload = () => {
-      // Create a canvas with the original image dimensions
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const ctx = canvas.getContext('2d');
+      // // 恢复 transformer 显示
+      // if (transformer) {
+      //   transformer.visible(true);
+      //   transformer.getLayer()?.batchDraw();
+      // }
+
+      // Create an image element to load the full stage screenshot
+      const fullImg = new window.Image();
+      fullImg.onload = () => {
+        // Create a canvas with the original image dimensions
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) return;
+        
+        // Calculate the scale between the full stage screenshot and the stage size
+        const stageScaleX = fullImg.width / stageSize.width;
+        const stageScaleY = fullImg.height / stageSize.height;
+        
+        // Draw only the image area from the full stage screenshot
+        ctx.drawImage(
+          fullImg,
+          imageAttrs.x * stageScaleX,
+          imageAttrs.y * stageScaleY,
+          imageAttrs.width * stageScaleX,
+          imageAttrs.height * stageScaleY,
+          0,
+          0,
+          image.width,
+          image.height
+        );
+        
+        // Get the cropped data URL
+        const croppedDataUrl = canvas.toDataURL('image/png');
+        onSave(croppedDataUrl, currentImageUrl, phoneticMode, replaceMode);
+      };
       
-      if (!ctx) return;
-      
-      // Calculate the scale between the full stage screenshot and the stage size
-      const stageScaleX = fullImg.width / stageSize.width;
-      const stageScaleY = fullImg.height / stageSize.height;
-      
-      // Draw only the image area from the full stage screenshot
-      ctx.drawImage(
-        fullImg,
-        imageAttrs.x * stageScaleX,
-        imageAttrs.y * stageScaleY,
-        imageAttrs.width * stageScaleX,
-        imageAttrs.height * stageScaleY,
-        0,
-        0,
-        image.width,
-        image.height
-      );
-      
-      // Get the cropped data URL
-      const croppedDataUrl = canvas.toDataURL('image/png');
-      onSave(croppedDataUrl, currentImageUrl, phoneticMode, replaceMode);
-    };
-    
-    fullImg.src = fullDataUrl;
+      fullImg.src = fullDataUrl;
+    }, 100);
   }, [image, imageAttrs, stageSize, currentImageUrl, onSave, replaceMode, phoneticMode]);  
 
   // Render a single shape
@@ -1130,31 +1159,6 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
 
           <div className="w-px h-6 bg-border mx-2" />
 
-          {/* Fill color - 涂鸦和线条选中时禁用 */}
-          <div className={`flex items-center gap-1 ${selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line' ? 'opacity-50 pointer-events-none' : ''}`}>
-            <span className="text-xs text-muted-foreground hidden sm:inline">填充</span>
-            <input
-              type="color"
-              value={currentFill === 'transparent' ? '#ffffff' : currentFill}
-              onChange={(e) => setCurrentFill(e.target.value)}
-              className="w-7 h-7 p-0.5 rounded cursor-pointer border"
-              title={selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line' ? "涂鸦和线条不支持填充" : "填充颜色"}
-              disabled={selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line'}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-xs"
-              onClick={() => setCurrentFill('transparent')}
-              title="透明填充"
-              disabled={selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line'}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-
-          <div className="w-px h-6 bg-border mx-2" />
-
           {/* Stroke color */}
           <div className="flex items-center gap-1">
             <span className="text-xs text-muted-foreground hidden sm:inline">边框</span>
@@ -1182,6 +1186,31 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="w-px h-6 bg-border mx-2" />
+
+          {/* Fill color - 涂鸦和线条选中时禁用 */}
+          <div className={`flex items-center gap-1 ${selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line' ? 'opacity-50 pointer-events-none' : ''}`}>
+            <span className="text-xs text-muted-foreground hidden sm:inline">填充</span>
+            <input
+              type="color"
+              value={currentFill === 'transparent' ? '#ffffff' : currentFill}
+              onChange={(e) => setCurrentFill(e.target.value)}
+              className="w-7 h-7 p-0.5 rounded cursor-pointer border"
+              title={selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line' ? "涂鸦和线条不支持填充" : "填充颜色"}
+              disabled={selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line'}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-xs"
+              onClick={() => setCurrentFill('transparent')}
+              title="透明填充"
+              disabled={selectedShapeTypeRef.current === 'pen' || selectedShapeTypeRef.current === 'line'}
+            >
+              <X className="h-3 w-3" />
+            </Button>
           </div>
 
           <div className="w-px h-6 bg-border mx-2" />
@@ -1224,7 +1253,7 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
         </div>
 
         {/* ── Canvas ── */}
-        <div ref={containerRef} className="flex-1 bg-black/5 relative overflow-hidden p-4 flex items-center justify-center">
+        <div ref={containerRef} className="flex-1 bg-black/5 relative overflow-hidden p-4 flex items-center justify-end">
           <Stage
             ref={stageRef}
             width={stageSize.width}
@@ -1335,6 +1364,17 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
               />
             </Layer>
           </Stage>
+
+          {/* ── 新增：例句 ── */}
+          {imagePrompts.length > 0 && (
+            <div className="absolute bottom-40 left-3 flex flex-col gap-2 bg-background/80 backdrop-blur-sm rounded-lg p-2 shadow-lg border z-10 max-w-xs">
+              {imagePrompts.map(( prompt ) => (
+                <span className="text-[16px] text-muted-foreground mr-auto">
+                  {prompt}
+                </span>
+              ))}  
+            </div>
+          )}
 
           {/* ── 新增：缩略图列表 ── */}
           {allImages.length > 1 && thumbnailImages.length > 0 && (
