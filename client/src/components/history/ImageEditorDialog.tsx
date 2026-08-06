@@ -17,7 +17,8 @@ import {
   Save,
   Droplets,
   Pen,
-  Loader2
+  Loader2,
+  Type // 新增
 } from 'lucide-react';
 import {
   Stage,
@@ -28,10 +29,11 @@ import {
   Rect,
   RegularPolygon,
   Transformer,
+  Text // 新增
 } from 'react-konva';
 import Konva from 'konva';
 
-type ShapeType = 'select' | 'line' | 'circle' | 'rect' | 'triangle' | 'pen';
+type ShapeType = 'select' | 'line' | 'circle' | 'rect' | 'triangle' | 'pen' | 'text';
 
 interface ShapeData {
   id: string;
@@ -48,6 +50,11 @@ interface ShapeData {
   rotation: number;
   scaleX: number;
   scaleY: number;
+  // 文字相关属性
+  text?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontStyle?: string;  
 }
 
 function generateId(): string {
@@ -84,6 +91,8 @@ function createDefaultShape(
       return { ...base, x: pointerX, y: pointerY, radius: 1, width: 0, height: 0, points: [] };
     case 'pen':
       return { ...base, x: 0, y: 0, points: [pointerX, pointerY], width: 0, height: 0, radius: 0, stroke: stroke, fill: 'transparent' };
+    case 'text':
+      return { ...base, x: pointerX, y: pointerY, width: 1, height: 1, radius: 0, points: [], text: '文本', fontSize: 24, fontFamily: 'Microsoft YaHei', fontStyle: 'normal' };
   }
 }
 
@@ -104,9 +113,25 @@ const TOOLS: { key: ShapeType; icon: React.ReactNode; label: string }[] = [
   { key: 'circle', icon: <Circle className="h-4 w-4" />, label: '圆形' },
   { key: 'rect', icon: <Square className="h-4 w-4" />, label: '方形' },
   { key: 'triangle', icon: <Triangle className="h-4 w-4" />, label: '三角形' },
+  { key: 'text', icon: <Type className="h-4 w-4" />, label: '文字' }, // 新增
 ];
 
 const STROKE_WIDTHS = [0, 1, 2, 3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+
+const FONT_FAMILIES = [
+  'Arial',
+  'Microsoft YaHei',
+  'SimHei',
+  'SimSun',
+  'KaiTi',
+  'FangSong',
+  'STSong',
+  'PingFang SC',
+  'Noto Sans SC',
+  'sans-serif'
+];
+
+const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72];
 
 const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   open,
@@ -152,6 +177,11 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   // 新增：水印去除相关状态
   const [isRemovingWatermark, setIsRemovingWatermark] = useState(false);
   // const [watermarkMask, setWatermarkMask] = useState<ShapeData | null>(null);
+
+  // 添加文字相关状态
+  const [textInputVisible, setTextInputVisible] = useState(false);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [textInputValue, setTextInputValue] = useState('');
 
   // 加载所有图片
   useEffect(() => {
@@ -321,8 +351,13 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       programmaticStyleRef.current = true;
       selectedShapeTypeRef.current = shape.type;
       
+      if (shape.type === 'text') {
+        setCurrentStroke(shape.stroke);
+        setCurrentFill(shape.fill);
+        // 文字不需要 strokeWidth
+      } 
       // 对于涂鸦和线条，只同步边框相关属性
-      if (shape.type === 'pen' || shape.type === 'line') {
+      else if (shape.type === 'pen' || shape.type === 'line') {
         setCurrentStroke(shape.stroke);
         setCurrentStrokeWidth(shape.strokeWidth);
         // 不改变填充颜色设置
@@ -395,8 +430,16 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
     const id = e.target.id();
     if (id && id !== 'transformer') {
       setSelectedShapeId(id);
+
+      // 双击文字打开编辑
+      const shape = shapes.find(s => s.id === id);
+      if (shape && shape.type === 'text') {
+        setEditingTextId(id);
+        setTextInputValue(shape.text || '');
+        setTextInputVisible(true);
+      }      
     }
-  }, []);
+  }, [shapes]);
 
   const handleMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (currentTool === 'pen') {
@@ -408,6 +451,45 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
       return;
     }
     
+    if (currentTool === 'text') {
+      const pos = e.target.getStage()?.getPointerPosition();
+      if (!pos) return;
+      
+      const clickedOnStage = e.target === e.target.getStage();
+      if (!clickedOnStage) return;
+      
+      // 创建新文本框
+      const newTextShape: ShapeData = {
+        id: generateId(),
+        type: 'text',
+        x: pos.x,
+        y: pos.y,
+        width: 200,
+        height: 40,
+        radius: 0,
+        points: [],
+        fill: 'transparent',
+        stroke: 'transparent',
+        strokeWidth: 0,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        text: '文本',
+        fontSize: 24,
+        fontFamily: 'Microsoft YaHei',
+        fontStyle: 'normal'
+      };
+      
+      setShapes(prev => [...prev, newTextShape]);
+      setSelectedShapeId(newTextShape.id);
+      selectedShapeTypeRef.current = 'text';
+      
+      // 打开文字编辑
+      setEditingTextId(newTextShape.id);
+      setTextInputValue('文本');
+      setTextInputVisible(true);
+      return;
+    }    
     // 处理其他形状的拖拽绘制
     if (currentTool !== 'select') {
       const pos = e.target.getStage()?.getPointerPosition();
@@ -749,6 +831,19 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
             globalCompositeOperation="source-over"
           />
         );
+      case 'text':
+        return (
+          <Text
+            key={shape.id}
+            {...common}
+            text={shape.text || '文本'}
+            fontSize={shape.fontSize || 24}
+            fontFamily={shape.fontFamily || 'Microsoft YaHei'}
+            fontStyle={shape.fontStyle || 'normal'}
+            width={shape.width || 200}
+            padding={8}
+          />
+        );        
       default:
         return null;
     }
@@ -1237,6 +1332,120 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
             )}
           </Button>
 
+          <div className="flex-1 min-w-2" />
+
+          {/* 文字编辑面板 */}
+          {textInputVisible && editingTextId && (
+            <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-background border rounded-lg shadow-lg p-3 z-20 flex items-center gap-3 flex-wrap">
+              {/* 文字内容 */}
+              <input
+                type="text"
+                value={textInputValue}
+                onChange={(e) => {
+                  setTextInputValue(e.target.value);
+                  setShapes(prev => prev.map(s => 
+                    s.id === editingTextId ? { ...s, text: e.target.value } : s
+                  ));
+                }}
+                className="h-8 w-32 rounded border px-2 text-sm"
+                placeholder="输入文字"
+              />
+              
+              <div className="w-px h-6 bg-border" />
+              
+              {/* 背景颜色 */}
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground">背景</span>
+                <input
+                  type="color"
+                  value={shapes.find(s => s.id === editingTextId)?.fill === 'transparent' ? '#ffffff' : (shapes.find(s => s.id === editingTextId)?.fill || '#ffffff')}
+                  onChange={(e) => {
+                    setShapes(prev => prev.map(s => 
+                      s.id === editingTextId ? { ...s, fill: e.target.value } : s
+                    ));
+                  }}
+                  className="w-6 h-6 p-0.5 rounded cursor-pointer border"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => {
+                    setShapes(prev => prev.map(s => 
+                      s.id === editingTextId ? { ...s, fill: 'transparent' } : s
+                    ));
+                  }}
+                  title="透明背景"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              
+              <div className="w-px h-6 bg-border" />
+              
+              {/* 文字颜色 */}
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-muted-foreground">文字</span>
+                <input
+                  type="color"
+                  value={shapes.find(s => s.id === editingTextId)?.stroke || '#000000'}
+                  onChange={(e) => {
+                    setShapes(prev => prev.map(s => 
+                      s.id === editingTextId ? { ...s, stroke: e.target.value } : s
+                    ));
+                  }}
+                  className="w-6 h-6 p-0.5 rounded cursor-pointer border"
+                />
+              </div>
+              
+              <div className="w-px h-6 bg-border" />
+              
+              {/* 字体 */}
+              <select
+                value={shapes.find(s => s.id === editingTextId)?.fontFamily || 'Microsoft YaHei'}
+                onChange={(e) => {
+                  setShapes(prev => prev.map(s => 
+                    s.id === editingTextId ? { ...s, fontFamily: e.target.value } : s
+                  ));
+                }}
+                className="h-8 w-28 rounded border bg-background text-xs px-1"
+              >
+                {FONT_FAMILIES.map(font => (
+                  <option key={font} value={font}>{font}</option>
+                ))}
+              </select>
+              
+              {/* 字体大小 */}
+              <select
+                value={shapes.find(s => s.id === editingTextId)?.fontSize || 24}
+                onChange={(e) => {
+                  setShapes(prev => prev.map(s => 
+                    s.id === editingTextId ? { ...s, fontSize: Number(e.target.value) } : s
+                  ));
+                }}
+                className="h-8 w-16 rounded border bg-background text-xs px-1"
+              >
+                {FONT_SIZES.map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+              
+              <div className="w-px h-6 bg-border" />
+              
+              {/* 关闭按钮 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => {
+                  setTextInputVisible(false);
+                  setEditingTextId(null);
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
           <div className="flex-1 min-w-2" />
 
           {/* Delete */}
