@@ -55,6 +55,8 @@ interface ShapeData {
   fontSize?: number;
   fontFamily?: string;
   fontStyle?: string;  
+  letterSpacing?: number;  // 字间距
+  lineHeight?: number;     // 行间距  
 }
 
 function generateId(): string {
@@ -92,7 +94,24 @@ function createDefaultShape(
     case 'pen':
       return { ...base, x: 0, y: 0, points: [pointerX, pointerY], width: 0, height: 0, radius: 0, stroke: stroke, fill: 'transparent' };
     case 'text':
-      return { ...base, x: pointerX, y: pointerY, width: 1, height: 1, radius: 0, points: [], text: '文本', fontSize: 24, fontFamily: 'Microsoft YaHei', fontStyle: 'normal' };
+      return { 
+        ...base, 
+        x: pointerX, 
+        y: pointerY, 
+        width: 200, 
+        height: 40, 
+        radius: 0, 
+        points: [], 
+        fill: 'transparent', 
+        stroke: '#000000', 
+        strokeWidth: 0,
+        text: '文本',
+        fontSize: 24,
+        fontFamily: 'Microsoft YaHei',
+        fontStyle: 'normal',
+        letterSpacing: 0,
+        lineHeight: 1.2        
+      };
   }
 }
 
@@ -120,15 +139,26 @@ const STROKE_WIDTHS = [0, 1, 2, 3, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15, 16, 17, 1
 
 const FONT_FAMILIES = [
   'Arial',
+  'Times New Roman',
+  'Georgia',
+  'Verdana',
+  'Comic Sans MS',
+  'Impact',
+  'Trebuchet MS',
+  'Palatino Linotype',
+  'Brush Script MT',
+  'Monotype Corsiva',
+  'Copperplate',
+  'Papyrus',
+  'Luminari',
+  'Playbill',
+  'Chalkduster',
+  'sans-serif',
+  'serif',
+  'monospace',    
   'Microsoft YaHei',
-  'SimHei',
-  'SimSun',
-  'KaiTi',
-  'FangSong',
-  'STSong',
   'PingFang SC',
   'Noto Sans SC',
-  'sans-serif'
 ];
 
 const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72];
@@ -468,8 +498,8 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
         height: 40,
         radius: 0,
         points: [],
-        fill: 'transparent',
-        stroke: 'transparent',
+        fill: 'transparent',   // 背景透明
+        stroke: '#000000',      // 文字颜色
         strokeWidth: 0,
         rotation: 0,
         scaleX: 1,
@@ -477,7 +507,9 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
         text: '文本',
         fontSize: 24,
         fontFamily: 'Microsoft YaHei',
-        fontStyle: 'normal'
+        fontStyle: 'normal',
+        letterSpacing: 0,
+        lineHeight: 1.2
       };
       
       setShapes(prev => [...prev, newTextShape]);
@@ -683,7 +715,7 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
           scaleY: 1,
         };
 
-        if (s.type === 'rect') {
+        if (s.type === 'rect' || s.type === 'text') {
           updated.width = Math.max(10, s.width * scaleX);
           updated.height = Math.max(10, s.height * scaleY);
         } else if (s.type === 'circle' || s.type === 'triangle') {
@@ -833,17 +865,65 @@ const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
         );
       case 'text':
         return (
-          <Text
-            key={shape.id}
-            {...common}
-            text={shape.text || '文本'}
-            fontSize={shape.fontSize || 24}
-            fontFamily={shape.fontFamily || 'Microsoft YaHei'}
-            fontStyle={shape.fontStyle || 'normal'}
-            width={shape.width || 200}
-            padding={8}
-          />
+          <React.Fragment key={shape.id}>
+            {/* 背景矩形 */}
+            {shape.fill !== 'transparent' && (
+              <Rect
+                x={shape.x}
+                y={shape.y}
+                width={shape.width || 200}
+                height={shape.height || 40}
+                fill={shape.fill}
+                rotation={shape.rotation}
+                scaleX={shape.scaleX}
+                scaleY={shape.scaleY}
+                listening={false}
+              />
+            )}
+            {/* 文字 */}
+            <Text
+              id={shape.id}
+              x={shape.x}
+              y={shape.y}
+              text={shape.text || '文本'}
+              fontSize={shape.fontSize || 24}
+              fontFamily={shape.fontFamily || 'Microsoft YaHei'}
+              fontStyle={shape.fontStyle || 'normal'}
+              width={shape.width || 200}
+              padding={8}
+              fill={shape.stroke || '#000000'}
+              stroke={undefined}
+              strokeWidth={0}
+              rotation={shape.rotation}
+              scaleX={shape.scaleX}
+              scaleY={shape.scaleY}
+              letterSpacing={shape.letterSpacing || 0}
+              lineHeight={shape.lineHeight || 1.2}
+              draggable={true}
+              onClick={handleShapeInteraction}
+              onTap={handleShapeInteraction}
+              onDragEnd={handleDragEnd}
+              onTransformEnd={handleTransformEnd}
+            />
+          </React.Fragment>
         );        
+        // return (
+        //   <Text
+        //     key={shape.id}
+        //     {...common}
+        //     text={shape.text || '文本'}
+        //     fontSize={shape.fontSize || 24}
+        //     fontFamily={shape.fontFamily || 'Microsoft YaHei'}
+        //     fontStyle={shape.fontStyle || 'normal'}
+        //     width={shape.width || 200}
+        //     padding={8}
+        //     fill={shape.stroke || '#000000'}
+        //     stroke={undefined}
+        //     strokeWidth={0}
+        //     letterSpacing={shape.letterSpacing || 0}
+        //     lineHeight={shape.lineHeight || 1.2}
+        //   />
+        // );        
       default:
         return null;
     }
@@ -1336,107 +1416,12 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
 
           {/* 文字编辑面板 */}
           {textInputVisible && editingTextId && (
-            <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-background border rounded-lg shadow-lg p-3 z-20 flex items-center gap-3 flex-wrap">
-              {/* 文字内容 */}
-              <input
-                type="text"
-                value={textInputValue}
-                onChange={(e) => {
-                  setTextInputValue(e.target.value);
-                  setShapes(prev => prev.map(s => 
-                    s.id === editingTextId ? { ...s, text: e.target.value } : s
-                  ));
-                }}
-                className="h-8 w-32 rounded border px-2 text-sm"
-                placeholder="输入文字"
-              />
-              
-              <div className="w-px h-6 bg-border" />
-              
-              {/* 背景颜色 */}
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-muted-foreground">背景</span>
-                <input
-                  type="color"
-                  value={shapes.find(s => s.id === editingTextId)?.fill === 'transparent' ? '#ffffff' : (shapes.find(s => s.id === editingTextId)?.fill || '#ffffff')}
-                  onChange={(e) => {
-                    setShapes(prev => prev.map(s => 
-                      s.id === editingTextId ? { ...s, fill: e.target.value } : s
-                    ));
-                  }}
-                  className="w-6 h-6 p-0.5 rounded cursor-pointer border"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => {
-                    setShapes(prev => prev.map(s => 
-                      s.id === editingTextId ? { ...s, fill: 'transparent' } : s
-                    ));
-                  }}
-                  title="透明背景"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-              
-              <div className="w-px h-6 bg-border" />
-              
-              {/* 文字颜色 */}
-              <div className="flex items-center gap-1">
-                <span className="text-xs text-muted-foreground">文字</span>
-                <input
-                  type="color"
-                  value={shapes.find(s => s.id === editingTextId)?.stroke || '#000000'}
-                  onChange={(e) => {
-                    setShapes(prev => prev.map(s => 
-                      s.id === editingTextId ? { ...s, stroke: e.target.value } : s
-                    ));
-                  }}
-                  className="w-6 h-6 p-0.5 rounded cursor-pointer border"
-                />
-              </div>
-              
-              <div className="w-px h-6 bg-border" />
-              
-              {/* 字体 */}
-              <select
-                value={shapes.find(s => s.id === editingTextId)?.fontFamily || 'Microsoft YaHei'}
-                onChange={(e) => {
-                  setShapes(prev => prev.map(s => 
-                    s.id === editingTextId ? { ...s, fontFamily: e.target.value } : s
-                  ));
-                }}
-                className="h-8 w-28 rounded border bg-background text-xs px-1"
-              >
-                {FONT_FAMILIES.map(font => (
-                  <option key={font} value={font}>{font}</option>
-                ))}
-              </select>
-              
-              {/* 字体大小 */}
-              <select
-                value={shapes.find(s => s.id === editingTextId)?.fontSize || 24}
-                onChange={(e) => {
-                  setShapes(prev => prev.map(s => 
-                    s.id === editingTextId ? { ...s, fontSize: Number(e.target.value) } : s
-                  ));
-                }}
-                className="h-8 w-16 rounded border bg-background text-xs px-1"
-              >
-                {FONT_SIZES.map(size => (
-                  <option key={size} value={size}>{size}</option>
-                ))}
-              </select>
-              
-              <div className="w-px h-6 bg-border" />
-              
-              {/* 关闭按钮 */}
+            <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-background border rounded-lg shadow-lg p-3 z-20">
+              {/* 关闭按钮 - 右上角 */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7"
+                className="h-6 w-6 absolute top-1 right-1"
                 onClick={() => {
                   setTextInputVisible(false);
                   setEditingTextId(null);
@@ -1444,8 +1429,205 @@ function dilateMaskStrong(mask: Uint8Array, width: number, height: number, radiu
               >
                 <X className="h-3 w-3" />
               </Button>
+              
+              <div className="flex items-center gap-3 flex-wrap pr-6">
+                {/* 文字内容 */}
+                <input
+                  type="text"
+                  value={textInputValue}
+                  onChange={(e) => {
+                    setTextInputValue(e.target.value);
+                    setShapes(prev => prev.map(s => 
+                      s.id === editingTextId ? { ...s, text: e.target.value } : s
+                    ));
+                  }}
+                  onKeyDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  className="h-8 w-32 rounded border px-2 text-sm"
+                  placeholder="输入文字"
+                />
+                
+                <div className="w-px h-6 bg-border" />
+                
+                {/* 背景颜色 - 文本框背景色 */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">背景</span>
+                  <input
+                    type="color"
+                    value={shapes.find(s => s.id === editingTextId)?.fill === 'transparent' ? '#ffffff' : (shapes.find(s => s.id === editingTextId)?.fill || '#ffffff')}
+                    onChange={(e) => {
+                      setShapes(prev => prev.map(s => 
+                        s.id === editingTextId ? { ...s, fill: e.target.value } : s
+                      ));
+                    }}
+                    className="w-6 h-6 p-0.5 rounded cursor-pointer border"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => {
+                      setShapes(prev => prev.map(s => 
+                        s.id === editingTextId ? { ...s, fill: 'transparent' } : s
+                      ));
+                    }}
+                    title="透明背景"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+                
+                <div className="w-px h-6 bg-border" />
+                
+                {/* 文字颜色 */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">文字</span>
+                  <input
+                    type="color"
+                    value={shapes.find(s => s.id === editingTextId)?.stroke || '#000000'}
+                    onChange={(e) => {
+                      setShapes(prev => prev.map(s => 
+                        s.id === editingTextId ? { ...s, stroke: e.target.value } : s
+                      ));
+                    }}
+                    className="w-6 h-6 p-0.5 rounded cursor-pointer border"
+                  />
+                </div>
+                
+                <div className="w-px h-6 bg-border" />
+                
+                {/* 字体 */}
+                <select
+                  value={shapes.find(s => s.id === editingTextId)?.fontFamily || 'Microsoft YaHei'}
+                  onChange={(e) => {
+                    setShapes(prev => prev.map(s => 
+                      s.id === editingTextId ? { ...s, fontFamily: e.target.value } : s
+                    ));
+                  }}
+                  className="h-8 w-28 rounded border bg-background text-xs px-1"
+                >
+                  {FONT_FAMILIES.map(font => (
+                    <option key={font} value={font}>{font}</option>
+                  ))}
+                </select>
+                
+                {/* 字体大小 */}
+                <select
+                  value={shapes.find(s => s.id === editingTextId)?.fontSize || 24}
+                  onChange={(e) => {
+                    setShapes(prev => prev.map(s => 
+                      s.id === editingTextId ? { ...s, fontSize: Number(e.target.value) } : s
+                    ));
+                  }}
+                  className="h-8 w-16 rounded border bg-background text-xs px-1"
+                >
+                  {FONT_SIZES.map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+                
+                <div className="w-px h-6 bg-border" />
+                
+                {/* 斜体 */}
+                <Button
+                  variant={shapes.find(s => s.id === editingTextId)?.fontStyle?.includes('italic') ? 'default' : 'ghost'}
+                  size="icon"
+                  className="h-8 w-8 italic font-serif"
+                  onClick={() => {
+                    setShapes(prev => prev.map(s => {
+                      if (s.id !== editingTextId) return s;
+                      const currentStyle = s.fontStyle || 'normal';
+                      let newStyle: string;
+                      
+                      if (currentStyle.includes('bold') && currentStyle.includes('italic')) {
+                        newStyle = 'bold';
+                      } else if (currentStyle.includes('italic')) {
+                        newStyle = currentStyle.replace('italic', '').trim() || 'normal';
+                      } else if (currentStyle.includes('bold')) {
+                        newStyle = 'bold italic';
+                      } else {
+                        newStyle = 'italic';
+                      }
+                      
+                      return { ...s, fontStyle: newStyle };
+                    }));
+                  }}
+                  title="斜体"
+                >
+                  I
+                </Button>
+                
+                {/* 粗体 */}
+                <Button
+                  variant={shapes.find(s => s.id === editingTextId)?.fontStyle?.includes('bold') ? 'default' : 'ghost'}
+                  size="icon"
+                  className="h-8 w-8 font-bold"
+                  onClick={() => {
+                    setShapes(prev => prev.map(s => {
+                      if (s.id !== editingTextId) return s;
+                      const currentStyle = s.fontStyle || 'normal';
+                      let newStyle: string;
+                      
+                      if (currentStyle.includes('bold') && currentStyle.includes('italic')) {
+                        newStyle = 'italic';
+                      } else if (currentStyle.includes('bold')) {
+                        newStyle = currentStyle.replace('bold', '').trim() || 'normal';
+                      } else if (currentStyle.includes('italic')) {
+                        newStyle = 'italic bold';
+                      } else {
+                        newStyle = 'bold';
+                      }
+                      
+                      return { ...s, fontStyle: newStyle };
+                    }));
+                  }}
+                  title="粗体"
+                >
+                  B
+                </Button>
+                
+                <div className="w-px h-6 bg-border" />
+                
+                {/* 字间距 */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">字距</span>
+                  <input
+                    type="number"
+                    value={shapes.find(s => s.id === editingTextId)?.letterSpacing || 0}
+                    onChange={(e) => {
+                      setShapes(prev => prev.map(s => 
+                        s.id === editingTextId ? { ...s, letterSpacing: Number(e.target.value) } : s
+                      ));
+                    }}
+                    className="h-8 w-14 rounded border px-1 text-xs"
+                    min="-5"
+                    max="20"
+                    step="0.5"
+                  />
+                </div>
+                
+                {/* 行间距 */}
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">行距</span>
+                  <input
+                    type="number"
+                    value={shapes.find(s => s.id === editingTextId)?.lineHeight || 1.2}
+                    onChange={(e) => {
+                      setShapes(prev => prev.map(s => 
+                        s.id === editingTextId ? { ...s, lineHeight: Number(e.target.value) } : s
+                      ));
+                    }}
+                    className="h-8 w-14 rounded border px-1 text-xs"
+                    min="0.8"
+                    max="3"
+                    step="0.1"
+                  />
+                </div>
+              </div>
             </div>
           )}
+
           <div className="flex-1 min-w-2" />
 
           {/* Delete */}
