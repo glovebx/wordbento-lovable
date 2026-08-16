@@ -5,124 +5,235 @@ class WordbentoTranslator {
     this.isActive = false;
     this.translationPanel = null;
     this.currentSubtitles = [];
-    this.subtitleObserver = null; // 重命名，区分 URL/DOM 观察者
-    // this.urlObserver = null;      // 新增 URL 变化观察者
+    this.subtitleObserver = null;
+    this.urlObserver = null;
     this.showYtpCaptionContainer = true;
     this.currentSubtitleText = '';
-    // this.lastUrl = window.location.href; // 记录当前 URL
-    this.isInitialized = false; // 跟踪是否已完成核心初始化
+    this.lastUrl = window.location.href;
+    this.isInitialized = false;
+    this.initDebounceTimer = null;
+    this.initRetryCount = 0;
+    this.currentVideoId = null;
+    this.previousVideoId = null;
+    this.accumulatedSubtitle = null; // 当前正在构建的长句
     this.init();
   }
 
-  init() {        
-    // // 监听 URL 变化，这是解决 SPA 问题的关键
-    // this.startUrlObserver();
+  init() {
     console.log('Wordbento单词AI助手插件初始化中...');
+    this.startUrlObserver();
+    this.bindYouTubeNavigationEvents();
 
-    // 等待页面加载完成
+    // 首次页面初始化增加防抖和重试，避免 YouTube 首次进入 watch 页面时丢失启动时机
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => this.start());
+      document.addEventListener('DOMContentLoaded', () => this.scheduleStart(200), { once: true });
     } else {
-      this.start();
+      this.scheduleStart(200);
     }
 
-    // 在 contentScript.js 中
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.action === 'addToWordbento') {
-        // 在页面上显示消息的逻辑
         console.log('收到消息:', request.message);
-        // this.showMessage(request.message, 'success');
         this.showFloatingWordDefinition(request.word);
-        // // 可以调用 sendResponse() 来回复背景脚本
-        // sendResponse({ status: 'success' });
       }
-    });      
+    });
+  }
+
+  scheduleStart(delay = 150) {
+    clearTimeout(this.initDebounceTimer);
+    this.initDebounceTimer = setTimeout(() => {
+      const currentUrl = window.location.href;
+      const isVideoPage = this.isYouTubeVideoPage();
+
+      if (currentUrl !== this.lastUrl) {
+        this.lastUrl = currentUrl;
+      }
+
+      // YouTube 首次进入页面或 SPA 路由切换时，播放器节点可能还没挂载；这里做有限重试
+      const playerReady = !!(document.querySelector('#movie_player') || document.querySelector('ytd-watch'));
+      if (isVideoPage && (!playerReady || !this.isInitialized)) {
+        this.initRetryCount += 1;
+        if (this.initRetryCount <= 12) {
+          this.start();
+          setTimeout(() => this.scheduleStart(400), 400);
+          return;
+        }
+      }
+
+      this.start();
+    }, delay);
   }
 
   start() {
-    console.log('Wordbento单词AI助手插件已启动');
-    
-    // 检查是否在YouTube视频页面
+    console.log('[Wordbento] start() called', {
+      href: window.location.href,
+      isYouTubeVideoPage: this.isYouTubeVideoPage(),
+      currentVideoId: this.currentVideoId,
+      isInitialized: this.isInitialized
+    });
+
     if (this.isYouTubeVideoPage()) {
-      // 确保在 SPA 导航时只初始化一次面板和监听器
-      if (!this.isInitialized) {
-        // 创建翻译面板
+      const playerReady = !!(document.querySelector('#movie_player') || document.querySelector('ytd-watch'));
+      if (!playerReady) {
+        console.log('[Wordbento] YouTube 播放器尚未就绪，延迟初始化');
+        this.scheduleStart(500);
+        return;
+      }
+
+      const currentVideoId = this.getYouTubeVideoId();
+      const previousVideoId = this.currentVideoId;
+      const shouldResetForVideoSwitch = !!previousVideoId && !!currentVideoId && previousVideoId !== currentVideoId;
+
+      const panelIsStale = !this.translationPanel || !document.body.contains(this.translationPanel);
+      if (!this.isInitialized || panelIsStale || shouldResetForVideoSwitch) {
+        console.log('[Wordbento] YouTube 视频切换检测:', { previousVideoId, currentVideoId, panelIsStale, shouldResetForVideoSwitch });
+        this.resetForVideoTransition();
+        this.currentVideoId = currentVideoId;
+
         this.createTranslationPanel();
-        
-        // 开始监听字幕变化
         this.startSubtitleObserver();
-        
-        // 添加单词点击事件监听
         this.addWordClickListener();
-        
-        // 监听键盘快捷键
         this.addKeyboardListener();
 
-        // 调用方式
         const that = this;
         this.getSettings()
           .then(settings => {
             console.log('获取到的设置:', settings);
-            // 这里可以继续链式调用
             that.showYtpCaptionContainer = settings.showYtpCaptionContainer;
           })
           .catch(error => {
             console.error('获取设置失败:', error);
           });
 
-        this.isInitialized = true; // 标记核心初始化完成  
+        this.isInitialized = true;
       } else {
-        // 如果已初始化，但URL匹配，确保面板是可见的
         if (this.translationPanel) {
-            this.translationPanel.style.display = 'block';
+          this.translationPanel.style.display = 'block';
         }
-        // 在 SPA 导航到新的视频时，我们需要重新清理字幕历史
-        this.currentSubtitles = []; 
-        // 重新尝试提取一次字幕
-        setTimeout(() => this.extractSubtitles(), 500);        
+        this.currentSubtitles = [];
+        this.currentSubtitleText = '';
+        this.currentVideoId = currentVideoId;
+        setTimeout(() => this.extractSubtitles(), 500);
       }
     } else {
-        // 如果不在视频页面，隐藏面板并停止字幕监听
-        if (this.translationPanel) {
-            this.translationPanel.style.display = 'none';
-        }
-        if (this.subtitleObserver) {
-            this.subtitleObserver.disconnect();
-            this.subtitleObserver = null;
-        }
-        this.isInitialized = false; // 重置初始化状态
-    }  
+      this.resetForVideoTransition();
+      this.isInitialized = false;
+    }
   }
 
-  // // ==========================================================
-  // // 关键改动：监听 URL 变化以处理 SPA 导航
-  // // ==========================================================
-  // startUrlObserver() {
-  //   console.log('Wordbento: 启动 URL 变化观察者');
-    
-  //   // 监听 URL 变化
-  //   this.urlObserver = new MutationObserver(() => {
-  //       const currentUrl = window.location.href;
-  //       if (currentUrl !== this.lastUrl) {
-  //           console.log('Wordbento: 检测到 URL 变化:', this.lastUrl, '->', currentUrl);
-  //           this.lastUrl = currentUrl;
-            
-  //           // 重新运行 start 方法，它将根据新 URL 决定是初始化还是清理
-  //           this.start();
-  //       }
-  //   });
+  bindYouTubeNavigationEvents() {
+    const handleNavigation = () => {
+      const url = window.location.href;
+      const nextVideoId = this.getYouTubeVideoId();
+      const previousVideoId = this.currentVideoId;
 
-  //   // 观察整个文档的 DOM 变化，因为 URL 变化通常伴随着 DOM 结构的大幅改变
-  //   // 或者您也可以只观察 body 或 title 元素
-  //   this.urlObserver.observe(document.documentElement, { 
-  //     childList: true, 
-  //     subtree: true,
-  //   });
-  // }  
+      console.log('[Wordbento] navigation event fired', {
+        url,
+        previousVideoId,
+        nextVideoId,
+        isYouTubeVideoPage: this.isYouTubeVideoPage()
+      });
+
+      if (nextVideoId && previousVideoId && previousVideoId !== nextVideoId) {
+        console.log('[Wordbento] 检测到新视频导航:', { previousVideoId, nextVideoId, url });
+        this.resetForVideoTransition();
+      }
+
+      this.scheduleStart(150);
+    };
+
+    window.addEventListener('yt-navigate-start', handleNavigation);
+    window.addEventListener('yt-navigate-finish', handleNavigation);
+    window.addEventListener('yt-page-data-updated', handleNavigation);
+    window.addEventListener('popstate', handleNavigation);
+    window.addEventListener('hashchange', handleNavigation);
+  }
+
+  getYouTubeVideoId() {
+    try {
+      const url = new URL(window.location.href);
+      if (url.hostname === 'youtu.be') {
+        return url.pathname.replace('/', '').split('/')[0] || null;
+      }
+      return url.searchParams.get('v') || null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  resetForVideoTransition() {
+    console.log('[Wordbento] resetForVideoTransition start', {
+      currentVideoId: this.currentVideoId,
+      previousVideoId: this.previousVideoId,
+      translationPanelExists: !!this.translationPanel,
+      subtitleObserverExists: !!this.subtitleObserver
+    });
+
+    if (this.translationPanel && this.translationPanel.parentNode) {
+      this.translationPanel.remove();
+    }
+    this.translationPanel = null;
+
+    if (this.subtitleObserver) {
+      this.subtitleObserver.disconnect();
+      this.subtitleObserver = null;
+    }
+
+    document.querySelectorAll('.word-definition-popup').forEach(el => el.remove());
+    this.currentSubtitles = [];
+    this.accumulatedSubtitle = null;
+    this.currentSubtitleText = '';
+
+    this.isInitialized = false;
+    console.log('[Wordbento] resetForVideoTransition complete');
+  }
+
+  // ==========================================================
+  // 关键修复：监听 URL 变化以处理 YouTube SPA 导航
+  // ==========================================================
+  startUrlObserver() {
+    if (this.urlObserver) return;
+
+    console.log('Wordbento: 启动 URL 变化观察者');
+
+    const checkUrl = () => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== this.lastUrl) {
+        console.log('Wordbento: 检测到 URL 变化:', this.lastUrl, '->', currentUrl);
+        this.lastUrl = currentUrl;
+        this.scheduleStart(100);
+      }
+    };
+
+    const patchHistoryMethod = (methodName) => {
+      const originalMethod = history[methodName];
+      history[methodName] = function (...args) {
+        const result = originalMethod.apply(this, args);
+        setTimeout(checkUrl, 0);
+        return result;
+      };
+    };
+
+    patchHistoryMethod('pushState');
+    patchHistoryMethod('replaceState');
+
+    window.addEventListener('popstate', checkUrl);
+    window.addEventListener('hashchange', checkUrl);
+    window.addEventListener('yt-navigate-finish', checkUrl);
+
+    this.urlObserver = { checkUrl };
+  }
 
   isYouTubeVideoPage() {
-    // return window.location.pathname === '/watch' && window.location.search.includes('v=');
-    return window.location.href.includes('/watch?v=');
+    try {
+      const url = new URL(window.location.href);
+      const isYouTubeHost = url.hostname === 'www.youtube.com' || url.hostname === 'm.youtube.com' || url.hostname === 'youtube.com';
+      const isWatchPage = isYouTubeHost && url.pathname === '/watch' && url.searchParams.has('v');
+      const isShortLink = url.hostname === 'youtu.be' && url.pathname.length > 1;
+      return isWatchPage || isShortLink;
+    } catch (error) {
+      return window.location.href.includes('/watch?v=');
+    }
   }
 
   createTranslationPanel() {
@@ -286,21 +397,80 @@ class WordbentoTranslator {
   }
 
   updateSubtitleDisplay(text) {
-    console.log('更新字幕显示:', text);
+    console.log('[Wordbento] 更新字幕显示:', text);
     const originalTextEl = document.getElementById('original-text');
+    console.log('[Wordbento] subtitle target element', {
+      found: !!originalTextEl,
+      inDom: !!(originalTextEl && originalTextEl.isConnected),
+      currentSubtitlesLength: this.currentSubtitles.length,
+      currentVideoId: this.currentVideoId
+    });
+
     if (originalTextEl) {
       const highlightedText = this.highlightWords(text);
-      // // console.log('高亮后的文本:', highlightedText);
-      // originalTextEl.innerHTML = highlightedText;
-      // 4. 将新内容添加到历史记录
-      this.addToCurrentSubtitles({text: text, html: highlightedText, raw: text});  
-      // 显示所有
-      // 将3条记录用分隔符连接显示
-      const combinedDisplay = this.currentSubtitles
+      this.addToCurrentSubtitles({ text, html: highlightedText, raw: text });
+
+      // 构建显示内容：历史 + 当前正在构建的长句
+      const displayItems = [...this.currentSubtitles];
+      if (this.accumulatedSubtitle) {
+        displayItems.push(this.accumulatedSubtitle);
+      }
+
+      let combinedDisplay = displayItems
         .map((d) => d.html)
-        .join('<br><hr><br>'); // 用换行分隔每条记录
-      
-      originalTextEl.innerHTML = combinedDisplay;
+        .join('<br><hr><br>');
+
+      // 在">>"处换行，使其更清晰
+      combinedDisplay = combinedDisplay.replace(/>>/g, '<br><strong>>></strong>');
+
+      // 如果内容过长，确保只从完整的 HTML 标签后面开始（不会残破显示）
+      const MAX_DISPLAY_LENGTH = 3000;
+      let boundedDisplay = combinedDisplay;
+      if (combinedDisplay.length > MAX_DISPLAY_LENGTH) {
+        // 从末尾往前找，找到第一个完整的 > 符号
+        const start = combinedDisplay.length - MAX_DISPLAY_LENGTH;
+        const firstCompleteTagPos = combinedDisplay.indexOf('>', start);
+        if (firstCompleteTagPos >= 0) {
+          boundedDisplay = combinedDisplay.substring(firstCompleteTagPos + 1);
+        } else {
+          // 如果找不到 >，就直接从 start 开始（虽然可能会有残破标签，但尽力了）
+          boundedDisplay = combinedDisplay.substring(start);
+        }
+      }
+
+      // 动态计算高度，避免垂直滚动
+      originalTextEl.style.display = 'block';
+      originalTextEl.style.overflow = 'visible';
+      originalTextEl.style.maxHeight = 'none'; // 先移除限制，让其自然伸展
+
+      if (originalTextEl.innerHTML !== boundedDisplay) {
+        originalTextEl.innerHTML = boundedDisplay;
+        console.log('[Wordbento] rendered subtitle html to DOM');
+      }
+
+      // 等 DOM 更新后，计算实际高度并调整浮动层大小
+      setTimeout(() => {
+        const contentHeight = originalTextEl.scrollHeight;
+        const maxAllowedHeight = Math.min(contentHeight + 20, 600); // 内容最多 600px
+        originalTextEl.style.maxHeight = maxAllowedHeight + 'px';
+        originalTextEl.style.overflowY = contentHeight > maxAllowedHeight ? 'auto' : 'visible';
+
+        // 同时调整浮动层本身的高度
+        if (this.translationPanel) {
+          const headerHeight = 48; // panel-header 的高度
+          const panelContentPadding = 32; // panel-content 的 padding
+          const totalHeight = Math.min(contentHeight + headerHeight + panelContentPadding, 680); // 浮动层最多 680px
+          this.translationPanel.style.height = totalHeight + 'px';
+          this.translationPanel.style.minHeight = 'auto';
+        }
+      }, 10);
+
+      console.log('[Wordbento] before render check', {
+        sameHtml: originalTextEl.innerHTML === boundedDisplay,
+        combinedDisplayLength: combinedDisplay.length,
+        boundedDisplayLength: boundedDisplay.length,
+        currentHtmlLength: originalTextEl.innerHTML.length
+      });
     }
   }
 
@@ -343,54 +513,100 @@ class WordbentoTranslator {
 
   // 新增方法：管理固定长度的字幕历史记录
   addToCurrentSubtitles(textAndHtml) {
-    // 确保数组存在
     if (!this.currentSubtitles) {
       this.currentSubtitles = [];
     }
 
-    if (this.currentSubtitles.length == 0) {
-      this.currentSubtitles.push(textAndHtml);
+    const text = (textAndHtml && textAndHtml.text) || '';
+    if (!text) {
       return;
     }
-    
-    const text = textAndHtml.text;
 
-    const lastText = this.currentSubtitles[this.currentSubtitles.length - 1].raw;
+    // 如果当前没有在构建的长句，初始化
+    if (!this.accumulatedSubtitle) {
+      this.accumulatedSubtitle = {
+        text: text,
+        html: this.highlightWords(text),
+        raw: text
+      };
+      return;
+    }
 
-    console.log('lastText vs text >>>', lastText, '<<< >>>', text)
-    if (lastText && text.indexOf(lastText) >= 0) {
-      // console.log('lastText vs text >>>', '完全覆盖')
-      // 上一条被本条完全包含，则被替代
-      this.currentSubtitles[this.currentSubtitles.length - 1] = textAndHtml;
-      // 这里替换造成上一条的tailText被覆盖，因此需要重新计算
-      if (this.currentSubtitles[this.currentSubtitles.length - 1].text !== lastText) {
-        if (this.currentSubtitles.length > 2) {
-          console.log('从新计算>>>');
-          const tail = this.getTailText(this.currentSubtitles[this.currentSubtitles.length - 2].raw, text);
-          if (tail.text && tail.text.trim().length > 0) {
-            this.currentSubtitles[this.currentSubtitles.length - 1] = {text: tail.text, html: this.highlightWords(tail.text), raw: text}
-          }
+    const lastRaw = this.accumulatedSubtitle.raw;
+
+    // 完全相同则忽略
+    if (lastRaw === text) {
+      return;
+    }
+
+    // 检测新字幕是否是上一条的延续
+    if (text.startsWith(lastRaw)) {
+      // 提取真正新增的部分，追加到当前长句
+      const newPart = text.substring(lastRaw.length).trim();
+      if (newPart) {
+        this.accumulatedSubtitle = {
+          text: this.accumulatedSubtitle.text + ' ' + newPart,
+          html: this.highlightWords(this.accumulatedSubtitle.text + ' ' + newPart),
+          raw: text
+        };
+      }
+    } else {
+      // 不是标准延续，检查是否有重叠或短词
+      const overlapIndex = this.findOverlapIndex(lastRaw, text);
+      
+      // 如果找到重叠或新字幕是短词，当作延续处理
+      if (overlapIndex > 0 || text.length <= 15) {
+        let newPart;
+        if (overlapIndex > 0) {
+          newPart = text.substring(overlapIndex).trim();
+        } else {
+          // 没有直接重叠但新字幕很短（单词），直接作为新增部分
+          newPart = text;
+        }
+
+        if (newPart) {
+          this.accumulatedSubtitle = {
+            text: this.accumulatedSubtitle.text + ' ' + newPart,
+            html: this.highlightWords(this.accumulatedSubtitle.text + ' ' + newPart),
+            raw: text
+          };
+        }
+      } else {
+        // 完全不同且长度较长，说明是新的独立字幕行
+        // 把当前长句保存到历史，开始新的长句
+        this.currentSubtitles.push(this.accumulatedSubtitle);
+
+        this.accumulatedSubtitle = {
+          text: text,
+          html: this.highlightWords(text),
+          raw: text
+        };
+
+        if (this.currentSubtitles.length > 5) {
+          this.currentSubtitles.shift();
         }
       }
-      // 返回
-      return;
-    } 
-        
-    const tail = this.getTailText(lastText, text);
-    console.log('tail >>>', tail);        
-    if (tail.text && tail.text.trim().length > 0) {
-      // if (tail.isNew) {
-        this.currentSubtitles.push({text: tail.text, html: this.highlightWords(tail.text), raw: text});
-      // } else {
-      //   // 替换
-      //   this.currentSubtitles[this.currentSubtitles.length - 1] = {text: lastText + tail.text, html: this.highlightWords(lastText + tail.text), raw: text}
-      // }
     }
-    // 保持数组长度不超过3
-    if (this.currentSubtitles.length > 5) {
-      // 移除最旧的一条记录（数组开头的元素）
-      this.currentSubtitles.shift();
+  }
+
+  // 查找新字幕中与上一条字幕的重叠位置（后缀匹配）
+  findOverlapIndex(previous, current) {
+    if (!previous || previous.length < 3) return 0;
+
+    // 从上一条字幕的最后开始，尝试在新字幕中找到匹配的位置
+    // 最少匹配3个字符，避免误判
+    const minOverlap = Math.min(previous.length, 15); // 最多检查前面的15个字符
+    
+    for (let i = minOverlap; i >= 3; i--) {
+      const tail = previous.slice(-i);
+      const idx = current.indexOf(tail);
+      if (idx >= 0) {
+        // 找到匹配，返回新字幕中这个匹配后的位置
+        return idx + tail.length;
+      }
     }
+
+    return 0;
   }
 
   // async translateText(text) {

@@ -69,10 +69,10 @@
 /* 面板内容 */
 .panel-content {
   padding: 16px;
-  overflow-y: auto; /* 关键属性：垂直方向自动显示滚动条 */
+  overflow-y: visible; /* 改为 visible，让内容自然伸展 */
   overflow-x: hidden; /* 隐藏水平滚动条 */
   flex: 1; /* 占据剩余空间 */
-  max-height: calc(100% - 60px); /* 计算最大高度，减去头部高度 */  
+  max-height: none; /* 移除限制，让其自然高度 */
 }
 
 /* 可选：自定义滚动条样式（Webkit浏览器） */

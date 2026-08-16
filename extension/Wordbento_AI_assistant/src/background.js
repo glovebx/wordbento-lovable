@@ -68,7 +68,7 @@ async function saveWordToWordbento(text) {
     }
     
     // DeepL免费API接口
-    const response = await fetch('http://192.168.3.58:8787/api/word/search', {
+    const response = await fetch('http://localhost:8787/api/word/search', {
       method: 'POST',
       headers: {
         'Authorization': `Wordbento-Auth-Key ${apiKey.trim()}`,
