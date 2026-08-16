@@ -7,7 +7,7 @@
   right: 20px;
   width: 400px;
   min-height: 120px;
-  max-height: 640px; /* 添加最大高度限制 */
+  max-height: 80vh; /* 最多占屏幕高度的 80% */
   background: rgba(0, 0, 0, 0.8);
   border: 1px solid #333;
   border-radius: 8px;
@@ -18,7 +18,8 @@
   backdrop-filter: blur(10px);
   transition: all 0.3s ease;
   display: flex;
-  flex-direction: column; /* 设置为弹性列布局 */  
+  flex-direction: column; /* 设置为弹性列布局 */
+  overflow: hidden; /* 确保超出部分被隐藏 */
 }
 
 .yt-translation-panel.pinned {
@@ -69,10 +70,12 @@
 /* 面板内容 */
 .panel-content {
   padding: 16px;
-  overflow-y: visible; /* 改为 visible，让内容自然伸展 */
+  overflow-y: auto; /* 如果超过高度则显示滚动条 */
   overflow-x: hidden; /* 隐藏水平滚动条 */
   flex: 1; /* 占据剩余空间 */
-  max-height: none; /* 移除限制，让其自然高度 */
+  min-height: 80px; /* 最小高度 */
+  max-height: calc(80vh - 60px); /* 最大高度，减去头部 */
+  scrollbar-gutter: stable; /* 保留滚动条的空间，防止隐现時閱动 */
 }
 
 /* 可选：自定义滚动条样式（Webkit浏览器） */
@@ -112,6 +115,38 @@
   background: rgba(255, 255, 255, 0.05);
   border-left: 3px solid #007bff;
   color: #e0e0e0;
+}
+
+/* 字幕项容器 */
+.subtitle-item {
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+/* 自动高亮最后一个字幕项（当前正在构建的）- 使用 CSS :last-child 伪选择器避免 JavaScript classList 操作 */
+.original-text .subtitle-item:last-child {
+  background: rgba(0, 123, 255, 0.3);
+  border-left: 3px solid #00ff00;
+  border-radius: 6px;
+  padding-left: 12px;
+  font-weight: 500;
+}
+
+/* 兼容旧的 .current-subtitle 类名（以防有其他代码依赖） */
+.subtitle-item.current-subtitle {
+  background: rgba(0, 123, 255, 0.3) !important;
+  border-left: 3px solid #00ff00;
+  border-radius: 6px;
+  padding-left: 12px;
+  font-weight: 500;
+}
+
+/* 字幕项分隔线 */
+.original-text hr {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .translated-text {

@@ -16,6 +16,8 @@ class WordbentoTranslator {
     this.currentVideoId = null;
     this.previousVideoId = null;
     this.accumulatedSubtitle = null; // 当前正在构建的长句
+    this.lastPanelHeight = 0; // 缓存上次的浮动层高度，避免不必要的重排
+    this.pendingLayoutUpdate = false; // 标志是否已经请求了 rAF 更新，避免重复
     this.init();
   }
 
@@ -168,6 +170,9 @@ class WordbentoTranslator {
       translationPanelExists: !!this.translationPanel,
       subtitleObserverExists: !!this.subtitleObserver
     });
+
+    this.lastPanelHeight = 0;
+    this.pendingLayoutUpdate = false;
 
     if (this.translationPanel && this.translationPanel.parentNode) {
       this.translationPanel.remove();
@@ -416,9 +421,13 @@ class WordbentoTranslator {
         displayItems.push(this.accumulatedSubtitle);
       }
 
+      // 为每个字幕项包装成 div，便于后续高亮
       let combinedDisplay = displayItems
-        .map((d) => d.html)
-        .join('<br><hr><br>');
+        .map((d, idx) => {
+          const escapedRaw = (d.raw || '').replace(/"/g, '&quot;');
+          return `<div class="subtitle-item" data-subtitle-idx="${idx}" data-raw-text="${escapedRaw}">${d.html}</div>`;
+        })
+        .join('<hr>');
 
       // 在">>"处换行，使其更清晰
       combinedDisplay = combinedDisplay.replace(/>>/g, '<br><strong>>></strong>');
@@ -438,32 +447,47 @@ class WordbentoTranslator {
         }
       }
 
-      // 动态计算高度，避免垂直滚动
-      originalTextEl.style.display = 'block';
-      originalTextEl.style.overflow = 'visible';
-      originalTextEl.style.maxHeight = 'none'; // 先移除限制，让其自然伸展
-
+      // 只更新内容一次，避免重复 DOM 操作导致闪烁
       if (originalTextEl.innerHTML !== boundedDisplay) {
         originalTextEl.innerHTML = boundedDisplay;
         console.log('[Wordbento] rendered subtitle html to DOM');
+
+        // 使用 requestAnimationFrame 在下一个渲染帧中批量处理高度和样式更新
+        // 这样浏览器可以在一个帧中完成所有计算，避免多次重排
+        if (this.pendingLayoutUpdate) return; // 避免重复请求
+        
+        this.pendingLayoutUpdate = true;
+        requestAnimationFrame(() => {
+          this.pendingLayoutUpdate = false;
+
+          const contentHeight = originalTextEl.scrollHeight;
+          const maxContentHeight = 500;
+          const needsScroll = contentHeight > maxContentHeight;
+          
+          // 批量更新所有样式（一次性赋值）
+          originalTextEl.style.maxHeight = maxContentHeight + 'px';
+          originalTextEl.style.overflowY = needsScroll ? 'auto' : 'visible';
+
+          // 自动滚动到底部（只在必要时）
+          if (needsScroll) {
+            originalTextEl.scrollTop = originalTextEl.scrollHeight;
+          }
+
+          // 调整浮动层高度（仅当数值变化时更新）
+          if (this.translationPanel) {
+            const headerHeight = 48;
+            const panelContentPadding = 32;
+            const calculatedHeight = Math.min(contentHeight + headerHeight + panelContentPadding, maxContentHeight + headerHeight + panelContentPadding);
+            const maxScreenHeight = Math.floor(window.innerHeight * 0.8);
+            const finalHeight = Math.min(calculatedHeight, maxScreenHeight);
+            
+            if (this.lastPanelHeight !== finalHeight) {
+              this.translationPanel.style.height = finalHeight + 'px';
+              this.lastPanelHeight = finalHeight;
+            }
+          }
+        });
       }
-
-      // 等 DOM 更新后，计算实际高度并调整浮动层大小
-      setTimeout(() => {
-        const contentHeight = originalTextEl.scrollHeight;
-        const maxAllowedHeight = Math.min(contentHeight + 20, 600); // 内容最多 600px
-        originalTextEl.style.maxHeight = maxAllowedHeight + 'px';
-        originalTextEl.style.overflowY = contentHeight > maxAllowedHeight ? 'auto' : 'visible';
-
-        // 同时调整浮动层本身的高度
-        if (this.translationPanel) {
-          const headerHeight = 48; // panel-header 的高度
-          const panelContentPadding = 32; // panel-content 的 padding
-          const totalHeight = Math.min(contentHeight + headerHeight + panelContentPadding, 680); // 浮动层最多 680px
-          this.translationPanel.style.height = totalHeight + 'px';
-          this.translationPanel.style.minHeight = 'auto';
-        }
-      }, 10);
 
       console.log('[Wordbento] before render check', {
         sameHtml: originalTextEl.innerHTML === boundedDisplay,
@@ -477,6 +501,12 @@ class WordbentoTranslator {
   highlightWords(text) {
     // 将英文单词包装在span中，便于点击选择
     return text.replace(/\b[a-zA-Z]+\b/g, '<span class="clickable-word">$&</span>');
+  }
+
+  highlightCurrentSubtitle(container) {
+    // 不再手动高亮 - 改用 CSS 自动高亮最后一项
+    // 这样避免了每次都调用 querySelectorAll 和频繁的 classList 操作
+    // CSS 的 :last-child 伪选择器性能远优于 JavaScript
   }
 
   /**
