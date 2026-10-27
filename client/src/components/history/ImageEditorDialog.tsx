@@ -172,7 +172,7 @@ const FONT_FAMILIES = [
   'Herculanum'
 ];
 
-const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72];
+const FONT_SIZES = [8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72, 78, 82, 86, 88, 92, 96];
 
 const ImageEditorDialog: React.FC<ImageEditorDialogProps> = ({
   open,

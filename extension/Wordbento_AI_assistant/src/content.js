@@ -432,6 +432,8 @@ class WordbentoTranslator {
       // 在">>"处换行，使其更清晰
       combinedDisplay = combinedDisplay.replace(/>>/g, '<br><strong>>></strong>');
 
+      combinedDisplay = combinedDisplay.replace(/[。。.]/g, '<br><strong>>></strong>');
+
       // 如果内容过长，确保只从完整的 HTML 标签后面开始（不会残破显示）
       const MAX_DISPLAY_LENGTH = 3000;
       let boundedDisplay = combinedDisplay;

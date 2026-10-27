@@ -497,10 +497,10 @@ export const posterStyle = [
     "style": "In the style of Rinko Kawauchi, serene everyday poetry, soft pastel light, shallow depth of field, circular compositions",
     "desc": "川内伦子风格，宁静的日常诗学，柔和的粉彩光线，浅景深，圆形构图 - 适合：微小、透明、生命涟漪的单词"
   },
-  {
-    "style": "In the style of Ninagawa Mika, explosive floral colors, goldfish motifs, maximalist kitsch, glossy candy-coated surfaces",
-    "desc": "蜷川实花风格，爆炸性的花卉色彩，金鱼图案，极繁主义的媚俗，光亮的糖果质感表面 - 适合：绚烂、欲望、虚幻美丽的单词"
-  },
+  // {
+  //   "style": "In the style of Ninagawa Mika, explosive floral colors, goldfish motifs, maximalist kitsch, glossy candy-coated surfaces",
+  //   "desc": "蜷川实花风格，爆炸性的花卉色彩，金鱼图案，极繁主义的媚俗，光亮的糖果质感表面 - 适合：绚烂、欲望、虚幻美丽的单词"
+  // },
   {
     "style": "In the style of Gregory Crewdson, cinematic suburban surrealism, elaborate staged sets, twilight dread, single-frame movie",
     "desc": "格雷戈里·克鲁德森风格，电影式的郊区超现实，精心搭建的场景，暮光中的恐惧，单帧电影 - 适合：谜团、郊区、未言秘密的单词"
